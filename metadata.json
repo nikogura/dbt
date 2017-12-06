@@ -1,0 +1,27 @@
+{
+  "version": "0.1.0",
+  "package": "github.com/nikogura/dbt",
+  "description": "Distributed Binary Toolkit - A framework for running self-updating signed binaries from a central, trusted repository.",
+  "building": {
+    "targets": [
+      "darwin/amd64",
+      "linux/amd64"
+    ]
+  },
+  "publishing": {
+    "targets": [
+      {
+        "src": "dbt_darwin_amd64",
+        "dst": "http://localhost:8081/artifactory/dbt/{{.Version}}/darwin/amd64/dbt",
+        "sig": true,
+        "checksums": false
+      },
+      {
+        "src": "gomason_linux_amd64",
+        "dst": "http://localhost:8081/artifactory/dbt/{{.Version}}/linux/amd64/dbt",
+        "sig": true,
+        "checksums": false
+      }
+    ]
+  }
+}
