@@ -34,7 +34,7 @@ You can also choose to limit where your tools can run.  It's all up to you.  DBT
 
 # Security
 
-DBT is as secure as the repository you trust to hold the binaries, and the security with which you protect the binary signing keys.  It will ensure, come hell or high water that every bit of the binary downloaded is what it aught to be, and that the signature is one you've decided to trust.  If it can't do that, it'll stop- immediately and scream bloody murder.  
+DBT is as secure as the repository you trust to hold the binaries, and the degree to which you protect the signing keys.  It will ensure, come hell or high water that every bit of the binary downloaded is what it aught to be, and that the signature is one you've decided to trust.  If it can't do that, it'll stop- immediately and scream bloody murder.  
 
 You can make the repo wide open, and give everyone a copy of a non-encrypted key and it'll work.  It's just not recommended.  I just build the tools.  You choose how to use them.
 
