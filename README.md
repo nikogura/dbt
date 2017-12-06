@@ -1,6 +1,18 @@
 # DBT  *Distributed Binary Toolkit*
 
-A framework for running signed binary tools from a central, trusted repository.
+A framework for running self-updating, signed binary tools from a central, trusted repository.
+
+# Why?
+
+I had a recent experience where a great many people did not agree with or accept that part of being a conscientious computer user was keeping their systems and tools up to date.  Expecting people to pay attention to upgrade announcements, or even run things like ```brew upgrade``` regularly was not only too much.  It was viewed as offensive, and a failure on my part as a toolsmith.  *wow huh?*
+
+Necessity is, as they say, the mother of invention though, so I worked out a way to slice that particular Gordian Knot.  What I came up with was a way I could make everyone happy.  Users were happy because they didn't need to concern themselves with updates.  I could also make *myself* happy, because I could make sure the system was secure, reliable, and had some fall back.  What I came up with I now offer to you as 'DBT'.
+
+Whether the particular folks that drove me to this extreme were right or wrong is not really important.  It turns out there is actually a legitimate use case for self-updating tooling beyond appeasing user laziness.
+
+Imagine this, you've got a system of dynamic VM's and Containers, all leveraging common tooling.  You might even have a serious DAG or web of 'things' dynamically generating other 'things' in a busy and automated fashion.  What is there's a problem, or an upgrade?  With normal utility tools and scripts you have to re-bake your machine images and containers to pick up the changes.  You might say that that's a good thing.  But what if it's not?
+
+With DBT, you have the best of both worlds.  You can force your tools to use an explicit version (```dbt -v 1.2.3 <tool>```).  You can also dispense with the '-v' and run the latest.  Voila!  You're automatically picking up the latest version of the tooling from your trusted repository.
 
 # Overview
 
@@ -22,9 +34,13 @@ You can also choose to limit where your tools can run.  It's all up to you.  DBT
 
 # Security
 
-DBT is as secure as the repository you trust to hold the binaries, and the security with which you protect the binary signing keys.
+DBT is as secure as the repository you trust to hold the binaries, and the degree to which you protect the signing keys.  It will ensure, come hell or high water that every bit of the binary downloaded is what it aught to be, and that the signature is one you've decided to trust.  If it can't do that, it'll stop- immediately and scream bloody murder.  
 
-You can make the repo wide open, and give everyone a copy of a non-encrypted key and it'll work.  It's just not recommended.
+You can make the repo wide open, and give everyone a copy of a non-encrypted key and it'll work.  It's just not recommended.  I just build the tools.  You choose how to use them.
+
+*"If you aim the gun at your foot and pull the trigger, it's UNIX's job to 
+ensure reliable delivery of the bullet to where you aimed the gun (in
+this case, Mr. Foot)."* -- Terry Lambert, FreeBSD-Hackers mailing list.
 
 # Repository Support
 
