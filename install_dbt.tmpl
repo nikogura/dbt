@@ -1,0 +1,42 @@
+# URL for your trusted repository
+REPO="{{.Repo}}"
+
+# Initial version to install
+VERSION="{{.Version}}"
+
+set -e
+echo "Installing DBT $VERSION..."
+
+INSTALL_DIR="/usr/local/bin"
+FILE="dbt"
+
+OS=$(echo $(uname -s) | awk '{print tolower($0)}')
+ARCH=$(uname -m)
+
+# have to translate uname to goxish
+if [[ "$ARCH" =~ "x86_64" ]]; then
+    ARCH="amd64"
+fi
+
+URL="$REPO/$FILE/$VERSION/$OS/$ARCH/$FILE"
+
+echo "Installing from $URL"
+
+TMPDIR=$(mktemp -d)
+
+DOWNLOAD_PATH="$TMPDIR/$FILE"
+
+curl -sX GET $URL -o $DOWNLOAD_PATH
+
+if [ -w $INSTALL_DIR ] ; then
+    mv $DOWNLOAD_PATH $INSTALL_DIR
+    chmod 755 "$INSTALL_DIR/$FILE"
+else
+    sudo mv $DOWNLOAD_PATH $INSTALL_DIR
+    sudo chmod 755 "$INSTALL_DIR/$FILE"
+
+fi
+
+rm -r $TMPDIR
+
+echo "Installation complete."
