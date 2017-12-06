@@ -1,6 +1,6 @@
 # DBT  *Distributed Binary Toolkit*
 
-A framework for running signed binary tools from a central, trusted repository.
+A framework for running self-updating, signed binary tools from a central, trusted repository.
 
 # Overview
 
