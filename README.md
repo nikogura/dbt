@@ -2,6 +2,8 @@
 
 A framework for running self-updating, signed binary tools from a central, trusted repository.
 
+** DBT is Under Construction.  This warning will go away once it's ready to be used. **
+
 # Why?
 
 I had a recent experience where a great many people did not agree with or accept that part of being a conscientious computer user was keeping their systems and tools up to date.  Expecting people to pay attention to upgrade announcements, or even run things like ```brew upgrade``` regularly was not only too much.  It was viewed as offensive, and a failure on my part as a toolsmith.  *wow huh?*
