@@ -1,5 +1,8 @@
 # DBT  *Distributed Binary Toolkit*
 
+[![Circle CI](https://circleci.com/gh/nikogura/dbt.svg?style=shield)](https://circleci.com/gh/nikogura/dbt)
+
+
 A framework for running self-updating, signed binary tools from a central, trusted repository.
 
 ***DBT is Under Construction.  This warning will go away once it's ready to be used.***
