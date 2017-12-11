@@ -31,11 +31,15 @@ func main() {
 		if args[0] == "help" { // if it's help, give the help
 			helpMessage()
 			os.Exit(0)
-		} else { // else it's a command, do it
-			dbt.RunTool(version, args)
 		}
 
-	} else { // args[1] is either -v, -Q, -Qv
+	} else { // args[1] is either -v, -o, -ov
+
+		err := dbt.GenerateDbtDir(false)
+		if err != nil {
+			fmt.Printf("Failed to generate necessary config directories: %s", err)
+			os.Exit(1)
+		}
 
 		possibles := []string{"-o", "-ov"}
 
@@ -53,7 +57,9 @@ func main() {
 			if !ok {
 				err = dbt.UpgradeInPlace()
 				if err != nil {
-					fmt.Errorf("Upgrade in place failed: %s", err)
+					err = fmt.Errorf("upgrade in place failed: %s", err)
+					fmt.Printf("Error: %s", err)
+					os.Exit(1)
 				}
 
 				// Single white female ourself

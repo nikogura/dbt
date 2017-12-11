@@ -2,7 +2,7 @@
 
 A framework for running self-updating, signed binary tools from a central, trusted repository.
 
-** DBT is Under Construction.  This warning will go away once it's ready to be used. **
+***DBT is Under Construction.  This warning will go away once it's ready to be used.***
 
 # Why?
 
