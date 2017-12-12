@@ -77,9 +77,8 @@ func VersionAIsNewerThanB(a string, b string) (result bool) {
 			}
 			if patch > 0 {
 				return true
-			} else {
-				return false
 			}
+			return false
 
 		} else {
 			if minor > 0 {
@@ -96,7 +95,7 @@ func VersionAIsNewerThanB(a string, b string) (result bool) {
 	}
 }
 
-// Spaceship(a, b)  A very simple implementation of a useful operator that go seems not to have.
+// Spaceship A very simple implementation of a useful operator that go seems not to have.
 // returns 1 if a > b, -1 if a < b, and 0 if a == b
 func Spaceship(a int, b int) int {
 	if a < b {
@@ -105,9 +104,8 @@ func Spaceship(a int, b int) int {
 	} else {
 		if a > b {
 			return 1
-		} else {
-			return 0
 		}
+		return 0
 	}
 }
 
