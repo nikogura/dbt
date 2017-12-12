@@ -80,12 +80,11 @@ func VersionAIsNewerThanB(a string, b string) (result bool) {
 			}
 			return false
 
-		} else {
-			if minor > 0 {
-				return true
-			}
-			return false
 		}
+		if minor > 0 {
+			return true
+		}
+		return false
 
 	} else {
 		if major > 0 {
@@ -101,12 +100,11 @@ func Spaceship(a int, b int) int {
 	if a < b {
 		return -1
 
-	} else {
-		if a > b {
-			return 1
-		}
-		return 0
 	}
+	if a > b {
+		return 1
+	}
+	return 0
 }
 
 // FileSha256 returns the hex encoded Sha256 checksum for the given file
