@@ -37,7 +37,13 @@ func main() {
 
 		err := dbt.GenerateDbtDir(false)
 		if err != nil {
-			fmt.Printf("Failed to generate necessary config directories: %s", err)
+			log.Printf("Failed to generate necessary config directories: %s", err)
+			os.Exit(1)
+		}
+
+		dbtObj, err := dbt.NewDbt()
+		if err != nil {
+			log.Printf("Error creating DBT object: %s", err)
 			os.Exit(1)
 		}
 
@@ -49,16 +55,23 @@ func main() {
 
 		// if we're not explicitly offline, try to upgrade in place
 		if !offline {
-			ok, err := dbt.IsCurrent()
+			// first fetch the current truststore
+			err = dbtObj.FetchTrustStore()
+			if err != nil {
+				log.Printf("Failed to fetch current truststore")
+				os.Exit(1)
+			}
+
+			ok, err := dbtObj.IsCurrent()
 			if err != nil {
 				log.Printf("Failed to confirm whether we're up to date.")
 			}
 
 			if !ok {
-				err = dbt.UpgradeInPlace()
+				err = dbtObj.UpgradeInPlace()
 				if err != nil {
 					err = fmt.Errorf("upgrade in place failed: %s", err)
-					fmt.Printf("Error: %s", err)
+					log.Printf("Error: %s", err)
 					os.Exit(1)
 				}
 
@@ -74,7 +87,7 @@ func main() {
 				if len(args) > 2 {
 					version = args[1]
 
-					dbt.RunTool(version, args[2:])
+					dbtObj.RunTool(version, args[2:])
 
 				} else {
 					fmt.Println("-v flag requires a version.")
@@ -87,7 +100,7 @@ func main() {
 
 				} else {
 					// deliberately leaving all error processing to the tool
-					dbt.RunTool(version, args[1:])
+					dbtObj.RunTool(version, args[1:])
 				}
 			}
 

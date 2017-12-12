@@ -7,6 +7,31 @@ VERSION="{{.Version}}"
 set -e
 echo "Installing DBT $VERSION..."
 
+# Config setup
+CONFIG=$(cat <<EOF
+{
+  "dbt": {
+    "repository": "{{.Repository}}"
+    "truststore": "{{.Repository}}/truststore"
+  },
+  "tools": {
+    "repository": "{{.Repository}}-tools"
+  }
+}
+EOF
+)
+
+# create directories
+DIRS=(~/.dbt ~/.dbt/trust ~/.dbt/conf ~/.dbt/tools)
+
+for i in ${DIRS[@]}; do
+    [[ -d $i ]] || mkdir $i && chmod 700 $i
+done
+
+# write config
+echo "$CONFIG" > ~/.dbt/conf/dbt.json
+chmod 600 ~/.dbt/conf/dbt.json
+
 INSTALL_DIR="/usr/local/bin"
 FILE="dbt"
 
