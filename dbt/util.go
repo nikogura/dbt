@@ -9,6 +9,7 @@ import (
 	"strings"
 )
 
+// StringInSlice returns true if the given string is in the given slice
 func StringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
@@ -18,7 +19,7 @@ func StringInSlice(a string, list []string) bool {
 	return false
 }
 
-// SemverParse breaks apart a semantic verison strings and returns a slice of int's holding the parts
+// SemverParse breaks apart a semantic version strings and returns a slice of int's holding the parts
 func SemverParse(version string) (parts []int, err error) {
 	stringParts := strings.Split(version, ".")
 
@@ -97,8 +98,6 @@ func VersionAIsNewerThanB(a string, b string) (result bool) {
 			return false
 		}
 	}
-
-	return false
 }
 
 // Spaceship(a, b)  A very simple implementation of a useful operator that go seems not to have.

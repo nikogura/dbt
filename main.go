@@ -9,6 +9,7 @@ import (
 	"syscall"
 )
 
+// DBT the file path of the installed dbt binary
 const DBT = "/usr/local/bin/dbt"
 
 // there are only two options for dbt itself, 'version' and 'offline'

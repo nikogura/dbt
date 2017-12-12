@@ -18,25 +18,30 @@ const configDir = dbtDir + "/conf"
 const configFilePath = configDir + "/dbt.json"
 const truststorePath = trustDir + "/truststore"
 
+// DBT the dbt object itself
 type DBT struct {
 	Config  Config
 	Verbose bool
 }
 
+// Config  configuration of the dbt object
 type Config struct {
 	Dbt   DbtConfig   `json:"dbt"`
 	Tools ToolsConfig `json:"tools"`
 }
 
+// DbtConfig internal config of dbt
 type DbtConfig struct {
 	Repo       string `json:"repository"`
 	TrustStore string `json:"truststore"`
 }
 
+// ToolsConfig is the config information for the tools to be downloaded and run
 type ToolsConfig struct {
 	Repo string `json:"repository"`
 }
 
+// NewDbt  creates a new dbt object
 func NewDbt() (dbt *DBT, err error) {
 	config, err := LoadDbtConfig(false)
 	if err != nil {
@@ -90,7 +95,7 @@ func loadDbtConfig(parentDir string, verbose bool) (config Config, err error) {
 	return config, err
 }
 
-// GenerateDbtDir generates the necessary dbt dirs in the user's homedir if they don't already exist.  If htey do exist, it does nothing.
+// GenerateDbtDir generates the necessary dbt dirs in the user's homedir if they don't already exist.  If they do exist, it does nothing.
 func GenerateDbtDir(verbose bool) (err error) {
 	userObj, err := user.Current()
 	if err != nil {

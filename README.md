@@ -2,6 +2,8 @@
 
 [![Circle CI](https://circleci.com/gh/nikogura/dbt.svg?style=shield)](https://circleci.com/gh/nikogura/dbt)
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/nikogura/dbt)](https://goreportcard.com/report/github.com/nikogura/dbt)
+
 
 A framework for running self-updating, signed binary tools from a central, trusted repository.
 
