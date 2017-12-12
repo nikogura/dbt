@@ -86,12 +86,11 @@ func VersionAIsNewerThanB(a string, b string) (result bool) {
 		}
 		return false
 
-	} else {
-		if major > 0 {
-			return true
-		}
-		return false
 	}
+	if major > 0 {
+		return true
+	}
+	return false
 }
 
 // Spaceship A very simple implementation of a useful operator that go seems not to have.
