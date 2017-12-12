@@ -36,7 +36,7 @@ func main() {
 
 	} else { // args[1] is either -v, -o, -ov
 
-		err := dbt.GenerateDbtDir(false)
+		err := dbt.GenerateDbtDir("", false)
 		if err != nil {
 			log.Printf("Failed to generate necessary config directories: %s", err)
 			os.Exit(1)
@@ -57,7 +57,7 @@ func main() {
 		// if we're not explicitly offline, try to upgrade in place
 		if !offline {
 			// first fetch the current truststore
-			err = dbtObj.FetchTrustStore()
+			err = dbtObj.FetchTrustStore("", false)
 			if err != nil {
 				log.Printf("Failed to fetch current truststore")
 				os.Exit(1)

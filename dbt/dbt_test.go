@@ -3,13 +3,17 @@ package dbt
 import (
 	"fmt"
 	"github.com/magiconair/properties/assert"
+	"github.com/phayes/freeport"
 	"io/ioutil"
 	"log"
 	"os"
 	"testing"
+	"time"
 )
 
 var tmpDir string
+var dbtConfig Config
+var port int
 
 func TestMain(m *testing.M) {
 	setUp()
@@ -29,6 +33,30 @@ func setUp() {
 	}
 
 	tmpDir = dir
+
+	freePort, err := freeport.GetFreePort()
+	if err != nil {
+		log.Printf("Error getting a free port: %s", err)
+		os.Exit(1)
+	}
+
+	port = freePort
+
+	dbtConfig = testDbtConfig(port)
+
+	tr := TestRepo{}
+
+	go tr.Run(port)
+
+	log.Printf("Sleeping for 1 second for the test artifact server to start up.")
+	time.Sleep(time.Second * 1)
+
+	err = GenerateDbtDir(tmpDir, true)
+	if err != nil {
+		log.Printf("Error generating dbt dir: %s", err)
+		os.Exit(1)
+	}
+
 }
 
 func tearDown() {
@@ -38,13 +66,7 @@ func tearDown() {
 
 }
 
-func TestGenerateDbtDirAndReadConfig(t *testing.T) {
-	err := generateDbtDir(tmpDir, true)
-	if err != nil {
-		log.Printf("Error generating dbt dir: %s", err)
-		t.Fail()
-	}
-
+func TestGenerateDbtDir(t *testing.T) {
 	dbtDirPath := fmt.Sprintf("%s/%s", tmpDir, dbtDir)
 
 	if _, err := os.Stat(dbtDirPath); os.IsNotExist(err) {
@@ -71,20 +93,56 @@ func TestGenerateDbtDirAndReadConfig(t *testing.T) {
 		t.Fail()
 	}
 
+}
+
+func TestLoadDbtConfig(t *testing.T) {
+	configPath := fmt.Sprintf("%s/%s", tmpDir, configDir)
 	fileName := fmt.Sprintf("%s/dbt.json", configPath)
 
-	err = ioutil.WriteFile(fileName, []byte(testDbtConfigContents()), 0644)
+	err := ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
 	if err != nil {
 		log.Printf("Error writing config file to %s: %s", fileName, err)
 		t.Fail()
 	}
 
-	expected := testDbtConfig()
-	actual, err := loadDbtConfig(tmpDir, true)
+	expected := testDbtConfig(port)
+	actual, err := LoadDbtConfig(tmpDir, true)
 	if err != nil {
 		log.Printf("Error loading config file: %s", err)
 		t.Fail()
 	}
 
 	assert.Equal(t, expected, actual, "Parsed config meets expectations")
+
+}
+
+func TestDBT_FetchTrustStore(t *testing.T) {
+	dbt := &DBT{
+		Config:  dbtConfig,
+		Verbose: true,
+	}
+
+	err := dbt.FetchTrustStore(tmpDir, true)
+	if err != nil {
+		log.Printf("Error fetching trust store: %s", err)
+		t.Fail()
+	}
+
+	expected := testKeyPublic()
+	trustPath := fmt.Sprintf("%s/%s", tmpDir, truststorePath)
+
+	if _, err := os.Stat(trustPath); os.IsNotExist(err) {
+		log.Printf("File not written")
+		t.Fail()
+	}
+
+	actualBytes, err := ioutil.ReadFile(trustPath)
+	if err != nil {
+		log.Printf("Error reading trust store: %s", err)
+		t.Fail()
+	}
+
+	actual := string(actualBytes)
+
+	assert.Equal(t, expected, actual, "Read truststore contents matches expectations.")
 }

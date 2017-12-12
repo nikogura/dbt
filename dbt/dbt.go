@@ -43,7 +43,7 @@ type ToolsConfig struct {
 
 // NewDbt  creates a new dbt object
 func NewDbt() (dbt *DBT, err error) {
-	config, err := LoadDbtConfig(false)
+	config, err := LoadDbtConfig("", false)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to load config file")
 	}
@@ -57,26 +57,20 @@ func NewDbt() (dbt *DBT, err error) {
 }
 
 // LoadDbtConfig loads the dbt config from the expected location on the filesystem
-func LoadDbtConfig(verbose bool) (config Config, err error) {
-	userObj, err := user.Current()
-	if err != nil {
-		err = errors.Wrapf(err, "failed to get current user")
-		return config, err
+func LoadDbtConfig(homedir string, verbose bool) (config Config, err error) {
+	if homedir == "" {
+		homedir, err = GetHomeDir()
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get homedir")
+			return config, err
+		}
 	}
 
-	homeDir := userObj.HomeDir
-
-	if homeDir == "" {
-		err = fmt.Errorf("no homedir for user %q", userObj.Username)
-		return config, err
+	if verbose {
+		log.Printf("Creating DBT directory in %s.dbt", homedir)
 	}
 
-	return loadDbtConfig(homeDir, verbose)
-}
-
-func loadDbtConfig(parentDir string, verbose bool) (config Config, err error) {
-
-	filePath := fmt.Sprintf("%s/%s", parentDir, configFilePath)
+	filePath := fmt.Sprintf("%s/%s", homedir, configFilePath)
 
 	if verbose {
 		log.Printf("Loading config from %s", filePath)
@@ -96,31 +90,20 @@ func loadDbtConfig(parentDir string, verbose bool) (config Config, err error) {
 }
 
 // GenerateDbtDir generates the necessary dbt dirs in the user's homedir if they don't already exist.  If they do exist, it does nothing.
-func GenerateDbtDir(verbose bool) (err error) {
-	userObj, err := user.Current()
-	if err != nil {
-		err = errors.Wrapf(err, "failed to get current user")
-		return err
+func GenerateDbtDir(homedir string, verbose bool) (err error) {
+	if homedir == "" {
+		homedir, err = GetHomeDir()
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get homedir")
+			return err
+		}
 	}
 
-	homeDir := userObj.HomeDir
-
-	if homeDir == "" {
-		err = fmt.Errorf("no homedir for user %q", userObj.Username)
-		return err
-	}
-
-	return generateDbtDir(homeDir, verbose)
-
-}
-
-// generateDbtDir generates the dbt dir tree under the given parent dir.  This function is split out from GenerateDbtDir merely to be able to test the dir tree creation code.
-func generateDbtDir(parentDir string, verbose bool) (err error) {
 	if verbose {
-		log.Printf("Creating DBT directory in %s.dbt", parentDir)
+		log.Printf("Creating DBT directory in %s.dbt", homedir)
 	}
 
-	dbtPath := fmt.Sprintf("%s/%s", parentDir, dbtDir)
+	dbtPath := fmt.Sprintf("%s/%s", homedir, dbtDir)
 
 	if _, err := os.Stat(dbtPath); os.IsNotExist(err) {
 		err = os.Mkdir(dbtPath, 0755)
@@ -130,7 +113,7 @@ func generateDbtDir(parentDir string, verbose bool) (err error) {
 		}
 	}
 
-	trustPath := fmt.Sprintf("%s/%s", parentDir, trustDir)
+	trustPath := fmt.Sprintf("%s/%s", homedir, trustDir)
 
 	if _, err := os.Stat(trustPath); os.IsNotExist(err) {
 		err = os.Mkdir(trustPath, 0755)
@@ -140,14 +123,14 @@ func generateDbtDir(parentDir string, verbose bool) (err error) {
 		}
 	}
 
-	toolPath := fmt.Sprintf("%s/%s", parentDir, toolDir)
+	toolPath := fmt.Sprintf("%s/%s", homedir, toolDir)
 	err = os.Mkdir(toolPath, 0755)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to create directory %s", toolPath)
 		return err
 	}
 
-	configPath := fmt.Sprintf("%s/%s", parentDir, configDir)
+	configPath := fmt.Sprintf("%s/%s", homedir, configDir)
 	err = os.Mkdir(configPath, 0755)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to create directory %s", configPath)
@@ -157,8 +140,27 @@ func generateDbtDir(parentDir string, verbose bool) (err error) {
 	return err
 }
 
+// GetHomeDir get's the current user's homedir
+func GetHomeDir() (homedir string, err error) {
+	userObj, err := user.Current()
+	if err != nil {
+		err = errors.Wrapf(err, "failed to get current user")
+		return homedir, err
+	}
+
+	homedir = userObj.HomeDir
+
+	if homedir == "" {
+		err = fmt.Errorf("no homedir for user %q", userObj.Username)
+		return homedir, err
+	}
+
+	return homedir, err
+}
+
 // FetchTrustStore writes the downloaded trusted signing public keys to disk.
-func (dbt *DBT) FetchTrustStore() (err error) {
+func (dbt *DBT) FetchTrustStore(homedir string, verbose bool) (err error) {
+
 	uri := dbt.Config.Dbt.TrustStore
 
 	resp, err := http.Get(uri)
@@ -179,7 +181,8 @@ func (dbt *DBT) FetchTrustStore() (err error) {
 
 		// don't write anything if we have an empty string
 		if keytext != "" {
-			err = ioutil.WriteFile(truststorePath, []byte(keytext), 0644)
+			filePath := fmt.Sprintf("%s/%s", homedir, truststorePath)
+			err = ioutil.WriteFile(filePath, []byte(keytext), 0644)
 			if err != nil {
 				err = errors.Wrapf(err, "failed to write trust file")
 				return err
