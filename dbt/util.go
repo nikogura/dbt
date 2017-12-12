@@ -52,8 +52,7 @@ func LatestVersion(versions []string) (latest string) {
 	return latest
 }
 
-// VersionIsNewerThan(v1, v2)
-// Returns true if Semantic Version string v1 is newer (higher numbers) than Semantic Version string v2
+// VersionAIsNewerThanB returns true if Semantic Version string v1 is newer (higher numbers) than Semantic Version string v2
 func VersionAIsNewerThanB(a string, b string) (result bool) {
 	aParts, err := SemverParse(a)
 	if err != nil {
@@ -75,28 +74,25 @@ func VersionAIsNewerThanB(a string, b string) (result bool) {
 
 			if patch == 0 {
 				return false
+			}
+			if patch > 0 {
+				return true
 			} else {
-				if patch > 0 {
-					return true
-				} else {
-					return false
-				}
+				return false
 			}
 
 		} else {
 			if minor > 0 {
 				return true
-			} else {
-				return false
 			}
+			return false
 		}
 
 	} else {
 		if major > 0 {
 			return true
-		} else {
-			return false
 		}
+		return false
 	}
 }
 
