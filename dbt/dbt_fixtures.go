@@ -26,6 +26,15 @@ func testDbtConfig(port int) Config {
 	}
 }
 
+func testDbtObj(port int) *DBT {
+	dbtObj := &DBT{
+		Config:  testDbtConfig(port),
+		Verbose: true,
+	}
+
+	return dbtObj
+}
+
 // public key for testing
 func testKeyPublic() string {
 	return `-----BEGIN PGP PUBLIC KEY BLOCK-----

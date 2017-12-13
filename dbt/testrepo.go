@@ -15,7 +15,27 @@ func (tr *TestRepo) Run(port int) (err error) {
 
 	log.Printf("Running test artifact server on port %d", port)
 	http.HandleFunc("/dbt/", tr.HandlerDbt)
-	http.HandleFunc("/dbt-tools/", tr.HandlerTools)
+
+	// /dbt-tools/foo/ work
+	// /dbt-tools/bar/ do not
+	http.HandleFunc("/dbt-tools/foo/", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("**TestRepo: Tool Request for %s", r.URL.Path)
+
+		switch r.URL.Path {
+		case "/dbt-tools/foo/":
+			_, err := w.Write([]byte(dbtIndexOutput()))
+			if err != nil {
+				log.Printf("Failed to write response: %s", err)
+			}
+		case "/dbt-tools/foo/1.2.2":
+
+		case "/dbt-tools/foo/1.2.3":
+
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
 	err = http.ListenAndServe(fmt.Sprintf("localhost:%s", strconv.Itoa(port)), nil)
 
 	return err
@@ -23,7 +43,7 @@ func (tr *TestRepo) Run(port int) (err error) {
 
 // HandlerDbt handles requests on the dbt repo path
 func (tr *TestRepo) HandlerDbt(w http.ResponseWriter, r *http.Request) {
-	log.Printf("*TestRepo: Request for %s*", r.URL.Path)
+	log.Printf("*TestRepo: DBT Request for %s*", r.URL.Path)
 
 	if r.URL.Path == "/dbt/truststore" {
 		_, err := w.Write([]byte(testKeyPublic()))
@@ -32,9 +52,4 @@ func (tr *TestRepo) HandlerDbt(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(fmt.Sprintf("500 - %s", err)))
 		}
 	}
-}
-
-// HandlerTools handles requests for tools
-func (tr *TestRepo) HandlerTools(w http.ResponseWriter, r *http.Request) {
-
 }
