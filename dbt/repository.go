@@ -137,7 +137,7 @@ func FetchFile(repoUrl string, destPath string) (err error) {
 	return err
 }
 
-// Verifies the sha256 checksum of a given file against an expected value
+// VerifyFileChecksum Verifies the sha256 checksum of a given file against an expected value
 func VerifyFileChecksum(filePath string, expected string) (success bool, err error) {
 	checksum, err := FileSha256(filePath)
 	if err != nil {
@@ -148,15 +148,13 @@ func VerifyFileChecksum(filePath string, expected string) (success bool, err err
 	if checksum == expected {
 		success = true
 		return success, err
-	} else {
-		success = false
-		return success, err
 	}
+
+	success = false
 	return success, err
 }
 
 // VerifyFileVersion verifies the version by matching it's Sha1 checksum against what the repo says it should be
-
 func VerifyFileVersion(repoUrl string, filePath string) (success bool, err error) {
 	uri := fmt.Sprintf("%s.sha1", repoUrl)
 	resp, err := http.Get(uri)
@@ -195,6 +193,7 @@ func VerifyFileVersion(repoUrl string, filePath string) (success bool, err error
 	return success, err
 }
 
+// VerifyFileSignature verifies the signature on the given file
 func VerifyFileSignature(filePath string) (success bool, err error) {
 	signature, err := os.Open(filePath)
 
