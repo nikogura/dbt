@@ -98,8 +98,6 @@ func ParseVersionResponse(resp *http.Response) (versions []string) {
 			}
 		}
 	}
-
-	return versions
 }
 
 // FetchFile Fetches a file and places it on the filesystem.
@@ -184,10 +182,10 @@ func VerifyFileVersion(repoUrl string, filePath string) (success bool, err error
 		if actual == expected {
 			success = true
 			return success, err
-		} else {
-			success = false
-			return success, err
 		}
+
+		success = false
+		return success, err
 	}
 
 	return success, err
