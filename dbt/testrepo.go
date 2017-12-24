@@ -59,7 +59,7 @@ func (tr *TestRepo) HandlerFoo(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandlerVersionB handles requests for version A
+// HandlerVersionA handles requests for version A
 func (tr *TestRepo) HandlerVersionA(w http.ResponseWriter, r *http.Request) {
 	log.Printf("**TestRepo: Tool Request for %s", r.URL.Path)
 
@@ -101,7 +101,7 @@ func (tr *TestRepo) HandlerVersionA(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandlerVersionA  handles requests for verison B
+// HandlerVersionB  handles requests for version B
 func (tr *TestRepo) HandlerVersionB(w http.ResponseWriter, r *http.Request) {
 	log.Printf("**TestRepo: Tool Request for %s", r.URL.Path)
 
