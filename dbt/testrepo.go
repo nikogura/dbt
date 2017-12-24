@@ -32,7 +32,7 @@ func (tr *TestRepo) Run(port int) (err error) {
 func (tr *TestRepo) HandlerTruststore(w http.ResponseWriter, r *http.Request) {
 	log.Printf("*TestRepo: DBT Request for %s*", r.URL.Path)
 
-	_, err := w.Write([]byte(testKeyPublic()))
+	_, err := w.Write([]byte(testTruststore()))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("500 - %s", err)))

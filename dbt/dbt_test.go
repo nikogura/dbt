@@ -129,7 +129,7 @@ func TestDBT_FetchTrustStore(t *testing.T) {
 		t.Fail()
 	}
 
-	expected := testKeyPublic()
+	expected := testTruststore()
 	trustPath := fmt.Sprintf("%s/%s", tmpDir, truststorePath)
 
 	if _, err := os.Stat(trustPath); os.IsNotExist(err) {
