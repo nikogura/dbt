@@ -5,7 +5,6 @@ import (
 	"github.com/nikogura/dbt/dbt"
 	"log"
 	"os"
-	"regexp"
 	"syscall"
 )
 
@@ -19,97 +18,95 @@ var offline bool
 func main() {
 	args := os.Args[1:]
 
-	if len(args) == 0 {
-		helpMessage()
+	// exit early if there are no args, or if the first arg is 'help'
+	exitEarlyIf(args)
+
+	err := dbt.GenerateDbtDir("", false)
+	if err != nil {
+		log.Printf("Failed to generate necessary config directories: %s", err)
 		os.Exit(1)
 	}
 
-	// start normal processing
+	dbtObj, err := dbt.NewDbt()
+	if err != nil {
+		log.Printf("Error creating DBT object: %s", err)
+		os.Exit(1)
+	}
 
-	re := regexp.MustCompile("-")
+	possibles := []string{"-o", "-ov"}
 
-	if !re.MatchString(args[0]) { // if the first arg is a word
-		if args[0] == "help" { // if it's help, give the help
-			helpMessage()
-			os.Exit(0)
-		}
+	if dbt.StringInSlice(args[0], possibles) { // set quiet
+		offline = true
+	}
 
-	} else { // args[1] is either -v, -o, -ov
-
-		err := dbt.GenerateDbtDir("", false)
+	// if we're not explicitly offline, try to upgrade in place
+	if !offline {
+		// first fetch the current truststore
+		err = dbtObj.FetchTrustStore("", false)
 		if err != nil {
-			log.Printf("Failed to generate necessary config directories: %s", err)
+			log.Printf("Failed to fetch current truststore")
 			os.Exit(1)
 		}
 
-		dbtObj, err := dbt.NewDbt()
+		ok, err := dbtObj.IsCurrent()
 		if err != nil {
-			log.Printf("Error creating DBT object: %s", err)
-			os.Exit(1)
+			log.Printf("Failed to confirm whether we're up to date.")
 		}
 
-		possibles := []string{"-o", "-ov"}
-
-		if dbt.StringInSlice(args[0], possibles) { // set quiet
-			offline = true
-		}
-
-		// if we're not explicitly offline, try to upgrade in place
-		if !offline {
-			// first fetch the current truststore
-			err = dbtObj.FetchTrustStore("", false)
+		if !ok {
+			err = dbtObj.UpgradeInPlace()
 			if err != nil {
-				log.Printf("Failed to fetch current truststore")
+				err = fmt.Errorf("upgrade in place failed: %s", err)
+				log.Printf("Error: %s", err)
 				os.Exit(1)
 			}
 
-			ok, err := dbtObj.IsCurrent()
-			if err != nil {
-				log.Printf("Failed to confirm whether we're up to date.")
-			}
-
-			if !ok {
-				err = dbtObj.UpgradeInPlace()
-				if err != nil {
-					err = fmt.Errorf("upgrade in place failed: %s", err)
-					log.Printf("Error: %s", err)
-					os.Exit(1)
-				}
-
-				// Single white female ourself
-				syscall.Exec(DBT, os.Args, os.Environ())
-			}
-		}
-
-		if len(args) > 1 {
-			possibles = []string{"-v", "-ov"}
-
-			if dbt.StringInSlice(args[0], possibles) {
-				if len(args) > 2 {
-					version = args[1]
-
-					dbtObj.RunTool(version, args[2:])
-
-				} else {
-					fmt.Println("-v flag requires a version.")
-					os.Exit(1)
-				}
-			} else {
-				if args[1] == "-v" {
-					fmt.Println("-v flag requires a version.")
-					os.Exit(1)
-
-				} else {
-					// deliberately leaving all error processing to the tool
-					dbtObj.RunTool(version, args[1:])
-				}
-			}
-
-		} else {
-			helpMessage()
-			os.Exit(1)
+			// Single white female ourself
+			syscall.Exec(DBT, os.Args, os.Environ())
 		}
 	}
+
+	if len(args) > 1 {
+		possibles = []string{"-v", "-ov"}
+
+		if dbt.StringInSlice(args[0], possibles) {
+			if len(args) > 2 {
+				version = args[1]
+
+				dbtObj.RunTool(version, args[2:])
+
+			} else {
+				fmt.Println("-v flag requires a version.")
+				os.Exit(1)
+			}
+		} else {
+			if args[1] == "-v" {
+				fmt.Println("-v flag requires a version.")
+				os.Exit(1)
+
+			} else {
+				// deliberately leaving all error processing to the tool
+				dbtObj.RunTool(version, args[1:])
+			}
+		}
+
+	} else {
+		helpMessage()
+		os.Exit(1)
+	}
+}
+
+func exitEarlyIf(args []string) {
+	if len(args) == 0 { // no args, print help and exit
+		helpMessage()
+		os.Exit(0)
+	}
+
+	if args[0] == "help" { // if we asked for help, give the help
+		helpMessage()
+		os.Exit(0)
+	}
+
 }
 
 func helpMessage() {
