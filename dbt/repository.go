@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -35,7 +36,7 @@ func ToolExists(repoUrl string, toolName string) (found bool, err error) {
 
 // ToolVersionExists returns true if the specified version of a tool is in the repo
 func ToolVersionExists(repoUrl string, tool string, version string) bool {
-	uri := fmt.Sprintf("%s/%s/%s", repoUrl, tool, version)
+	uri := fmt.Sprintf("%s/%s/%s/", repoUrl, tool, version)
 	resp, err := http.Get(uri)
 
 	if err != nil {
@@ -88,10 +89,16 @@ func ParseVersionResponse(resp *http.Response) (versions []string) {
 				for _, a := range t.Attr {
 					if a.Key == "href" {
 						if a.Val != "../" {
-							// any links beyond the 'back' link will be versions
 							// trim the trailing slash so we get actual semantic versions
-							// TODO extend ParseVersionResponse to return only semantic version strings
-							versions = append(versions, strings.TrimRight(a.Val, "/"))
+							version := strings.TrimRight(a.Val, "/")
+
+							// there could be other files, we only want things that look like semantic versions
+							semverMatch := regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+
+							if semverMatch.MatchString(version) {
+								versions = append(versions, version)
+
+							}
 						}
 					}
 				}
@@ -102,7 +109,7 @@ func ParseVersionResponse(resp *http.Response) (versions []string) {
 
 // FetchFile Fetches a file and places it on the filesystem.
 // Does not validate the signature.  That's a different step.
-func FetchFile(repoUrl string, destPath string) (err error) {
+func FetchFile(fileUrl string, destPath string) (err error) {
 
 	out, err := os.Create(destPath)
 	if err != nil {
@@ -116,10 +123,10 @@ func FetchFile(repoUrl string, destPath string) (err error) {
 
 	defer out.Close()
 
-	resp, err := http.Get(repoUrl)
+	resp, err := http.Get(fileUrl)
 
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Error fetching binary from %q: %s", repoUrl, err))
+		fmt.Println(fmt.Sprintf("Error fetching binary from %q: %s\n", fileUrl, err))
 	}
 
 	if resp != nil {
