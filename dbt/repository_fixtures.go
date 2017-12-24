@@ -2,6 +2,10 @@ package dbt
 
 import "fmt"
 
+func testDbtUrl(port int) string {
+	return fmt.Sprintf("http://localhost:%d/dbt", port)
+}
+
 func testToolUrl(port int) string {
 	return fmt.Sprintf("http://localhost:%d/dbt-tools", port)
 }

@@ -3,6 +3,8 @@ package dbt
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -59,6 +61,7 @@ func TestFetchToolVersions(t *testing.T) {
 }
 
 func TestFetchFile(t *testing.T) {
+
 	targetDir := fmt.Sprintf("%s/%s", tmpDir, toolDir)
 	fileUrl := fmt.Sprintf("%s/foo/1.2.2/linux/x86_64/foo", testToolUrl(port))
 	fileName := fmt.Sprintf("%s/foo", targetDir)
@@ -92,4 +95,59 @@ func TestFetchFile(t *testing.T) {
 	}
 
 	assert.False(t, failure, "Verified a false version does not match.")
+
+	// download trust store
+	trustStoreUrl := fmt.Sprintf("%s/truststore", testDbtUrl(port))
+	trustStoreFile := fmt.Sprintf("%s/%s", tmpDir, truststorePath)
+
+	err = FetchFile(trustStoreUrl, trustStoreFile)
+	if err != nil {
+		fmt.Printf("Error fetching truststore %q: %s\n", fileUrl, err)
+		t.Fail()
+	}
+
+	if _, err = os.Stat(trustStoreFile); os.IsNotExist(err) {
+		fmt.Printf("Failed to download truststore")
+		t.Fail()
+	}
+
+	trustBytes, err := ioutil.ReadFile(trustStoreFile)
+	if err != nil {
+		fmt.Printf("Failed to read downloaded truststore: %s\n", err)
+		t.Fail()
+	}
+
+	assert.False(t, string(trustBytes) == "", "Downloaded Truststore is not empty")
+
+	// download signature
+	sigUrl := fmt.Sprintf("%s.asc", fileUrl)
+	sigFile := fmt.Sprintf("%s.asc", fileName)
+
+	err = FetchFile(sigUrl, sigFile)
+	if err != nil {
+		fmt.Printf("Error fetching signature %q: %s\n", sigUrl, err)
+		t.Fail()
+	}
+
+	if _, err = os.Stat(sigFile); os.IsNotExist(err) {
+		fmt.Printf("Failed to download signature")
+		t.Fail()
+	}
+
+	sigBytes, err := ioutil.ReadFile(sigFile)
+	if err != nil {
+		fmt.Printf("Failed to read downloaded signature: %s\n", err)
+		t.Fail()
+	}
+
+	assert.False(t, string(sigBytes) == "", "Downloaded Signature is not empty")
+
+	// verify signature
+	success, err = VerifyFileSignature(tmpDir, fileName)
+	if err != nil {
+		fmt.Printf("Error verifying signature: %s", err)
+		t.Fail()
+	}
+
+	assert.True(t, success, "Signature of downloaded file verified.")
 }

@@ -199,41 +199,46 @@ func VerifyFileVersion(repoUrl string, filePath string) (success bool, err error
 }
 
 // VerifyFileSignature verifies the signature on the given file
-func VerifyFileSignature(filePath string) (success bool, err error) {
-	signature, err := os.Open(filePath)
-
-	if err != nil {
-		return false, err
+func VerifyFileSignature(homedir string, filePath string) (success bool, err error) {
+	if homedir == "" {
+		homedir, err = GetHomeDir()
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get homedir")
+			return success, err
+		}
 	}
 
-	homedir, err := GetHomeDir()
+	sigFile := fmt.Sprintf("%s.asc", filePath)
+
+	signature, err := os.Open(sigFile)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to get user home dir")
+		err = errors.Wrap(err, "failed to open signature file")
 		return false, err
 	}
 
 	truststoreFileName := fmt.Sprintf("%s/%s", homedir, truststorePath)
 
 	keyRingReader, err := os.Open(truststoreFileName)
-
 	if err != nil {
+		err = errors.Wrap(err, "failed to open truststore file")
 		return false, err
 	}
 
 	target, err := os.Open(filePath)
-
 	if err != nil {
+		err = errors.Wrap(err, "failed to open target file")
 		return false, err
 	}
 
 	keyring, err := openpgp.ReadArmoredKeyRing(keyRingReader)
 	if err != nil {
+		err = errors.Wrap(err, "failed to read truststore")
 		return false, err
 	}
 
 	entity, err := openpgp.CheckArmoredDetachedSignature(keyring, target, signature)
-
 	if err != nil {
+		err = errors.Wrap(err, "failed to check signature")
 		return false, err
 	}
 
@@ -241,5 +246,6 @@ func VerifyFileSignature(filePath string) (success bool, err error) {
 		return true, err
 	}
 
+	err = fmt.Errorf("signing entity not in truststore")
 	return false, err
 }

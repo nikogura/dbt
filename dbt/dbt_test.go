@@ -33,6 +33,7 @@ func setUp() {
 	}
 
 	tmpDir = dir
+	fmt.Printf("Temp dir: %s\n", tmpDir)
 
 	freePort, err := freeport.GetFreePort()
 	if err != nil {

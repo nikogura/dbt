@@ -14,10 +14,9 @@ type TestRepo struct{}
 func (tr *TestRepo) Run(port int) (err error) {
 
 	log.Printf("Running test artifact server on port %d", port)
-	http.HandleFunc("/dbt/", tr.HandlerDbt)
 
-	// /dbt-tools/foo/ work
-	// /dbt-tools/bar/ do not
+	http.HandleFunc("/dbt/truststore", tr.HandlerTruststore)
+
 	http.HandleFunc("/dbt-tools/foo/", tr.HandlerFoo)
 
 	http.HandleFunc("/dbt-tools/foo/1.2.2/", tr.HandlerVersionA)
@@ -29,16 +28,14 @@ func (tr *TestRepo) Run(port int) (err error) {
 	return err
 }
 
-// HandlerDbt handles requests on the dbt repo path
-func (tr *TestRepo) HandlerDbt(w http.ResponseWriter, r *http.Request) {
+// HandlerTruststore handles requests on the dbt repo path
+func (tr *TestRepo) HandlerTruststore(w http.ResponseWriter, r *http.Request) {
 	log.Printf("*TestRepo: DBT Request for %s*", r.URL.Path)
 
-	if r.URL.Path == "/dbt/truststore" {
-		_, err := w.Write([]byte(testKeyPublic()))
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("500 - %s", err)))
-		}
+	_, err := w.Write([]byte(testKeyPublic()))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("500 - %s", err)))
 	}
 }
 
