@@ -87,7 +87,7 @@ func TestFetchFile(t *testing.T) {
 
 	failure, err := VerifyFileVersion(fmt.Sprintf("%s/dbt/1.2.3/linux/x86_64/dbt", testToolUrl(port)), fileName)
 	if err != nil {
-		fmt.Printf("Verified non-existant version: %s", err)
+		fmt.Printf("Verified non-existent version: %s", err)
 		t.Fail()
 	}
 
