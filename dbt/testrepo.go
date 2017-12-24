@@ -29,7 +29,16 @@ func (tr *TestRepo) Run(port int) (err error) {
 				log.Printf("Failed to write response: %s", err)
 			}
 
-			// DBT Version A
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	http.HandleFunc("/dbt-tools/foo/1.2.2/", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("**TestRepo: Tool Request for %s", r.URL.Path)
+
+		switch r.URL.Path {
+		// Index
 		case "/dbt-tools/foo/1.2.2/":
 			_, err := w.Write([]byte(dbtVersionAIndexOutput()))
 			if err != nil {
@@ -61,7 +70,16 @@ func (tr *TestRepo) Run(port int) (err error) {
 				log.Printf("Failed to write response: %s", err)
 			}
 
-			// DBT Version B
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	http.HandleFunc("/dbt-tools/foo/1.2.3/", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("**TestRepo: Tool Request for %s", r.URL.Path)
+
+		switch r.URL.Path {
+		// The index
 		case "/dbt-tools/foo/1.2.3/":
 			_, err := w.Write([]byte(dbtVersionBIndexOutput()))
 			if err != nil {

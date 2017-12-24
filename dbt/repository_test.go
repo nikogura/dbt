@@ -78,6 +78,10 @@ func TestFetchFile(t *testing.T) {
 	assert.True(t, success, "Checksum of downloaded file matches expectations.")
 
 	success, err = VerifyFileVersion(fileUrl, fileName)
+	if err != nil {
+		fmt.Printf("Failed to verify version: %s", err)
+		t.Fail()
+	}
 
 	assert.True(t, success, "Verified version of downloaded file.")
 
