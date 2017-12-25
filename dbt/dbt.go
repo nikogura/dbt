@@ -367,22 +367,25 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 	// url should be http(s)://tool-repo/toolName/version/os/arch/tool
 	toolUrl := fmt.Sprintf("%s/%s/%s/%s/%s/%s", dbt.Config.Tools.Repo, toolName, version, runtime.GOOS, runtime.GOARCH, toolName)
 
-	// check to see if the latest version is what we have
-	uptodate, err := VerifyFileVersion(toolUrl, localPath)
-	if err != nil {
-		err = errors.Wrap(err, "failed to verify file version")
-		return err
-	}
+	if _, err := os.Stat(localPath); !os.IsNotExist(err) {
 
-	// if yes, run it
-	if uptodate {
-		err = dbt.verifyAndRun(homedir, args)
+		// check to see if the latest version is what we have
+		uptodate, err := VerifyFileVersion(toolUrl, localPath)
 		if err != nil {
-			err = errors.Wrap(err, "run failed")
+			err = errors.Wrap(err, "failed to verify file version")
 			return err
 		}
 
-		return err
+		// if yes, run it
+		if uptodate {
+			err = dbt.verifyAndRun(homedir, args)
+			if err != nil {
+				err = errors.Wrap(err, "run failed")
+				return err
+			}
+
+			return err
+		}
 	}
 
 	// if no, download it and then run it
