@@ -53,7 +53,14 @@ func ToolVersionExists(repoUrl string, tool string, version string) bool {
 
 // FetchToolVersions Given a repo and the name of the job, returns the available versions, and possibly an error if things didn't go well.
 func FetchToolVersions(repoUrl string, tool string) (versions []string, err error) {
-	uri := fmt.Sprintf("%s/%s/", repoUrl, tool)
+	var uri string
+
+	if tool == "" {
+		uri = fmt.Sprintf("%s/", repoUrl)
+
+	} else {
+		uri = fmt.Sprintf("%s/%s/", repoUrl, tool)
+	}
 
 	resp, err := http.Get(uri)
 
@@ -162,6 +169,7 @@ func VerifyFileChecksum(filePath string, expected string) (success bool, err err
 // VerifyFileVersion verifies the version by matching it's Sha1 checksum against what the repo says it should be
 func VerifyFileVersion(repoUrl string, filePath string) (success bool, err error) {
 	uri := fmt.Sprintf("%s.sha1", repoUrl)
+	fmt.Printf("Fetching %s\n", uri)
 	resp, err := http.Get(uri)
 
 	if err != nil {
@@ -180,6 +188,9 @@ func VerifyFileVersion(repoUrl string, filePath string) (success bool, err error
 
 		expected := string(checksumBytes)
 		actual, err := FileSha1(filePath)
+
+		fmt.Printf("Expected: %s\n", checksumBytes)
+		fmt.Printf("Actual  : %s\n", actual)
 
 		if err != nil {
 			success = false

@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -146,4 +147,49 @@ func TestDBT_FetchTrustStore(t *testing.T) {
 	actual := string(actualBytes)
 
 	assert.Equal(t, expected, actual, "Read truststore contents matches expectations.")
+}
+
+func TestDBT_IsCurrent(t *testing.T) {
+	dbt := &DBT{
+		Config:  dbtConfig,
+		Verbose: true,
+	}
+
+	osName := runtime.GOOS
+
+	targetDir := fmt.Sprintf("%s/%s", tmpDir, toolDir)
+	fileUrl := fmt.Sprintf("%s/1.2.2/%s/amd64/dbt", testDbtUrl(port), osName)
+	fileName := fmt.Sprintf("%s/dbt", targetDir)
+
+	err := FetchFile(fileUrl, fileName)
+	if err != nil {
+		fmt.Printf("Error fetching file %q: %s\n", fileUrl, err)
+		t.Fail()
+	}
+
+	ok, err := dbt.IsCurrent(fileName)
+	if err != nil {
+		fmt.Printf("error checking to see if download file is current: %s\n", err)
+		t.Fail()
+	}
+
+	assert.False(t, ok, "Old version should not show up as current.")
+
+	fileUrl = fmt.Sprintf("%s/1.2.3/%s/amd64/dbt", testDbtUrl(port), osName)
+	fileName = fmt.Sprintf("%s/dbt", targetDir)
+
+	err = FetchFile(fileUrl, fileName)
+	if err != nil {
+		fmt.Printf("Error fetching file %q: %s\n", fileUrl, err)
+		t.Fail()
+	}
+
+	ok, err = dbt.IsCurrent(fileName)
+	if err != nil {
+		fmt.Printf("error checking to see if download file is current: %s\n", err)
+		t.Fail()
+	}
+
+	assert.True(t, ok, "Current version shows current.")
+
 }

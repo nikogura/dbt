@@ -61,9 +61,8 @@ func TestFetchToolVersions(t *testing.T) {
 }
 
 func TestFetchFile(t *testing.T) {
-
 	targetDir := fmt.Sprintf("%s/%s", tmpDir, toolDir)
-	fileUrl := fmt.Sprintf("%s/foo/1.2.2/linux/x86_64/foo", testToolUrl(port))
+	fileUrl := fmt.Sprintf("%s/foo/1.2.2/linux/amd64/foo", testToolUrl(port))
 	fileName := fmt.Sprintf("%s/foo", targetDir)
 
 	err := FetchFile(fileUrl, fileName)
@@ -88,7 +87,7 @@ func TestFetchFile(t *testing.T) {
 
 	assert.True(t, success, "Verified version of downloaded file.")
 
-	failure, err := VerifyFileVersion(fmt.Sprintf("%s/dbt/1.2.3/linux/x86_64/dbt", testToolUrl(port)), fileName)
+	failure, err := VerifyFileVersion(fmt.Sprintf("%s/dbt/1.2.3/linux/amd64/dbt", testToolUrl(port)), fileName)
 	if err != nil {
 		fmt.Printf("Verified non-existent version: %s", err)
 		t.Fail()

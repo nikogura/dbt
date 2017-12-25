@@ -16,7 +16,7 @@ func dbtIndexOutput() string {
 <head><title>Index of dbt-tools/foo</title>
 </head>
 <body>
-<h1>Index of dbt/dbt</h1>
+<h1>Index of dbt/foo</h1>
 <pre>Name                Last modified      Size</pre><hr/>
 <pre><a href="../">../</a>
 <a href="1.2.2/">1.2.2/</a>               07-Dec-2017 00:47    -

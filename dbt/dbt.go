@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/user"
+	"runtime"
 )
 
 const dbtDir = ".dbt"
@@ -17,6 +18,7 @@ const toolDir = dbtDir + "/tools"
 const configDir = dbtDir + "/conf"
 const configFilePath = configDir + "/dbt.json"
 const truststorePath = trustDir + "/truststore"
+const dbtBinaryPath = "/usr/local/bin/dbt"
 
 // DBT the dbt object itself
 type DBT struct {
@@ -194,16 +196,106 @@ func (dbt *DBT) FetchTrustStore(homedir string, verbose bool) (err error) {
 }
 
 // IsCurrent returns whether the currently running version is the latest version, and possibly an error if the version check failes
-func (dbt *DBT) IsCurrent() (ok bool, err error) {
-	log.Printf("Attempting to find latest version")
-	// TODO Implement IsCurrent()
+func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
+	if binaryPath == "" {
+		binaryPath = dbtBinaryPath
+	}
+
+	fmt.Fprintln(os.Stderr, "Verifying that dbt is up to date....\n")
+	fmt.Fprintln(os.Stderr, "Checking available versions...\n")
+
+	versions, err := FetchToolVersions(dbt.Config.Dbt.Repo, "")
+	if err != nil {
+		err = errors.Wrap(err, "failed to fetch dbt versions")
+		return ok, err
+	}
+
+	osName := runtime.GOOS
+	osArch := runtime.GOARCH
+
+	latest := LatestVersion(versions)
+	fmt.Fprintln(os.Stderr, fmt.Sprintf("Latest Version is: %s\n\n", latest))
+
+	fmt.Fprintln(os.Stderr, "Checking to see that I'm that version...\n")
+
+	latestDbtVersionUrl := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, osName, osArch)
+
+	ok, err = VerifyFileVersion(latestDbtVersionUrl, binaryPath)
+	if err != nil {
+		err = errors.Wrap(err, "failed to check latest version")
+		return ok, err
+	}
+
+	if ok {
+		fmt.Fprintf(os.Stderr, "dbt is up to date.  (version %s)\n\n", latest)
+		return ok, err
+	}
+
+	fmt.Fprintln(os.Stderr, "nope.  Let's fix that.\n\nDownloading the latest.\n")
+
 	return ok, err
 }
 
 // UpgradeInPlace upgraded dbt in place
-func (dbt *DBT) UpgradeInPlace() (err error) {
-	log.Printf("Attempting upgrade in place")
-	// TODO Implement UpgradeInPlace()
+func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
+	if binaryPath == "" {
+		binaryPath = dbtBinaryPath
+	}
+	fmt.Fprintln(os.Stderr, "Attempting to upgrade in place.\n")
+
+	tmpDir, err := ioutil.TempDir("", "dbt")
+	if err != nil {
+		err = errors.Wrap(err, "failed to create temp dir")
+		return err
+	}
+
+	defer os.RemoveAll(tmpDir)
+
+	newBinaryFile := fmt.Sprintf("%s/dbt", tmpDir)
+
+	versions, err := FetchToolVersions(dbt.Config.Dbt.Repo, "dbt")
+	if err != nil {
+		err = errors.Wrap(err, "failed to fetch dbt versions")
+		return err
+	}
+
+	osName := runtime.GOOS
+	osArch := runtime.GOARCH
+
+	latest := LatestVersion(versions)
+	fmt.Fprintln(os.Stderr, "Latest Version is : %s\n\n", latest)
+
+	fmt.Fprintln(os.Stderr, "Checking to see that I'm that version...\n")
+
+	latestDbtVersionUrl := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, osName, osArch)
+
+	err = FetchFile(latestDbtVersionUrl, newBinaryFile)
+	if err != nil {
+		err = errors.Wrap(err, "failed to fetch new dbt binary")
+		return err
+	}
+
+	fmt.Fprintln(os.Stderr, "Binary downloaded.  Verifying it.\n")
+
+	ok, err := VerifyFileVersion(latestDbtVersionUrl, newBinaryFile)
+	if err != nil {
+		err = errors.Wrap(err, "failed to verify downloaded binary")
+	}
+
+	if ok {
+		fmt.Fprintln(os.Stderr, "new version verifies.  Swapping it into place.")
+		err = os.Rename(newBinaryFile, binaryPath)
+		if err != nil {
+			err = errors.Wrap(err, "failed to move new binary into place")
+		}
+
+		err = os.Chmod(binaryPath, 0755)
+		if err != nil {
+			err = errors.Wrap(err, "failed to chmod new dbt binary")
+			return err
+		}
+	}
+
 	return err
 }
 

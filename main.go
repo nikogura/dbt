@@ -48,13 +48,13 @@ func main() {
 			os.Exit(1)
 		}
 
-		ok, err := dbtObj.IsCurrent()
+		ok, err := dbtObj.IsCurrent("")
 		if err != nil {
 			log.Printf("Failed to confirm whether we're up to date.")
 		}
 
 		if !ok {
-			err = dbtObj.UpgradeInPlace()
+			err = dbtObj.UpgradeInPlace("")
 			if err != nil {
 				err = fmt.Errorf("upgrade in place failed: %s", err)
 				log.Printf("Error: %s", err)
