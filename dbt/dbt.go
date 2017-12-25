@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/user"
 	"runtime"
+	"syscall"
 )
 
 const dbtDir = ".dbt"
@@ -204,21 +205,17 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 	fmt.Fprint(os.Stderr, "Verifying that dbt is up to date....\n\n")
 	fmt.Fprint(os.Stderr, "Checking available versions...\n\n")
 
-	versions, err := FetchToolVersions(dbt.Config.Dbt.Repo, "")
+	latest, err := dbt.FindLatestVersion(dbt.Config.Dbt.Repo, "")
 	if err != nil {
 		err = errors.Wrap(err, "failed to fetch dbt versions")
 		return ok, err
 	}
 
-	osName := runtime.GOOS
-	osArch := runtime.GOARCH
-
-	latest := LatestVersion(versions)
 	fmt.Fprint(os.Stderr, fmt.Sprintf("Latest Version is: %s\n\n", latest))
 
 	fmt.Fprint(os.Stderr, "Checking to see that I'm that version...\n\n")
 
-	latestDbtVersionUrl := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, osName, osArch)
+	latestDbtVersionUrl := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, runtime.GOOS, runtime.GOARCH)
 
 	ok, err = VerifyFileVersion(latestDbtVersionUrl, binaryPath)
 	if err != nil {
@@ -253,21 +250,17 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 
 	newBinaryFile := fmt.Sprintf("%s/dbt", tmpDir)
 
-	versions, err := FetchToolVersions(dbt.Config.Dbt.Repo, "dbt")
+	latest, err := dbt.FindLatestVersion(dbt.Config.Dbt.Repo, "")
 	if err != nil {
-		err = errors.Wrap(err, "failed to fetch dbt versions")
+		err = errors.Wrap(err, "failed to find latest dbt version")
 		return err
 	}
 
-	osName := runtime.GOOS
-	osArch := runtime.GOARCH
-
-	latest := LatestVersion(versions)
 	fmt.Fprintf(os.Stderr, "Latest Version is : %s\n\n", latest)
 
 	fmt.Fprint(os.Stderr, "Checking to see that I'm that version...\n\n")
 
-	latestDbtVersionUrl := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, osName, osArch)
+	latestDbtVersionUrl := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, runtime.GOOS, runtime.GOARCH)
 
 	err = FetchFile(latestDbtVersionUrl, newBinaryFile)
 	if err != nil {
@@ -299,11 +292,166 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 	return err
 }
 
-// RunTool runs the dbt tool indicated by the args
-func (dbt *DBT) RunTool(version string, args []string) (err error) {
+func (dbt *DBT) FindLatestVersion(repoUrl string, toolName string) (latest string, err error) {
+	toolInRepo, err := ToolExists(repoUrl, toolName)
+	if err != nil {
+		err = errors.Wrap(err, fmt.Sprintf("error checking repo %s for tool %s", dbt.Config.Tools.Repo, toolName))
+		return latest, err
+	}
 
-	log.Printf("Running: %s", args)
-	// TODO Implement RunTool()
+	if toolInRepo {
+		versions, err := FetchToolVersions(repoUrl, toolName)
+		if err != nil {
+			err = errors.Wrap(err, fmt.Sprintf("error getting versions for tool %s from repo %s", toolName, repoUrl))
+			return latest, err
+		}
+
+		latest = LatestVersion(versions)
+		return latest, err
+	}
+
+	fmt.Printf("tool not in repo\n")
+
+	return latest, err
+}
+
+// RunTool runs the dbt tool indicated by the args
+func (dbt *DBT) RunTool(version string, args []string, homedir string, offline bool) (err error) {
+	toolName := args[0]
+	localPath := fmt.Sprintf("%s/%s", toolDir, toolName)
+
+	// if offline, if tool is present and verifies, run it
+	if offline {
+		err = dbt.verifyAndRun(homedir, args)
+		if err != nil {
+			err = errors.Wrap(err, "offline run failed")
+			return err
+		}
+
+		return err
+	}
+
+	// we're not offline, so find the latest
+	latestVersion, err := dbt.FindLatestVersion(dbt.Config.Tools.Repo, toolName)
+	if err != nil {
+		err = errors.Wrap(err, "failed to find latest version")
+		return err
+	}
+
+	// if it's not in the repo, it might still be on the filesystem
+	if latestVersion == "" {
+		// if it is indeed on the filesystem
+		if _, err := os.Stat(localPath); !os.IsNotExist(err) {
+			// attempt to run it in offline mode
+			err = dbt.verifyAndRun(homedir, args)
+			if err != nil {
+				err = errors.Wrap(err, "offline run failed")
+				return err
+			}
+
+			// and return if it's successful
+			return err
+		}
+
+		// It's not in the repo, and not on the filesystem, there's not a damn thing we can do.  Fail.
+		err = fmt.Errorf("Tool %s is not in repo, and has not been previously downloaded.  Cannot run.", toolName)
+		return err
+	}
+
+	// if version is unset, version is latest version
+	if version == "" {
+		version = latestVersion
+	}
+
+	// url should be http(s)://tool-repo/toolName/version/os/arch/tool
+	toolUrl := fmt.Sprintf("%s/%s/%s/%s/%s/%s", dbt.Config.Tools.Repo, toolName, version, runtime.GOOS, runtime.GOARCH, toolName)
+
+	// check to see if the latest version is what we have
+	uptodate, err := VerifyFileVersion(toolUrl, localPath)
+	if err != nil {
+		err = errors.Wrap(err, "failed to verify file version")
+		return err
+	}
+
+	// if yes, run it
+	if uptodate {
+		err = dbt.verifyAndRun(homedir, args)
+		if err != nil {
+			err = errors.Wrap(err, "run failed")
+			return err
+		}
+
+		return err
+	}
+
+	// if no, download it and then run it
+	err = FetchFile(toolUrl, localPath)
+	if err != nil {
+		err = errors.Wrap(err, fmt.Sprintf("failed to fetch binary for %s from %s", toolName, toolUrl))
+		return err
+	}
+
+	// finally run it
+	err = dbt.verifyAndRun(homedir, args)
+
+	return err
+}
+
+func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
+	toolName := args[0]
+	localPath := fmt.Sprintf("%s/%s", toolDir, toolName)
+	localChecksumPath := fmt.Sprintf("%s/%s.sha256", toolDir, toolName)
+
+	checksumBytes, err := ioutil.ReadFile(localChecksumPath)
+	if err != nil {
+		err = errors.Wrap(err, "error reading local checksum file")
+		return err
+	}
+
+	if _, err := os.Stat(localPath); !os.IsNotExist(err) {
+		checksumOk, err := VerifyFileChecksum(localPath, string(checksumBytes))
+		if err != nil {
+			err = errors.Wrap(err, "error validating checksum")
+			return err
+		}
+
+		if !checksumOk {
+			err = fmt.Errorf("checksum of %s failed to verify", toolName)
+			return err
+		}
+
+		signatureOk, err := VerifyFileSignature(homedir, localPath)
+		if err != nil {
+			err = errors.Wrap(err, "error validating signature")
+			return err
+		}
+
+		if !signatureOk {
+			err = fmt.Errorf("signature of %s failed to verify", toolName)
+			return err
+		}
+
+		err = dbt.runExec(args)
+		if err != nil {
+			err = errors.Wrap(err, "failed to run already downloaded tool")
+			return err
+		}
+	}
+
+	return err
+}
+
+func (dbt *DBT) runExec(args []string) (err error) {
+	toolName := args[0]
+	localPath := fmt.Sprintf("%s/%s", toolDir, toolName)
+
+	env := os.Environ()
+
+	err = syscall.Exec(localPath, args, env)
+	if err != nil {
+		err = errors.Wrap(err, "error running exec")
+		return err
+	}
 
 	return err
 }

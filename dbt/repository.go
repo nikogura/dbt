@@ -15,7 +15,15 @@ import (
 
 // ToolExists Returns true if a tool of the name input exists in the repository given.
 func ToolExists(repoUrl string, toolName string) (found bool, err error) {
-	uri := fmt.Sprintf("%s/%s", repoUrl, toolName)
+	var uri string
+
+	if toolName == "" {
+		uri = fmt.Sprintf("%s/", repoUrl)
+	} else {
+		uri = fmt.Sprintf("%s/%s", repoUrl, toolName)
+
+	}
+
 	resp, err := http.Get(uri)
 
 	if err != nil {
@@ -36,7 +44,14 @@ func ToolExists(repoUrl string, toolName string) (found bool, err error) {
 
 // ToolVersionExists returns true if the specified version of a tool is in the repo
 func ToolVersionExists(repoUrl string, tool string, version string) bool {
-	uri := fmt.Sprintf("%s/%s/%s/", repoUrl, tool, version)
+	var uri string
+
+	if tool == "" {
+		uri = fmt.Sprintf("%s/%s/", repoUrl, version)
+
+	} else {
+		uri = fmt.Sprintf("%s/%s/%s/", repoUrl, tool, version)
+	}
 	resp, err := http.Get(uri)
 
 	if err != nil {
@@ -169,9 +184,8 @@ func VerifyFileChecksum(filePath string, expected string) (success bool, err err
 // VerifyFileVersion verifies the version by matching it's Sha1 checksum against what the repo says it should be
 func VerifyFileVersion(repoUrl string, filePath string) (success bool, err error) {
 	uri := fmt.Sprintf("%s.sha1", repoUrl)
-	fmt.Printf("Fetching %s\n", uri)
-	resp, err := http.Get(uri)
 
+	resp, err := http.Get(uri)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Error fetching checksum from %q: %s", uri, err))
 	}
@@ -188,9 +202,6 @@ func VerifyFileVersion(repoUrl string, filePath string) (success bool, err error
 
 		expected := string(checksumBytes)
 		actual, err := FileSha1(filePath)
-
-		fmt.Printf("Expected: %s\n", checksumBytes)
-		fmt.Printf("Actual  : %s\n", actual)
 
 		if err != nil {
 			success = false

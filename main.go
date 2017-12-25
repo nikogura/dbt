@@ -73,7 +73,11 @@ func main() {
 			if len(args) > 2 {
 				version = args[1]
 
-				dbtObj.RunTool(version, args[2:])
+				err = dbtObj.RunTool(version, args[2:], "", offline)
+				if err != nil {
+					fmt.Printf("Error running tool: %s", err)
+					os.Exit(1)
+				}
 
 			} else {
 				fmt.Println("-v flag requires a version.")
@@ -85,8 +89,11 @@ func main() {
 				os.Exit(1)
 
 			} else {
-				// deliberately leaving all error processing to the tool
-				dbtObj.RunTool(version, args[1:])
+				err = dbtObj.RunTool(version, args[1:], "", offline)
+				if err != nil {
+					fmt.Printf("Error running tool: %s", err)
+					os.Exit(1)
+				}
 			}
 		}
 
