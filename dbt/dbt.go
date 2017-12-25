@@ -201,8 +201,8 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 		binaryPath = dbtBinaryPath
 	}
 
-	fmt.Fprintln(os.Stderr, "Verifying that dbt is up to date....\n")
-	fmt.Fprintln(os.Stderr, "Checking available versions...\n")
+	fmt.Fprint(os.Stderr, "Verifying that dbt is up to date....\n\n")
+	fmt.Fprint(os.Stderr, "Checking available versions...\n\n")
 
 	versions, err := FetchToolVersions(dbt.Config.Dbt.Repo, "")
 	if err != nil {
@@ -214,9 +214,9 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 	osArch := runtime.GOARCH
 
 	latest := LatestVersion(versions)
-	fmt.Fprintln(os.Stderr, fmt.Sprintf("Latest Version is: %s\n\n", latest))
+	fmt.Fprint(os.Stderr, fmt.Sprintf("Latest Version is: %s\n\n", latest))
 
-	fmt.Fprintln(os.Stderr, "Checking to see that I'm that version...\n")
+	fmt.Fprint(os.Stderr, "Checking to see that I'm that version...\n\n")
 
 	latestDbtVersionUrl := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, osName, osArch)
 
@@ -231,7 +231,7 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 		return ok, err
 	}
 
-	fmt.Fprintln(os.Stderr, "nope.  Let's fix that.\n\nDownloading the latest.\n")
+	fmt.Fprint(os.Stderr, "nope.  Let's fix that.\n\nDownloading the latest.\n\n")
 
 	return ok, err
 }
@@ -241,7 +241,7 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 	if binaryPath == "" {
 		binaryPath = dbtBinaryPath
 	}
-	fmt.Fprintln(os.Stderr, "Attempting to upgrade in place.\n")
+	fmt.Fprint(os.Stderr, "Attempting to upgrade in place.\n\n")
 
 	tmpDir, err := ioutil.TempDir("", "dbt")
 	if err != nil {
@@ -263,9 +263,9 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 	osArch := runtime.GOARCH
 
 	latest := LatestVersion(versions)
-	fmt.Fprintln(os.Stderr, "Latest Version is : %s\n\n", latest)
+	fmt.Fprint(os.Stderr, "Latest Version is : %s\n\n", latest)
 
-	fmt.Fprintln(os.Stderr, "Checking to see that I'm that version...\n")
+	fmt.Fprint(os.Stderr, "Checking to see that I'm that version...\n\n")
 
 	latestDbtVersionUrl := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, osName, osArch)
 
@@ -275,7 +275,7 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 		return err
 	}
 
-	fmt.Fprintln(os.Stderr, "Binary downloaded.  Verifying it.\n")
+	fmt.Fprint(os.Stderr, "Binary downloaded.  Verifying it.\n\n")
 
 	ok, err := VerifyFileVersion(latestDbtVersionUrl, newBinaryFile)
 	if err != nil {
@@ -283,7 +283,7 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 	}
 
 	if ok {
-		fmt.Fprintln(os.Stderr, "new version verifies.  Swapping it into place.")
+		fmt.Fprint(os.Stderr, "new version verifies.  Swapping it into place.\n\n")
 		err = os.Rename(newBinaryFile, binaryPath)
 		if err != nil {
 			err = errors.Wrap(err, "failed to move new binary into place")
