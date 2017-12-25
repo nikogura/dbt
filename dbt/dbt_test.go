@@ -2,8 +2,8 @@ package dbt
 
 import (
 	"fmt"
-	"github.com/magiconair/properties/assert"
 	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
 	"os"
