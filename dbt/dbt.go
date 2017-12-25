@@ -263,7 +263,7 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 	osArch := runtime.GOARCH
 
 	latest := LatestVersion(versions)
-	fmt.Fprint(os.Stderr, "Latest Version is : %s\n\n", latest)
+	fmt.Fprintf(os.Stderr, "Latest Version is : %s\n\n", latest)
 
 	fmt.Fprint(os.Stderr, "Checking to see that I'm that version...\n\n")
 
