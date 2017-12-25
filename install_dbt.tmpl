@@ -11,7 +11,7 @@ echo "Installing DBT $VERSION..."
 CONFIG=$(cat <<EOF
 {
   "dbt": {
-    "repository": "{{.Repository}}"
+    "repository": "{{.Repository}}",
     "truststore": "{{.Repository}}/truststore"
   },
   "tools": {
