@@ -21,12 +21,6 @@ func main() {
 	// exit early if there are no args, or if the first arg is 'help'
 	exitEarlyIf(args)
 
-	err := dbt.GenerateDbtDir("", false)
-	if err != nil {
-		log.Printf("Failed to generate necessary config directories: %s", err)
-		os.Exit(1)
-	}
-
 	dbtObj, err := dbt.NewDbt()
 	if err != nil {
 		log.Printf("Error creating DBT object: %s", err)
