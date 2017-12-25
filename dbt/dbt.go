@@ -292,6 +292,7 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 	return err
 }
 
+// FindLatestVersion finds the latest version of the tool given in the repo given.  If the tool name is "", it is expecting to parse versions in the root of the repo.  I.e. there's only one tool in the repo.
 func (dbt *DBT) FindLatestVersion(repoUrl string, toolName string) (latest string, err error) {
 	toolInRepo, err := ToolExists(repoUrl, toolName)
 	if err != nil {
