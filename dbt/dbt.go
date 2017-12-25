@@ -196,12 +196,14 @@ func (dbt *DBT) FetchTrustStore(homedir string, verbose bool) (err error) {
 // IsCurrent returns whether the currently running version is the latest version, and possibly an error if the version check failes
 func (dbt *DBT) IsCurrent() (ok bool, err error) {
 	log.Printf("Attempting to find latest version")
+	// TODO Implement IsCurrent()
 	return ok, err
 }
 
 // UpgradeInPlace upgraded dbt in place
 func (dbt *DBT) UpgradeInPlace() (err error) {
 	log.Printf("Attempting upgrade in place")
+	// TODO Implement UpgradeInPlace()
 	return err
 }
 
@@ -209,6 +211,7 @@ func (dbt *DBT) UpgradeInPlace() (err error) {
 func (dbt *DBT) RunTool(version string, args []string) (err error) {
 
 	log.Printf("Running: %s", args)
+	// TODO Implement RunTool()
 
 	return err
 }
