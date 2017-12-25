@@ -319,7 +319,7 @@ func (dbt *DBT) FindLatestVersion(repoUrl string, toolName string) (latest strin
 // RunTool runs the dbt tool indicated by the args
 func (dbt *DBT) RunTool(version string, args []string, homedir string, offline bool) (err error) {
 	toolName := args[0]
-	localPath := fmt.Sprintf("%s/%s", toolDir, toolName)
+	localPath := fmt.Sprintf("%s/%s/%s", homedir, toolDir, toolName)
 
 	// if offline, if tool is present and verifies, run it
 	if offline {
