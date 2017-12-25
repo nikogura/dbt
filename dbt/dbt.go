@@ -355,7 +355,7 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 		}
 
 		// It's not in the repo, and not on the filesystem, there's not a damn thing we can do.  Fail.
-		err = fmt.Errorf("Tool %s is not in repo, and has not been previously downloaded.  Cannot run.", toolName)
+		err = fmt.Errorf("Tool %s is not in repo, and has not been previously downloaded.  Cannot run.\n", toolName)
 		return err
 	}
 

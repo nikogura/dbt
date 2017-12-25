@@ -73,7 +73,7 @@ func main() {
 			if len(args) > 2 {
 				version = args[1]
 
-				err = dbtObj.RunTool(version, args[2:], "", offline)
+				err = dbtObj.RunTool(version, args[2:], homedir, offline)
 				if err != nil {
 					fmt.Printf("Error running tool: %s", err)
 					os.Exit(1)
@@ -84,16 +84,10 @@ func main() {
 				os.Exit(1)
 			}
 		} else {
-			if args[1] == "-v" {
-				fmt.Println("-v flag requires a version.")
+			err = dbtObj.RunTool(version, args, homedir, offline)
+			if err != nil {
+				fmt.Printf("Error running tool: %s", err)
 				os.Exit(1)
-
-			} else {
-				err = dbtObj.RunTool(version, args[1:], "", offline)
-				if err != nil {
-					fmt.Printf("Error running tool: %s", err)
-					os.Exit(1)
-				}
 			}
 		}
 
