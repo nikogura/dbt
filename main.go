@@ -33,10 +33,16 @@ func main() {
 		offline = true
 	}
 
+	homedir, err := dbt.GetHomeDir()
+	if err != nil {
+		log.Printf("Failed to discover user homedir: %s\n", err)
+		os.Exit(1)
+	}
+
 	// if we're not explicitly offline, try to upgrade in place
 	if !offline {
 		// first fetch the current truststore
-		err = dbtObj.FetchTrustStore("", false)
+		err = dbtObj.FetchTrustStore(homedir, false)
 		if err != nil {
 			log.Printf("Failed to fetch current truststore: %s", err)
 			os.Exit(1)
