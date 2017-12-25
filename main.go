@@ -38,13 +38,13 @@ func main() {
 		// first fetch the current truststore
 		err = dbtObj.FetchTrustStore("", false)
 		if err != nil {
-			log.Printf("Failed to fetch current truststore")
+			log.Printf("Failed to fetch current truststore: %s", err)
 			os.Exit(1)
 		}
 
 		ok, err := dbtObj.IsCurrent("")
 		if err != nil {
-			log.Printf("Failed to confirm whether we're up to date.")
+			log.Printf("Failed to confirm whether we're up to date: %s", err)
 		}
 
 		if !ok {
