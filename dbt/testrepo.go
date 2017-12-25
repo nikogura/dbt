@@ -23,9 +23,13 @@ func (tr *TestRepo) Run(port int) (err error) {
 
 	http.HandleFunc("/dbt-tools/foo/", tr.HandlerTool)
 
-	http.HandleFunc("/dbt/1.2.2/", tr.DbtHandlerVersionA)
+	http.HandleFunc("/dbt/1.2.2/darwin/", tr.DbtHandlerVersionADarwin)
 
-	http.HandleFunc("/dbt/1.2.3/", tr.DbtHandlerVersionB)
+	http.HandleFunc("/dbt/1.2.3/darwin/", tr.DbtHandlerVersionBDarwin)
+
+	http.HandleFunc("/dbt/1.2.2/linux/", tr.DbtHandlerVersionALinux)
+
+	http.HandleFunc("/dbt/1.2.3/linux/", tr.DbtHandlerVersionBLinux)
 
 	http.HandleFunc("/dbt/", tr.HandlerDbt)
 
@@ -161,8 +165,8 @@ func (tr *TestRepo) HandlerVersionB(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// DbtHandlerVersionA handles requests for version A
-func (tr *TestRepo) DbtHandlerVersionA(w http.ResponseWriter, r *http.Request) {
+// DbtHandlerVersionADarwin handles requests for version A
+func (tr *TestRepo) DbtHandlerVersionADarwin(w http.ResponseWriter, r *http.Request) {
 	log.Printf("**TestRepo: dbt Request for %s", r.URL.Path)
 
 	switch r.URL.Path {
@@ -193,6 +197,21 @@ func (tr *TestRepo) DbtHandlerVersionA(w http.ResponseWriter, r *http.Request) {
 		}
 	case "/dbt/1.2.2/darwin/amd64/dbt.asc":
 		_, err := w.Write([]byte(dbtVersionASig()))
+		if err != nil {
+			log.Printf("Failed to write response: %s", err)
+		}
+	default:
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+// DbtHandlerVersionALinux handles requests for version A
+func (tr *TestRepo) DbtHandlerVersionALinux(w http.ResponseWriter, r *http.Request) {
+	log.Printf("**TestRepo: dbt Request for %s", r.URL.Path)
+
+	switch r.URL.Path {
+	case "/dbt/":
+		_, err := w.Write([]byte(dbtIndexOutput()))
 		if err != nil {
 			log.Printf("Failed to write response: %s", err)
 		}
@@ -227,8 +246,8 @@ func (tr *TestRepo) DbtHandlerVersionA(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// DbtHandlerVersionB  handles requests for version B
-func (tr *TestRepo) DbtHandlerVersionB(w http.ResponseWriter, r *http.Request) {
+// DbtHandlerVersionBDarwin  handles requests for version B
+func (tr *TestRepo) DbtHandlerVersionBDarwin(w http.ResponseWriter, r *http.Request) {
 	log.Printf("**TestRepo: dbt Request for %s", r.URL.Path)
 
 	switch r.URL.Path {
@@ -259,6 +278,22 @@ func (tr *TestRepo) DbtHandlerVersionB(w http.ResponseWriter, r *http.Request) {
 		}
 	case "/dbt/1.2.3/darwin/amd64/dbt.asc":
 		_, err := w.Write([]byte(dbtVersionBSig()))
+		if err != nil {
+			log.Printf("Failed to write response: %s", err)
+		}
+
+	default:
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+// DbtHandlerVersionBLinux  handles requests for version B
+func (tr *TestRepo) DbtHandlerVersionBLinux(w http.ResponseWriter, r *http.Request) {
+	log.Printf("**TestRepo: dbt Request for %s", r.URL.Path)
+
+	switch r.URL.Path {
+	case "/dbt/":
+		_, err := w.Write([]byte(dbtIndexOutput()))
 		if err != nil {
 			log.Printf("Failed to write response: %s", err)
 		}
