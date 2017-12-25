@@ -66,7 +66,7 @@ func main() {
 		}
 	}
 
-	if len(args) > 1 {
+	if len(args) > 0 {
 		possibles = []string{"-v", "-ov"}
 
 		if dbt.StringInSlice(args[0], possibles) {
