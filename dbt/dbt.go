@@ -456,7 +456,7 @@ func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 			return err
 		}
 
-		err = dbt.runExec(args)
+		err = dbt.runExec(homedir, args)
 		if err != nil {
 			err = errors.Wrap(err, "failed to run already downloaded tool")
 			return err
@@ -466,9 +466,9 @@ func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 	return err
 }
 
-func (dbt *DBT) runExec(args []string) (err error) {
+func (dbt *DBT) runExec(homedir string, args []string) (err error) {
 	toolName := args[0]
-	localPath := fmt.Sprintf("%s/%s", toolDir, toolName)
+	localPath := fmt.Sprintf("%s/%s/%s", homedir, toolDir, toolName)
 
 	env := os.Environ()
 
