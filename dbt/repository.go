@@ -148,7 +148,8 @@ func FetchFile(fileUrl string, destPath string) (err error) {
 	resp, err := http.Get(fileUrl)
 
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Error fetching binary from %q: %s\n", fileUrl, err))
+		err = errors.Wrap(err, fmt.Sprintf("Error fetching file from %q", fileUrl))
+		return err
 	}
 
 	if resp != nil {
