@@ -422,7 +422,7 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 	toolName := args[0]
 	localPath := fmt.Sprintf("%s/%s/%s", homedir, toolDir, toolName)
-	localChecksumPath := fmt.Sprintf("%s/%s.sha256", toolDir, toolName)
+	localChecksumPath := fmt.Sprintf("%s/%s/%s.sha256", homedir, toolDir, toolName)
 
 	checksumBytes, err := ioutil.ReadFile(localChecksumPath)
 	if err != nil {
