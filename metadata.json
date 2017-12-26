@@ -1,5 +1,5 @@
 {
-  "version": "0.1.5",
+  "version": "0.1.6",
   "package": "github.com/nikogura/dbt",
   "description": "Distributed Binary Toolkit - A framework for running self-updating signed binaries from a central, trusted repository.",
   "repository": "http://localhost:8081/artifactory/dbt",

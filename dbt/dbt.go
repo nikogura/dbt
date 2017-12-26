@@ -400,7 +400,7 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 	toolChecksumFile := fmt.Sprintf("%s/.sha256", localPath)
 	err = FetchFile(toolChecksumUrl, toolChecksumFile)
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("failed to fetch binary for %s from %s", toolName, toolUrl))
+		err = errors.Wrap(err, fmt.Sprintf("failed to fetch checksum for %s from %s", toolName, toolUrl))
 		return err
 	}
 
@@ -409,7 +409,7 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 	toolSignatureFile := fmt.Sprintf("%s/.asc", localPath)
 	err = FetchFile(toolSignatureUrl, toolSignatureFile)
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("failed to fetch binary for %s from %s", toolName, toolUrl))
+		err = errors.Wrap(err, fmt.Sprintf("failed to fetch signature for %s from %s", toolName, toolUrl))
 		return err
 	}
 
