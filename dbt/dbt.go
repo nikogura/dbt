@@ -388,8 +388,26 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 		}
 	}
 
-	// if no, download it and then run it
+	// download the binary
 	err = FetchFile(toolUrl, localPath)
+	if err != nil {
+		err = errors.Wrap(err, fmt.Sprintf("failed to fetch binary for %s from %s", toolName, toolUrl))
+		return err
+	}
+
+	// download the checksum
+	toolChecksumUrl := fmt.Sprintf("%s/.sha256", toolUrl)
+	toolChecksumFile := fmt.Sprintf("%s/.sha256", localPath)
+	err = FetchFile(toolChecksumUrl, toolChecksumFile)
+	if err != nil {
+		err = errors.Wrap(err, fmt.Sprintf("failed to fetch binary for %s from %s", toolName, toolUrl))
+		return err
+	}
+
+	// download the signature
+	toolSignatureUrl := fmt.Sprintf("%s/.asc", toolUrl)
+	toolSignatureFile := fmt.Sprintf("%s/.asc", localPath)
+	err = FetchFile(toolSignatureUrl, toolSignatureFile)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("failed to fetch binary for %s from %s", toolName, toolUrl))
 		return err
@@ -403,7 +421,7 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 
 func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 	toolName := args[0]
-	localPath := fmt.Sprintf("%s/%s", toolDir, toolName)
+	localPath := fmt.Sprintf("%s/%s/%s", homedir, toolDir, toolName)
 	localChecksumPath := fmt.Sprintf("%s/%s.sha256", toolDir, toolName)
 
 	checksumBytes, err := ioutil.ReadFile(localChecksumPath)
