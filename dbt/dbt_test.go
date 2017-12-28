@@ -229,19 +229,3 @@ func TestDBT_UpgradeInPlace(t *testing.T) {
 
 	assert.True(t, ok, "Current version shows current.")
 }
-
-func TestDBT_FindLatestVersion(t *testing.T) {
-	dbt := &DBT{
-		Config:  dbtConfig,
-		Verbose: true,
-	}
-
-	latest, err := dbt.FindLatestVersion(dbt.Config.Dbt.Repo, "")
-	if err != nil {
-		fmt.Printf("Error finding latest version: %s", err)
-		t.Fail()
-	}
-
-	assert.Equal(t, "1.2.3", latest, "Latest version meets expectations.")
-
-}

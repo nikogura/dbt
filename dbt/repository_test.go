@@ -150,3 +150,19 @@ func TestFetchFile(t *testing.T) {
 
 	assert.True(t, success, "Signature of downloaded file verified.")
 }
+
+func TestFindLatestVersion(t *testing.T) {
+	dbt := &DBT{
+		Config:  dbtConfig,
+		Verbose: true,
+	}
+
+	latest, err := FindLatestVersion(dbt.Config.Dbt.Repo, "")
+	if err != nil {
+		fmt.Printf("Error finding latest version: %s", err)
+		t.Fail()
+	}
+
+	assert.Equal(t, "1.2.3", latest, "Latest version meets expectations.")
+
+}

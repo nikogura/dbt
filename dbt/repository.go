@@ -272,3 +272,27 @@ func VerifyFileSignature(homedir string, filePath string) (success bool, err err
 	err = fmt.Errorf("signing entity not in truststore")
 	return false, err
 }
+
+// FindLatestVersion finds the latest version of the tool given in the repo given.  If the tool name is "", it is expecting to parse versions in the root of the repo.  I.e. there's only one tool in the repo.
+func FindLatestVersion(repoUrl string, toolName string) (latest string, err error) {
+	toolInRepo, err := ToolExists(repoUrl, toolName)
+	if err != nil {
+		err = errors.Wrap(err, fmt.Sprintf("error checking repo %s for tool %s", repoUrl, toolName))
+		return latest, err
+	}
+
+	if toolInRepo {
+		versions, err := FetchToolVersions(repoUrl, toolName)
+		if err != nil {
+			err = errors.Wrap(err, fmt.Sprintf("error getting versions for tool %s from repo %s", toolName, repoUrl))
+			return latest, err
+		}
+
+		latest = LatestVersion(versions)
+		return latest, err
+	}
+
+	fmt.Printf("tool not in repo\n")
+
+	return latest, err
+}
