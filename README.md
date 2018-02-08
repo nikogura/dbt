@@ -4,7 +4,7 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/nikogura/dbt)](https://goreportcard.com/report/github.com/nikogura/dbt)
 
-[GoDoc](https://godoc.org/github.com/nikogura/dbt/dbt)
+[![Go Doc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/nikogura/dbt)
 
 [Go Coverage](https://gocover.io/github.com/nikogura/dbt/dbt)
 
