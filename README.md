@@ -12,18 +12,6 @@ A framework for running self-updating, signed binary tools from a central, trust
 
 ***DBT is Under Construction.  This warning will go away once it's ready to be used.***
 
-# Why?
-
-I had a recent experience where a great many people did not agree with or accept that part of being a conscientious computer user was keeping their systems and tools up to date.  Expecting people to pay attention to upgrade announcements, or even run things like ```brew upgrade``` regularly was not only too much.  It was viewed as offensive, and a failure on my part as a toolsmith.  *wow huh?*
-
-Necessity is, as they say, the mother of invention though, so I worked out a way to slice that particular Gordian Knot.  What I came up with was a way I could make everyone happy.  Users were happy because they didn't need to concern themselves with updates.  I could also make *myself* happy, because I could make sure the system was secure, reliable, and had some fall back.  What I came up with I now offer to you as 'DBT'.
-
-Whether the particular folks that drove me to this extreme were right or wrong is not really important.  It turns out there is actually a legitimate use case for self-updating tooling beyond simply appeasing user laziness.
-
-Imagine this, you've got a system of dynamic VM's and Containers, all leveraging common tooling.  You might even have a serious DAG or web of 'things' dynamically generating other 'things' in a busy and automated fashion.  What is there's a problem, or an upgrade?  With normal utility tools and scripts you have to re-bake your machine images and containers to pick up the changes.  You might say that that's a good thing.  But what if it's not?
-
-With DBT, you have the best of both worlds.  You can force your tools to use an explicit version (```dbt -v 1.2.3 <tool>```).  You can also dispense with the '-v' and run the latest.  Voila!  You're automatically picking up the latest version of the tooling from your trusted repository.
-
 # Overview
 
 DBT consists of a binary ```dbt``` and a config file.  The ```dbt``` binary checks a trusted repository for tools, which are themselves signed binaries.
@@ -41,6 +29,19 @@ For backwards compatibility and emergencies, you can also specify the version of
 If the trusted repo is offline, or unavailable, you can choose to degrade gracefully to using tools already downloaded.  
 
 You can also choose to limit where your tools can run.  It's all up to you.  DBT is a framework, and frameworks are all about *enablement*. 
+
+# Why?
+
+I had a recent experience where a great many people did not agree with or accept that part of being a conscientious computer user was keeping their systems and tools up to date.  Expecting people to pay attention to upgrade announcements, or even run things like ```brew upgrade``` regularly was not only too much.  It was viewed as offensive, and a failure on my part as a toolsmith.  *wow huh?*
+
+Necessity is, as they say, the mother of invention though, so I worked out a way to slice that particular Gordian Knot.  What I came up with was a way I could make everyone happy.  Users were happy because they didn't need to concern themselves with updates.  I could also make *myself* happy, because I could make sure the system was secure, reliable, and had some fall back.  What I came up with I now offer to you as 'DBT'.
+
+Whether the particular folks that drove me to this extreme were right or wrong is not really important.  It turns out there is actually a legitimate use case for self-updating tooling beyond simply appeasing user laziness.
+
+Imagine this, you've got a system of dynamic VM's and Containers, all leveraging common tooling.  You might even have a serious DAG or web of 'things' dynamically generating other 'things' in a busy and automated fashion.  What is there's a problem, or an upgrade?  With normal utility tools and scripts you have to re-bake your machine images and containers to pick up the changes.  You might say that that's a good thing.  But what if it's not?
+
+With DBT, you have the best of both worlds.  You can force your tools to use an explicit version (```dbt -v 1.2.3 <tool>```).  You can also dispense with the '-v' and run the latest.  Voila!  You're automatically picking up the latest version of the tooling from your trusted repository.
+
 
 # Security
 
@@ -194,3 +195,16 @@ This section is for the tools ```dbt``` downloads, verifies, and runs for you.
 
 Url of the repo where the tools are stored.  This is where tools are found, and where the tool ```catalog``` https://github.com/nikogura/catalog  looks for tools.
 
+# Prebuilt Tools
+
+The whole point of DBT is that you'll create your own tools to do things your way, but there are some common tasks that any user of DBT might want at their fingertips.
+
+The following is a list of tools that you might want to consider using as is, or as a basis for your own awesomeness:
+
+To use them, all you need to do is clone the repo, modify the ```metadata.json``` file to point at *your* repository, and run ```gomason publish```.  It should *just work*.
+
+* *[Catalog](https://github.com/nikogura/catalog)*  A tool for showing what tools are in your repository.
+
+* *[Creator](https://github.com/nikogura/creator)*  A tool for generating tool boilerplate.  You could do it by hand, but why?
+
+* *[Trustmgr](https://github.com/nikogura/trustmgr)*  A tool for managing who's public keys are trusted by DBT.
