@@ -10,8 +10,6 @@
 
 A framework for running self-updating, signed binary tools from a central, trusted repository.
 
-***DBT is Under Construction.  This warning will go away once it's ready to be used.***
-
 # Overview
 
 DBT consists of a binary ```dbt``` and a config file.  The ```dbt``` binary checks a trusted repository for tools, which are themselves signed binaries.
@@ -185,7 +183,7 @@ The file can consist of multiple public keys such as:
         =KIOK
         -----END PGP PUBLIC KEY BLOCK-----
         
-There's nothing magical about this file.  It's just the keys you've decided to trust.  You're free to maintain it by hand if you like, or you can use the dbt tool ```trustmgr``` https://github.com/nikogura/trustmgr
+There's nothing magical about this file.  It's just the keys you've decided to trust.  You're free to maintain it by hand if you like, or you can use the dbt tool ```trustmgr``` https://github.com/nikogura/trustmgr  *(once it's done that is)*
 
 ### tools
 
