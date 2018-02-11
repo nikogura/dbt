@@ -8,7 +8,7 @@
 
 [![Go Doc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/nikogura/dbt)
 
-[![Coverage Status](https://coveralls.io/repos/github/nikogura/dbt/badge.svg?branch=master)](https://coveralls.io/github/nikogura/dbt?branch=master&service=github)
+[![Coverage Status](https://coveralls.io/repos/github/nikogura/dbt/badge.svg?branch=master)](https://coveralls.io/github/nikogura/dbt?branch=master)
 
 A framework for running self-updating, signed binary tools from a central, trusted repository.
 
