@@ -180,11 +180,11 @@ func (tr *TestRepo) DbtHandlerVersionADarwin(w http.ResponseWriter, r *http.Requ
 		if err != nil {
 			log.Printf("Failed to write response: %s", err)
 		}
-	case "/dbt/1.2.2/darwin/amd64/dbt.md5":
-		_, err := w.Write([]byte(dbtVersionAMd5()))
-		if err != nil {
-			log.Printf("Failed to write response: %s", err)
-		}
+	//case "/dbt/1.2.2/darwin/amd64/dbt.md5":
+	//	_, err := w.Write([]byte(dbtVersionAMd5()))
+	//	if err != nil {
+	//		log.Printf("Failed to write response: %s", err)
+	//	}
 	case "/dbt/1.2.2/darwin/amd64/dbt.sha1":
 		_, err := w.Write([]byte(dbtVersionASha1()))
 		if err != nil {
@@ -261,26 +261,26 @@ func (tr *TestRepo) DbtHandlerVersionBDarwin(w http.ResponseWriter, r *http.Requ
 		if err != nil {
 			log.Printf("Failed to write response: %s", err)
 		}
-	case "/dbt/1.2.3/darwin/amd64/dbt.md5":
-		_, err := w.Write([]byte(dbtVersionBMd5()))
-		if err != nil {
-			log.Printf("Failed to write response: %s", err)
-		}
+	//case "/dbt/1.2.3/darwin/amd64/dbt.md5":
+	//	_, err := w.Write([]byte(dbtVersionBMd5()))
+	//	if err != nil {
+	//		log.Printf("Failed to write response: %s", err)
+	//	}
 	case "/dbt/1.2.3/darwin/amd64/dbt.sha1":
 		_, err := w.Write([]byte(dbtVersionBSha1()))
 		if err != nil {
 			log.Printf("Failed to write response: %s", err)
 		}
-	case "/dbt/1.2.3/darwin/amd64/dbt.sha256":
-		_, err := w.Write([]byte(dbtVersionBSha256()))
-		if err != nil {
-			log.Printf("Failed to write response: %s", err)
-		}
-	case "/dbt/1.2.3/darwin/amd64/dbt.asc":
-		_, err := w.Write([]byte(dbtVersionBSig()))
-		if err != nil {
-			log.Printf("Failed to write response: %s", err)
-		}
+	//case "/dbt/1.2.3/darwin/amd64/dbt.sha256":
+	//	_, err := w.Write([]byte(dbtVersionBSha256()))
+	//	if err != nil {
+	//		log.Printf("Failed to write response: %s", err)
+	//	}
+	//case "/dbt/1.2.3/darwin/amd64/dbt.asc":
+	//	_, err := w.Write([]byte(dbtVersionBSig()))
+	//	if err != nil {
+	//		log.Printf("Failed to write response: %s", err)
+	//	}
 
 	default:
 		w.WriteHeader(http.StatusNotFound)
@@ -302,11 +302,11 @@ func (tr *TestRepo) DbtHandlerVersionBLinux(w http.ResponseWriter, r *http.Reque
 		if err != nil {
 			log.Printf("Failed to write response: %s", err)
 		}
-	case "/dbt/1.2.3/linux/amd64/dbt.md5":
-		_, err := w.Write([]byte(dbtVersionBMd5()))
-		if err != nil {
-			log.Printf("Failed to write response: %s", err)
-		}
+	//case "/dbt/1.2.3/linux/amd64/dbt.md5":
+	//	_, err := w.Write([]byte(dbtVersionBMd5()))
+	//	if err != nil {
+	//		log.Printf("Failed to write response: %s", err)
+	//	}
 	case "/dbt/1.2.3/linux/amd64/dbt.sha1":
 		_, err := w.Write([]byte(dbtVersionBSha1()))
 		if err != nil {

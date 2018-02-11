@@ -29,22 +29,22 @@ func dbtIndexOutput() string {
 
 }
 
-func dbtVersionAIndexOutput() string {
-	return `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
-<html>
-<head><title>Index of dbt-tools/foo/1.2.2/</title>
-</head>
-<body>
-<h1>Index of dbt/dbt</h1>
-<pre>Name                Last modified      Size</pre><hr/>
-<pre><a href="../">../</a>
-<a href="darwin/">darwin/</a>               07-Dec-2017 00:47    -
-<a href="linux/">linux/</a>               07-Dec-2017 00:47    -
-</pre>
-</body>
-</html>`
-
-}
+//func dbtVersionAIndexOutput() string {
+//	return `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+//<html>
+//<head><title>Index of dbt-tools/foo/1.2.2/</title>
+//</head>
+//<body>
+//<h1>Index of dbt/dbt</h1>
+//<pre>Name                Last modified      Size</pre><hr/>
+//<pre><a href="../">../</a>
+//<a href="darwin/">darwin/</a>               07-Dec-2017 00:47    -
+//<a href="linux/">linux/</a>               07-Dec-2017 00:47    -
+//</pre>
+//</body>
+//</html>`
+//
+//}
 
 func dbtVersionAContent() string {
 	return "The quick fox jumped over the lazy brown dog."
@@ -58,9 +58,9 @@ func dbtVersionASha1() string {
 	return "5b7c9753dd9800a16969bf65e2330b40e657277b"
 }
 
-func dbtVersionAMd5() string {
-	return "6e8bafd13ba44c93b63cead889cd21a6"
-}
+//func dbtVersionAMd5() string {
+//	return "6e8bafd13ba44c93b63cead889cd21a6"
+//}
 
 func dbtVersionASig() string {
 	return `-----BEGIN PGP SIGNATURE-----
@@ -98,29 +98,29 @@ func dbtVersionBContent() string {
 	return "Twas brillig, and the slithy toves did gyre and gimble in the wabe."
 }
 
-func dbtVersionBSha256() string {
-	return "f1f4f38ccbc574d457110f8994d5a127d6441aa915ddfc3247a1132e212fcda0"
-}
+//func dbtVersionBSha256() string {
+//	return "f1f4f38ccbc574d457110f8994d5a127d6441aa915ddfc3247a1132e212fcda0"
+//}
 
 func dbtVersionBSha1() string {
 	return "2b0c08dd5c80e654b2ce0c4b86fd9e29e8cd479a"
 }
 
-func dbtVersionBMd5() string {
-	return "38c3f92660f1cd49bcb428ee2932000e"
-}
-
-func dbtVersionBSig() string {
-	return `-----BEGIN PGP SIGNATURE-----
-
-iQFABAABCAAqFiEE3Ww86tgfSQ9lgLSizmhGNf2l0x8FAlpAH1cMHGRidEBkYnQu
-Y29tAAoJEM5oRjX9pdMfDl4IALE2Oj1r25rzL22NGr7Ip3Fmo5joZXUpeO6l2/05
-1PBbEIM6qGdvd2lXvkaROFhRNwreqYI8f1bt7l3MCATvE9lycWcosjDdnGIijJzV
-qFy4HL0aGnYsrLhQWn+3F6AYbObp1SF4SchwC96B2+z4YD6Pty/8U8ielkTWsFUz
-75xJem+CYKjJxk68lVIDzxLO5w7K4P/7Z9l0bevzzZcky4TR13w7EpJ2EkqYR4MS
-/Sevt+l1nded5CUFjZxhlAosvpCusXG7hk6TFV1sQKh4XJNelhU818QXV6BGG59B
-A7vLjTabSUqvwhWHa0S3bOn196RyyCOb28y7+2EOG3jIJGU=
-=RXqm
------END PGP SIGNATURE-----
-`
-}
+//func dbtVersionBMd5() string {
+//	return "38c3f92660f1cd49bcb428ee2932000e"
+//}
+//
+//func dbtVersionBSig() string {
+//	return `-----BEGIN PGP SIGNATURE-----
+//
+//iQFABAABCAAqFiEE3Ww86tgfSQ9lgLSizmhGNf2l0x8FAlpAH1cMHGRidEBkYnQu
+//Y29tAAoJEM5oRjX9pdMfDl4IALE2Oj1r25rzL22NGr7Ip3Fmo5joZXUpeO6l2/05
+//1PBbEIM6qGdvd2lXvkaROFhRNwreqYI8f1bt7l3MCATvE9lycWcosjDdnGIijJzV
+//qFy4HL0aGnYsrLhQWn+3F6AYbObp1SF4SchwC96B2+z4YD6Pty/8U8ielkTWsFUz
+//75xJem+CYKjJxk68lVIDzxLO5w7K4P/7Z9l0bevzzZcky4TR13w7EpJ2EkqYR4MS
+///Sevt+l1nded5CUFjZxhlAosvpCusXG7hk6TFV1sQKh4XJNelhU818QXV6BGG59B
+//A7vLjTabSUqvwhWHa0S3bOn196RyyCOb28y7+2EOG3jIJGU=
+//=RXqm
+//-----END PGP SIGNATURE-----
+//`
+//}
