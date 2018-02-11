@@ -8,7 +8,7 @@
 
 [![Go Doc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/nikogura/dbt)
 
-[![Coverage Status](https://coveralls.io/repos/github/nikogura/dbt/badge.svg?branch=master)](https://coveralls.io/github/nikogura/dbt?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/nikogura/dbt/badge.svg?branch=master)](https://coveralls.io/github/nikogura/dbt?branch=master&service=github)
 
 A framework for running self-updating, signed binary tools from a central, trusted repository.
 
@@ -185,7 +185,7 @@ The file can consist of multiple public keys such as:
         =KIOK
         -----END PGP PUBLIC KEY BLOCK-----
         
-There's nothing magical about this file.  It's just the keys you've decided to trust.  You're free to maintain it by hand if you like, or you can use the dbt tool ```trustmgr``` https://github.com/nikogura/trustmgr  *(once it's done that is)*
+There's nothing magical about this file.  It's just the keys you've decided to trust.  You're free to maintain it by hand if you like, or you can use the dbt tool ```trustmgr``` https://github.com/nikogura/trustmgr 
 
 ### tools
 
