@@ -23,8 +23,7 @@ func main() {
 
 	dbtObj, err := dbt.NewDbt()
 	if err != nil {
-		log.Printf("Error creating DBT object: %s", err)
-		os.Exit(1)
+		log.Fatalf("Error creating DBT object: %s", err)
 	}
 
 	possibles := []string{"-o", "-ov"}
@@ -35,8 +34,7 @@ func main() {
 
 	homedir, err := dbt.GetHomeDir()
 	if err != nil {
-		log.Printf("Failed to discover user homedir: %s\n", err)
-		os.Exit(1)
+		log.Fatalf("Failed to discover user homedir: %s\n", err)
 	}
 
 	// if we're not explicitly offline, try to upgrade in place
@@ -44,8 +42,7 @@ func main() {
 		// first fetch the current truststore
 		err = dbtObj.FetchTrustStore(homedir, false)
 		if err != nil {
-			log.Printf("Failed to fetch current truststore: %s", err)
-			os.Exit(1)
+			log.Fatalf("Failed to fetch current truststore: %s", err)
 		}
 
 		ok, err := dbtObj.IsCurrent("")
@@ -57,8 +54,7 @@ func main() {
 			err = dbtObj.UpgradeInPlace("")
 			if err != nil {
 				err = fmt.Errorf("upgrade in place failed: %s", err)
-				log.Printf("Error: %s", err)
-				os.Exit(1)
+				log.Fatalf("Error: %s", err)
 			}
 
 			// Single white female ourself
@@ -75,25 +71,22 @@ func main() {
 
 				err = dbtObj.RunTool(version, args[2:], homedir, offline)
 				if err != nil {
-					fmt.Printf("Error running tool: %s", err)
-					os.Exit(1)
+					log.Fatalf("Error running tool: %s", err)
 				}
 
 			} else {
-				fmt.Println("-v flag requires a version.")
-				os.Exit(1)
+				log.Fatalf("-v flag requires a version.")
 			}
 		} else {
 			err = dbtObj.RunTool(version, args, homedir, offline)
 			if err != nil {
-				fmt.Printf("Error running tool: %s", err)
-				os.Exit(1)
+				log.Fatalf("Error running tool: %s", err)
 			}
 		}
 
 	} else {
 		helpMessage()
-		os.Exit(1)
+		log.Fatal(1)
 	}
 }
 
