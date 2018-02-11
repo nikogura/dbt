@@ -13,13 +13,26 @@ import (
 	"syscall"
 )
 
-const dbtDir = ".dbt"
-const trustDir = dbtDir + "/trust"
-const toolDir = dbtDir + "/tools"
-const configDir = dbtDir + "/conf"
-const configFilePath = configDir + "/dbt.json"
-const truststorePath = trustDir + "/truststore"
-const dbtBinaryPath = "/usr/local/bin/dbt"
+// DbtDir is the standard dbt directory.  Usually ~/.dbt
+const DbtDir = ".dbt"
+
+// TrustDir is the directory under the dbt dir where the trust store is downloaded to
+const TrustDir = DbtDir + "/trust"
+
+// ToolsDir is the directory where tools get downloaded to
+const ToolDir = DbtDir + "/tools"
+
+// ConfigDir is the directory where Dbt expects to find configuration info
+const ConfigDir = DbtDir + "/conf"
+
+// ConfigFilePath is the actual dbt config file path
+const ConfigFilePath = ConfigDir + "/dbt.json"
+
+// TruststorePath is the actual file path to the downloaded trust store
+const TruststorePath = TrustDir + "/truststore"
+
+// DbtBinaryPath is the default locaiton where the dbt binary gets installed to
+const DbtBinaryPath = "/usr/local/bin/dbt"
 
 // DBT the dbt object itself
 type DBT struct {
@@ -73,7 +86,7 @@ func LoadDbtConfig(homedir string, verbose bool) (config Config, err error) {
 		log.Printf("Creating DBT directory in %s.dbt", homedir)
 	}
 
-	filePath := fmt.Sprintf("%s/%s", homedir, configFilePath)
+	filePath := fmt.Sprintf("%s/%s", homedir, ConfigFilePath)
 
 	if verbose {
 		log.Printf("Loading config from %s", filePath)
@@ -106,7 +119,7 @@ func GenerateDbtDir(homedir string, verbose bool) (err error) {
 		log.Printf("Creating DBT directory in %s.dbt", homedir)
 	}
 
-	dbtPath := fmt.Sprintf("%s/%s", homedir, dbtDir)
+	dbtPath := fmt.Sprintf("%s/%s", homedir, DbtDir)
 
 	if _, err := os.Stat(dbtPath); os.IsNotExist(err) {
 		err = os.Mkdir(dbtPath, 0755)
@@ -116,7 +129,7 @@ func GenerateDbtDir(homedir string, verbose bool) (err error) {
 		}
 	}
 
-	trustPath := fmt.Sprintf("%s/%s", homedir, trustDir)
+	trustPath := fmt.Sprintf("%s/%s", homedir, TrustDir)
 
 	if _, err := os.Stat(trustPath); os.IsNotExist(err) {
 		err = os.Mkdir(trustPath, 0755)
@@ -126,14 +139,14 @@ func GenerateDbtDir(homedir string, verbose bool) (err error) {
 		}
 	}
 
-	toolPath := fmt.Sprintf("%s/%s", homedir, toolDir)
+	toolPath := fmt.Sprintf("%s/%s", homedir, ToolDir)
 	err = os.Mkdir(toolPath, 0755)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to create directory %s", toolPath)
 		return err
 	}
 
-	configPath := fmt.Sprintf("%s/%s", homedir, configDir)
+	configPath := fmt.Sprintf("%s/%s", homedir, ConfigDir)
 	err = os.Mkdir(configPath, 0755)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to create directory %s", configPath)
@@ -184,7 +197,7 @@ func (dbt *DBT) FetchTrustStore(homedir string, verbose bool) (err error) {
 
 		// don't write anything if we have an empty string
 		if keytext != "" {
-			filePath := fmt.Sprintf("%s/%s", homedir, truststorePath)
+			filePath := fmt.Sprintf("%s/%s", homedir, TruststorePath)
 			err = ioutil.WriteFile(filePath, []byte(keytext), 0644)
 			if err != nil {
 				err = errors.Wrapf(err, "failed to write trust file")
@@ -199,7 +212,7 @@ func (dbt *DBT) FetchTrustStore(homedir string, verbose bool) (err error) {
 // IsCurrent returns whether the currently running version is the latest version, and possibly an error if the version check failes
 func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 	if binaryPath == "" {
-		binaryPath = dbtBinaryPath
+		binaryPath = DbtBinaryPath
 	}
 
 	fmt.Fprint(os.Stderr, "Verifying that dbt is up to date....\n\n")
@@ -236,7 +249,7 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 // UpgradeInPlace upgraded dbt in place
 func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 	if binaryPath == "" {
-		binaryPath = dbtBinaryPath
+		binaryPath = DbtBinaryPath
 	}
 	fmt.Fprint(os.Stderr, "Attempting to upgrade in place.\n\n")
 
@@ -295,7 +308,7 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 // RunTool runs the dbt tool indicated by the args
 func (dbt *DBT) RunTool(version string, args []string, homedir string, offline bool) (err error) {
 	toolName := args[0]
-	localPath := fmt.Sprintf("%s/%s/%s", homedir, toolDir, toolName)
+	localPath := fmt.Sprintf("%s/%s/%s", homedir, ToolDir, toolName)
 
 	// if offline, if tool is present and verifies, run it
 	if offline {
@@ -399,8 +412,8 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 
 func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 	toolName := args[0]
-	localPath := fmt.Sprintf("%s/%s/%s", homedir, toolDir, toolName)
-	localChecksumPath := fmt.Sprintf("%s/%s/%s.sha256", homedir, toolDir, toolName)
+	localPath := fmt.Sprintf("%s/%s/%s", homedir, ToolDir, toolName)
+	localChecksumPath := fmt.Sprintf("%s/%s/%s.sha256", homedir, ToolDir, toolName)
 
 	checksumBytes, err := ioutil.ReadFile(localChecksumPath)
 	if err != nil {
@@ -443,7 +456,7 @@ func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 
 func (dbt *DBT) runExec(homedir string, args []string) (err error) {
 	toolName := args[0]
-	localPath := fmt.Sprintf("%s/%s/%s", homedir, toolDir, toolName)
+	localPath := fmt.Sprintf("%s/%s/%s", homedir, ToolDir, toolName)
 
 	env := os.Environ()
 

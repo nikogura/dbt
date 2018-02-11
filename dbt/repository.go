@@ -239,7 +239,7 @@ func VerifyFileSignature(homedir string, filePath string) (success bool, err err
 		return false, err
 	}
 
-	truststoreFileName := fmt.Sprintf("%s/%s", homedir, truststorePath)
+	truststoreFileName := fmt.Sprintf("%s/%s", homedir, TruststorePath)
 
 	keyRingReader, err := os.Open(truststoreFileName)
 	if err != nil {

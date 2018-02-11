@@ -69,27 +69,27 @@ func tearDown() {
 }
 
 func TestGenerateDbtDir(t *testing.T) {
-	dbtDirPath := fmt.Sprintf("%s/%s", tmpDir, dbtDir)
+	dbtDirPath := fmt.Sprintf("%s/%s", tmpDir, DbtDir)
 
 	if _, err := os.Stat(dbtDirPath); os.IsNotExist(err) {
 		log.Printf("dbt dir %s did not create as expected", dbtDirPath)
 		t.Fail()
 	}
 
-	trustPath := fmt.Sprintf("%s/%s", tmpDir, trustDir)
+	trustPath := fmt.Sprintf("%s/%s", tmpDir, TrustDir)
 
 	if _, err := os.Stat(trustPath); os.IsNotExist(err) {
 		log.Printf("trust dir %s did not create as expected", trustPath)
 		t.Fail()
 	}
 
-	toolPath := fmt.Sprintf("%s/%s", tmpDir, toolDir)
+	toolPath := fmt.Sprintf("%s/%s", tmpDir, ToolDir)
 	if _, err := os.Stat(toolPath); os.IsNotExist(err) {
 		log.Printf("tool dir %s did not create as expected", toolPath)
 		t.Fail()
 	}
 
-	configPath := fmt.Sprintf("%s/%s", tmpDir, configDir)
+	configPath := fmt.Sprintf("%s/%s", tmpDir, ConfigDir)
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		log.Printf("config dir %s did not create as expected", configPath)
 		t.Fail()
@@ -98,7 +98,7 @@ func TestGenerateDbtDir(t *testing.T) {
 }
 
 func TestLoadDbtConfig(t *testing.T) {
-	configPath := fmt.Sprintf("%s/%s", tmpDir, configDir)
+	configPath := fmt.Sprintf("%s/%s", tmpDir, ConfigDir)
 	fileName := fmt.Sprintf("%s/dbt.json", configPath)
 
 	err := ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
@@ -131,7 +131,7 @@ func TestDBT_FetchTrustStore(t *testing.T) {
 	}
 
 	expected := testTruststore()
-	trustPath := fmt.Sprintf("%s/%s", tmpDir, truststorePath)
+	trustPath := fmt.Sprintf("%s/%s", tmpDir, TruststorePath)
 
 	if _, err := os.Stat(trustPath); os.IsNotExist(err) {
 		log.Printf("File not written")
@@ -155,7 +155,7 @@ func TestDBT_IsCurrent(t *testing.T) {
 		Verbose: true,
 	}
 
-	targetDir := fmt.Sprintf("%s/%s", tmpDir, toolDir)
+	targetDir := fmt.Sprintf("%s/%s", tmpDir, ToolDir)
 	fileUrl := fmt.Sprintf("%s/1.2.2/%s/amd64/dbt", testDbtUrl(port), runtime.GOOS)
 	fileName := fmt.Sprintf("%s/dbt", targetDir)
 
@@ -197,7 +197,7 @@ func TestDBT_UpgradeInPlace(t *testing.T) {
 		Verbose: true,
 	}
 
-	targetDir := fmt.Sprintf("%s/%s", tmpDir, toolDir)
+	targetDir := fmt.Sprintf("%s/%s", tmpDir, ToolDir)
 	fileUrl := fmt.Sprintf("%s/1.2.2/%s/amd64/dbt", testDbtUrl(port), runtime.GOOS)
 	fileName := fmt.Sprintf("%s/dbt", targetDir)
 

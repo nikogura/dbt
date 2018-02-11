@@ -61,7 +61,7 @@ func TestFetchToolVersions(t *testing.T) {
 }
 
 func TestFetchFile(t *testing.T) {
-	targetDir := fmt.Sprintf("%s/%s", tmpDir, toolDir)
+	targetDir := fmt.Sprintf("%s/%s", tmpDir, ToolDir)
 	fileUrl := fmt.Sprintf("%s/foo/1.2.2/linux/amd64/foo", testToolUrl(port))
 	fileName := fmt.Sprintf("%s/foo", targetDir)
 
@@ -97,7 +97,7 @@ func TestFetchFile(t *testing.T) {
 
 	// download trust store
 	trustStoreUrl := fmt.Sprintf("%s/truststore", testDbtUrl(port))
-	trustStoreFile := fmt.Sprintf("%s/%s", tmpDir, truststorePath)
+	trustStoreFile := fmt.Sprintf("%s/%s", tmpDir, TruststorePath)
 
 	err = FetchFile(trustStoreUrl, trustStoreFile)
 	if err != nil {
