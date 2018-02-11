@@ -229,3 +229,19 @@ func TestDBT_UpgradeInPlace(t *testing.T) {
 
 	assert.True(t, ok, "Current version shows current.")
 }
+
+func TestNewDbt(t *testing.T) {
+	_, err := NewDbt()
+	if err != nil {
+		fmt.Printf("Error creating DBT object: %s", err)
+		t.Fail()
+	}
+}
+
+func TestGetHomeDir(t *testing.T) {
+	_, err := GetHomeDir()
+	if err != nil {
+		fmt.Printf("Error getting homedir: %s", err)
+		t.Fail()
+	}
+}
