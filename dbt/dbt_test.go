@@ -231,7 +231,31 @@ func TestDBT_UpgradeInPlace(t *testing.T) {
 }
 
 func TestNewDbt(t *testing.T) {
-	_, err := NewDbt()
+	homedir, err := GetHomeDir()
+	if err != nil {
+		fmt.Printf("Error getting homedir: %s", err)
+		t.Fail()
+	}
+
+	configPath := fmt.Sprintf("%s/%s", homedir, ConfigDir)
+	fileName := fmt.Sprintf("%s/dbt.json", configPath)
+
+	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+		fmt.Printf("Writing test dbt config to %s", fileName)
+		err = GenerateDbtDir("", true)
+		if err != nil {
+			fmt.Printf("Error generating dbt dir: %s", err)
+			t.Fail()
+		}
+
+		err = ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
+		if err != nil {
+			log.Printf("Error writing config file to %s: %s", fileName, err)
+			t.Fail()
+		}
+	}
+
+	_, err = NewDbt()
 	if err != nil {
 		fmt.Printf("Error creating DBT object: %s", err)
 		t.Fail()
