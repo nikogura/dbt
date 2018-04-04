@@ -105,7 +105,7 @@ func exitEarlyIf(args []string) {
 
 func helpMessage() {
 
-	log.Printf(`DBT Distributed Binary Toolkit
+	log.Printf(`DBT Dynamic Binary Toolkit
 
 Usage:
 

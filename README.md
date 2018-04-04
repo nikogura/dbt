@@ -1,4 +1,4 @@
-# DBT  *Distributed Binary Toolkit*
+# DBT  *Dynamic Binary Toolkit*
 
 [![Current Release](https://img.shields.io/github/release/nikogura/dbt.svg)](https://img.shields.io/github/release/nikogura/dbt.svg)
 
