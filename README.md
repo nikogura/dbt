@@ -53,6 +53,50 @@ You can make the repo wide open, and give everyone a copy of a non-encrypted key
 ensure reliable delivery of the bullet to where you aimed the gun (in
 this case, Mr. Foot)."* -- Terry Lambert, FreeBSD-Hackers mailing list.
 
+# Installation
+
+DBT, as you see it here is set up for *my* test repo.  You'll need to make some changes to make it work in your infrastructure.   Once you build it, it's a binary, and you can distribute it any way you please.  As usual though, I've made it easy using a tool called `gomason`. Gomason, while plenty useful on it's own as a CI system in your pocket, was really written to support building, testing, and publishing DBT binaries.
+
+## Installation Steps
+
+1. Fork the repo.
+
+2. Change the `metadata.json` file to reflect your own repository setup and preferences.  
+
+3. Run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT.
+
+The details of what all is supported in `metadata.json` can be found in [https://github.com/nikogura/gomason](https://github.com/nikogura/gomason).  
+
+If you run into trouble, run `gomason publish -v` to see what went wrong.  It's wordy, but fairly precise about what it's trying to do.  Typically errors stem from either bad perms in your repository, or typos in `metadata.json`.
+
+If your `metadata.json` has the following:
+
+    "repository": "http://localhost:8081/artifactory/dbt"
+    
+Then you should see a file `http://localhost:8081/artifactory/dbt/install_dbt.sh`, which you can run with:
+
+        bash -c "$(curl http://localhost:8081/artifactory/dbt/install_dbt.sh)" 
+        
+And voila!  Your DBT is now installed.
+
+You will, however need to populate the `truststore` file, which by default, with the above config would be located at `http://localhost:8081/artifactory/dbt/truststore`.  This file contains the public keys of the entities you trust to create DBT binaries.  You can edit this file by hand, it's just a bunch of PEM data squashed together, or you can use one of the tools listed in the next section.
+
+# Prebuilt Tools
+
+The whole point of DBT is that you'll create your own tools to do things your way.  DBT is itself just a framework, and does exactly *nothing* without the tools that it's designed to download and run.  By itself, it can't even tell you what tools are available to you.  
+
+DBT is designed to be as open and generic as possible. I, the author, don't know what you're going to do with it, and I will make as few assumptions as I possibly can while still presenting you with a useful tool.  
+
+There are, however, some common tasks that any user of DBT might want at their fingertips. The following is a list of tools that you might want to consider using as is, or as a basis for your own awesomeness:
+
+To use them, all you need to do is clone the repo, modify the ```metadata.json``` file to point at *your* repository just as you did DBT itself, and run ```gomason publish```.  It should *just work*.
+
+* *[Catalog](https://github.com/nikogura/catalog)*  A tool for showing what tools are in your repository.
+
+* *[Creator](https://github.com/nikogura/creator)*  A tool for generating tool boilerplate.  You could do it by hand, but why?
+
+* *[Trustmgr](https://github.com/nikogura/trustmgr)*  A tool for managing who's public keys are trusted by DBT.
+
 # Repository Support
 
 The initial versions of DBT are targeted at the [Artifactory Open Source](https://www.jfrog.com/open-source) repo.  Any sort of WebDAV server that supports authenticated REST should work fine though.
@@ -195,16 +239,3 @@ This section is for the tools ```dbt``` downloads, verifies, and runs for you.
 
 Url of the repo where the tools are stored.  This is where tools are found, and where the tool ```catalog``` https://github.com/nikogura/catalog  looks for tools.
 
-# Prebuilt Tools
-
-The whole point of DBT is that you'll create your own tools to do things your way, but there are some common tasks that any user of DBT might want at their fingertips.
-
-The following is a list of tools that you might want to consider using as is, or as a basis for your own awesomeness:
-
-To use them, all you need to do is clone the repo, modify the ```metadata.json``` file to point at *your* repository, and run ```gomason publish```.  It should *just work*.
-
-* *[Catalog](https://github.com/nikogura/catalog)*  A tool for showing what tools are in your repository.
-
-* *[Creator](https://github.com/nikogura/creator)*  A tool for generating tool boilerplate.  You could do it by hand, but why?
-
-* *[Trustmgr](https://github.com/nikogura/trustmgr)*  A tool for managing who's public keys are trusted by DBT.
