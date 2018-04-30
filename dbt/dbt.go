@@ -229,12 +229,9 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 		return ok, err
 	}
 
-	if ok {
-		fmt.Fprintf(os.Stderr, "dbt is up to date.  (version %s)\n\n", latest)
-		return ok, err
+	if !ok {
+		fmt.Fprint(os.Stderr, fmt.Sprintf("Newer version of dbt available: %s\n\n", latest))
 	}
-
-	fmt.Fprint(os.Stderr, fmt.Sprintf("Newer version of dbt available: %s\n\n", latest))
 
 	return ok, err
 }
