@@ -51,6 +51,7 @@ func main() {
 		}
 
 		if !ok {
+			log.Printf("Downloading and verifying new version of dbt.")
 			err = dbtObj.UpgradeInPlace("")
 			if err != nil {
 				err = fmt.Errorf("upgrade in place failed: %s", err)
