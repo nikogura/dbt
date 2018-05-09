@@ -1,6 +1,7 @@
 package dbt
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/openpgp"
@@ -233,40 +234,66 @@ func VerifyFileSignature(homedir string, filePath string) (success bool, err err
 
 	sigFile := fmt.Sprintf("%s.asc", filePath)
 
-	signature, err := os.Open(sigFile)
-	if err != nil {
-		err = errors.Wrap(err, "failed to open signature file")
-		return false, err
-	}
-
 	truststoreFileName := fmt.Sprintf("%s/%s", homedir, TruststorePath)
 
-	keyRingReader, err := os.Open(truststoreFileName)
+	truststore, err := os.Open(truststoreFileName)
 	if err != nil {
 		err = errors.Wrap(err, "failed to open truststore file")
 		return false, err
 	}
 
-	target, err := os.Open(filePath)
-	if err != nil {
-		err = errors.Wrap(err, "failed to open target file")
-		return false, err
+	defer truststore.Close()
+
+	// openpgp.CheckArmoredDetatchedSignature doesn't actually check mulitple certs, so we have to split the truststore file
+	// and check each cert individually
+
+	endToken := "-----END PGP PUBLIC KEY BLOCK-----"
+
+	certs := make([]string, 0)
+
+	scanner := bufio.NewScanner(truststore)
+
+	cert := ""
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		cert += fmt.Sprintf("%s\n", line)
+
+		if line == endToken {
+			certs = append(certs, cert)
+			cert = ""
+		}
 	}
 
-	keyring, err := openpgp.ReadArmoredKeyRing(keyRingReader)
-	if err != nil {
-		err = errors.Wrap(err, "failed to read truststore")
-		return false, err
-	}
+	for _, cert := range certs {
+		entities, err := openpgp.ReadArmoredKeyRing(strings.NewReader(cert))
+		if err != nil {
+			err = errors.Wrap(err, "failed to read cert from truststore")
+			return false, err
+		}
 
-	entity, err := openpgp.CheckArmoredDetachedSignature(keyring, target, signature)
-	if err != nil {
-		err = errors.Wrap(err, "failed to check signature")
-		return false, err
-	}
+		signature, err := os.Open(sigFile)
+		if err != nil {
+			err = errors.Wrap(err, "failed to open signature file")
+			return false, err
+		}
 
-	if entity != nil {
-		return true, err
+		defer signature.Close()
+
+		target, err := os.Open(filePath)
+		if err != nil {
+			err = errors.Wrap(err, "failed to open target file")
+			return false, err
+		}
+
+		defer target.Close()
+
+		entity, err := openpgp.CheckArmoredDetachedSignature(entities, target, signature)
+
+		if entity != nil {
+			return true, nil
+		}
+
 	}
 
 	err = fmt.Errorf("signing entity not in truststore")
