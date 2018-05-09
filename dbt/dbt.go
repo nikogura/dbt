@@ -19,7 +19,7 @@ const DbtDir = ".dbt"
 // TrustDir is the directory under the dbt dir where the trust store is downloaded to
 const TrustDir = DbtDir + "/trust"
 
-// ToolsDir is the directory where tools get downloaded to
+// ToolDir is the directory where tools get downloaded to
 const ToolDir = DbtDir + "/tools"
 
 // ConfigDir is the directory where Dbt expects to find configuration info
