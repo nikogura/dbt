@@ -10,12 +10,12 @@
     ],
     "extras": [
       {
-        "template": "install_dbt.tmpl",
+        "template": "templates/install_dbt.tmpl",
         "filename": "install_dbt.sh",
         "executable": true
       },
       {
-        "template": "catalog-description.tmpl",
+        "template": "templates/catalog-description.tmpl",
         "filename": "catalog-description.txt",
         "executable": false
       }
