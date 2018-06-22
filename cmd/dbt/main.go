@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/nikogura/dbt/dbt"
+	"github.com/nikogura/dbt/pkg/dbt"
 	"log"
 	"os"
 	"syscall"
