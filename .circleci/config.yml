@@ -18,6 +18,6 @@ jobs:
       - run:  gpg-agent --daemon
       - run: go test -v ./...
       - run: go get github.com/mattn/goveralls
-      - run: go test -v -cover -race -coverprofile=/tmp/coverage.out ./dbt
+      - run: go test -v -cover -race -coverprofile=/tmp/coverage.out ./pkg/dbt
       - run: goveralls -coverprofile=/tmp/coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
 
