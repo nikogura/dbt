@@ -7,7 +7,7 @@ jobs:
     docker:
       - image: circleci/golang:1.9.7
 
-    working_directory: /go/src/nikogura/dbt
+    working_directory: /go/src/github.com/nikogura/dbt
     steps:
       - checkout
 
