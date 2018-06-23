@@ -99,6 +99,12 @@
 			"revisionTime": "2018-05-11T14:21:26Z"
 		},
 		{
+			"checksumSHA1": "MvtwPecHV6lJche7Tv89FzPiJSE=",
+			"path": "github.com/nikogura/gomason/pkg/gomason",
+			"revision": "5bb5e6a9169c77459cfb949b3fffd94f57b9c529",
+			"revisionTime": "2018-06-23T16:44:04Z"
+		},
+		{
 			"checksumSHA1": "hlXUEyUn6u1ZhZbunDqTTEz1gyw=",
 			"path": "github.com/pelletier/go-toml",
 			"revision": "c01d1270ff3e442a8a57cddc1c92dc1138598194",
@@ -241,6 +247,12 @@
 			"path": "golang.org/x/text/unicode/norm",
 			"revision": "5cec4b58c438bd98288aeb248bab2c1840713d21",
 			"revisionTime": "2018-05-20T16:02:21Z"
+		},
+		{
+			"checksumSHA1": "nv0VcXrE4cc3r10jK27JZYbr17E=",
+			"path": "gopkg.in/ini.v1",
+			"revision": "06f5f3d67269ccec1fe5fe4134ba6e982984f7f5",
+			"revisionTime": "2018-05-26T22:45:42Z"
 		},
 		{
 			"checksumSHA1": "ZSWoOPUNRr5+3dhkLK3C4cZAQPk=",
