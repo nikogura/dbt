@@ -81,21 +81,19 @@ And voila!  Your DBT is now installed.
 
 You will, however need to populate the `truststore` file, which by default, with the above config would be located at `http://localhost:8081/artifactory/dbt/truststore`.  This file contains the public keys of the entities you trust to create DBT binaries.  You can edit this file by hand, it's just a bunch of PEM data squashed together, or you can use one of the tools listed in the next section.
 
-# Prebuilt Tools
+# Included Tools
 
 The whole point of DBT is that you'll create your own tools to do things your way.  DBT is itself just a framework, and does exactly *nothing* without the tools that it's designed to download and run.  By itself, it can't even tell you what tools are available to you.  
 
 DBT is designed to be as open and generic as possible. I, the author, don't know what you're going to do with it, and I will make as few assumptions as I possibly can while still presenting you with a useful tool.  
 
-There are, however, some common tasks that any user of DBT might want at their fingertips. The following is a list of tools that you might want to consider using as is, or as a basis for your own awesomeness:
+There are, however, some common tasks that any user of DBT might want at their fingertips. The following is a list of tools that will build automatically with dbt and be available for your pleasure:
 
-To use them, all you need to do is clone the repo, modify the ```metadata.json``` file to point at *your* repository just as you did DBT itself, and run ```gomason publish```.  It should *just work*.
+* *Catalog*  A tool for showing what tools are in your repository.
 
-* *[Catalog](https://github.com/nikogura/catalog)*  A tool for showing what tools are in your repository.
+* *Boilerplate*  A tool for generating tool boilerplate.  You could do it by hand, but why?  
 
-* *[Creator](https://github.com/nikogura/creator)*  A tool for generating tool boilerplate.  You could do it by hand, but why?
-
-* *[Trustmgr](https://github.com/nikogura/trustmgr)*  A tool for managing who's public keys are trusted by DBT.
+* *Trustmgr)*  A tool for managing who's public keys are trusted by DBT. (Still under construction.)
 
 # Repository Support
 
@@ -229,7 +227,7 @@ The file can consist of multiple public keys such as:
         =KIOK
         -----END PGP PUBLIC KEY BLOCK-----
         
-There's nothing magical about this file.  It's just the keys you've decided to trust.  You're free to maintain it by hand if you like, or you can use the dbt tool ```trustmgr``` https://github.com/nikogura/trustmgr 
+There's nothing magical about this file.  It's just the keys you've decided to trust.  You're free to maintain it by hand if you like, or you can use the dbt tool ```trustmgr```.
 
 ### tools
 
@@ -237,5 +235,5 @@ This section is for the tools ```dbt``` downloads, verifies, and runs for you.
 
 #### repository
 
-Url of the repo where the tools are stored.  This is where tools are found, and where the tool ```catalog``` https://github.com/nikogura/catalog  looks for tools.
+Url of the repo where the tools are stored.  This is where tools are found, and where the tool ```catalog``` looks for tools.
 

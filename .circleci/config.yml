@@ -7,12 +7,11 @@ jobs:
     docker:
       - image: circleci/golang:1.9.7
 
-    working_directory: /go/src/nikogura/dbt
+    working_directory: /go/src/github.com/nikogura/dbt
     steps:
       - checkout
 
       # specify any bash command here prefixed with `run: `
-      - run: go get -v -t -d ./...
       - run: go get github.com/kardianos/govendor
       - run: govendor sync
       - run:  gpg-agent --daemon

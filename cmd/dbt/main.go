@@ -114,5 +114,7 @@ dbt [-o -v <version>] <tool> [tool args]
 	-v version 			Specify version of tool to run.  (Defaults to latest)
 	-o offline 			Offline mode.  Does not attempt to upgrade or find tools, just uses what's already on disk, and errors if it's not available.
 
+Run 'dbt catalog list' to see a list of what tools are available in your repository.
+
 `)
 }
