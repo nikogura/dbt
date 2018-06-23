@@ -91,9 +91,9 @@ There are, however, some common tasks that any user of DBT might want at their f
 
 * *Catalog*  A tool for showing what tools are in your repository.
 
-* *Creator*  A tool for generating tool boilerplate.  You could do it by hand, but why?
+* *Boilerplate*  A tool for generating tool boilerplate.  You could do it by hand, but why?  
 
-* *Trustmgr)*  A tool for managing who's public keys are trusted by DBT.
+* *Trustmgr)*  A tool for managing who's public keys are trusted by DBT. (Still under construction.)
 
 # Repository Support
 
@@ -227,7 +227,7 @@ The file can consist of multiple public keys such as:
         =KIOK
         -----END PGP PUBLIC KEY BLOCK-----
         
-There's nothing magical about this file.  It's just the keys you've decided to trust.  You're free to maintain it by hand if you like, or you can use the dbt tool ```trustmgr``` https://github.com/nikogura/trustmgr 
+There's nothing magical about this file.  It's just the keys you've decided to trust.  You're free to maintain it by hand if you like, or you can use the dbt tool ```trustmgr```.
 
 ### tools
 
@@ -235,5 +235,5 @@ This section is for the tools ```dbt``` downloads, verifies, and runs for you.
 
 #### repository
 
-Url of the repo where the tools are stored.  This is where tools are found, and where the tool ```catalog``` https://github.com/nikogura/catalog  looks for tools.
+Url of the repo where the tools are stored.  This is where tools are found, and where the tool ```catalog``` looks for tools.
 

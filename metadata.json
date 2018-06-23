@@ -18,8 +18,12 @@
         "template": "templates/catalog-description.tmpl",
         "filename": "catalog-description.txt",
         "executable": false
+      },
+      {
+        "template": "templates/boilerplate-description.tmpl",
+        "filename": "boilerplate-description.txt",
+        "executable": false
       }
-
     ]
   },
   "publishing": {
@@ -57,6 +61,24 @@
       {
         "src": "catalog_linux_amd64",
         "dst": "{{.Repository}}-tools/catalog/{{.Version}}/linux/amd64/catalog",
+        "sig": true,
+        "checksums": false
+      },
+      {
+        "src": "boilerplate-description.txt",
+        "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/description.txt",
+        "sig": true,
+        "checksums": false
+      },
+      {
+        "src": "boilerplate_darwin_amd64",
+        "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/darwin/amd64/creator",
+        "sig": true,
+        "checksums": false
+      },
+      {
+        "src": "boilerplate_linux_amd64",
+        "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/linux/amd64/creator",
         "sig": true,
         "checksums": false
       }
