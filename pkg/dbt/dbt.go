@@ -3,12 +3,12 @@ package dbt
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"os/user"
 	"runtime"
 	"syscall"
 )
@@ -157,21 +157,9 @@ func GenerateDbtDir(homedir string, verbose bool) (err error) {
 }
 
 // GetHomeDir get's the current user's homedir
-func GetHomeDir() (homedir string, err error) {
-	userObj, err := user.Current()
-	if err != nil {
-		err = errors.Wrapf(err, "failed to get current user")
-		return homedir, err
-	}
-
-	homedir = userObj.HomeDir
-
-	if homedir == "" {
-		err = fmt.Errorf("no homedir for user %q", userObj.Username)
-		return homedir, err
-	}
-
-	return homedir, err
+func GetHomeDir() (dir string, err error) {
+	dir, err = homedir.Dir()
+	return dir, err
 }
 
 // FetchTrustStore writes the downloaded trusted signing public keys to disk.
