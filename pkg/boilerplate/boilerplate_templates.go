@@ -1,5 +1,6 @@
 package boilerplate
 
+// GitignoreContents the contents of the .gitignore file
 func GitignoreContents() string {
 	return `# Created by .ignore support plugin (hsz.mobi)
 ### Go template
@@ -28,6 +29,7 @@ vendor/**
 !vendor/vendor.json`
 }
 
+// MetadataContents contents of an initial metadata.json file
 func MetadataContents() string {
 	return `{
   "name": "{{.ToolName}}",
@@ -80,11 +82,13 @@ func MetadataContents() string {
 }`
 }
 
+// PreCommitHookContents a git pre-commit hook
 func PreCommitHookContents() string {
 	return `#!/usr/bin/env bash
 /usr/local/go/bin/gofmt -w ./`
 }
 
+// VendorJsonContents  a vendor.json sufficient for a newly created tool to build
 func VendorJsonContents() string {
 	return `{
 	"comment": "",
@@ -281,6 +285,7 @@ func VendorJsonContents() string {
 }`
 }
 
+// MainGoContents cobra main.go file
 func MainGoContents() string {
 	return `
 // Copyright © {{.CopyrightYear}} {{.Author.Name}} <{{.Author.Email}}>
@@ -305,6 +310,7 @@ func main() {
 }`
 }
 
+// RootGoContents root.go cobra file
 func RootGoContents() string {
 	return `// Copyright © {{.CopyrightYear}} {{.Author.Name}} <{{.Author.Email}}>
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -395,6 +401,7 @@ func initConfig() {
 `
 }
 
+// LicenseContents Apache license
 func LicenseContents() string {
 	return `Apache License
 	Version 2.0, January 2004
@@ -599,6 +606,7 @@ APPENDIX: How to apply the Apache License to your work.
 	limitations under the License.`
 }
 
+// EmptyGoFileContents an empty go file in the tool package
 func EmptyGoFileContents() string {
 	return `package {{.ToolName}}
 
@@ -611,10 +619,12 @@ func Run() {
 }`
 }
 
+// DescriptionTemplateContents description template
 func DescriptionTemplateContents() string {
 	return "{{.Description}}"
 }
 
+// ReadMeContents a boilerplate readme stub
 func ReadMeContents() string {
 	return "# {{.ToolName}}\n\n{{.PackageDescription}}\n"
 }
