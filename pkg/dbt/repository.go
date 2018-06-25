@@ -288,12 +288,7 @@ func VerifyFileSignature(homedir string, filePath string) (success bool, err err
 
 		defer target.Close()
 
-		entity, err := openpgp.CheckArmoredDetachedSignature(entities, target, signature)
-		if err != nil {
-			err = errors.Wrap(err, "failed to check signature")
-			return false, err
-		}
-
+		entity, _ := openpgp.CheckArmoredDetachedSignature(entities, target, signature)
 		if entity != nil {
 			return true, nil
 		}
