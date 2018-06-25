@@ -11,6 +11,8 @@ import (
 // DBT the file path of the installed dbt binary
 const DBT = "/usr/local/bin/dbt"
 
+const VERSION = "2.1.1"
+
 // there are only two options for dbt itself, 'version' and 'offline'
 var version string
 var offline bool
@@ -106,7 +108,7 @@ func exitEarlyIf(args []string) {
 
 func helpMessage() {
 
-	log.Printf(`DBT Dynamic Binary Toolkit
+	log.Printf(`DBT Dynamic Binary Toolkit version: %s
 
 Usage:
 
@@ -116,5 +118,5 @@ dbt [-o -v <version>] <tool> [tool args]
 
 Run 'dbt catalog list' to see a list of what tools are available in your repository.
 
-`)
+`, VERSION)
 }
