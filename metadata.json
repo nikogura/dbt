@@ -72,13 +72,13 @@
       },
       {
         "src": "boilerplate_darwin_amd64",
-        "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/darwin/amd64/creator",
+        "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/darwin/amd64/boilerplate",
         "sig": true,
         "checksums": false
       },
       {
         "src": "boilerplate_linux_amd64",
-        "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/linux/amd64/creator",
+        "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/linux/amd64/boilerplate",
         "sig": true,
         "checksums": false
       }
