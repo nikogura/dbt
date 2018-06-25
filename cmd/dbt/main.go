@@ -11,6 +11,7 @@ import (
 // DBT the file path of the installed dbt binary
 const DBT = "/usr/local/bin/dbt"
 
+// VERSION the version of dbt.  Must match version in metadata.json
 const VERSION = "2.1.1"
 
 // there are only two options for dbt itself, 'version' and 'offline'

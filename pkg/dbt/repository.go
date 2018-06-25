@@ -244,7 +244,7 @@ func VerifyFileSignature(homedir string, filePath string) (success bool, err err
 
 	defer truststore.Close()
 
-	// openpgp.CheckArmoredDetatchedSignature doesn't actually check mulitple certs, so we have to split the truststore file
+	// openpgp.CheckArmoredDetatchedSignature doesn't actually check multiple certs, so we have to split the truststore file
 	// and check each cert individually
 
 	endToken := "-----END PGP PUBLIC KEY BLOCK-----"
@@ -289,11 +289,14 @@ func VerifyFileSignature(homedir string, filePath string) (success bool, err err
 		defer target.Close()
 
 		entity, err := openpgp.CheckArmoredDetachedSignature(entities, target, signature)
+		if err != nil {
+			err = errors.Wrap(err, "failed to check signature")
+			return false, err
+		}
 
 		if entity != nil {
 			return true, nil
 		}
-
 	}
 
 	err = fmt.Errorf("signing entity not in truststore")
