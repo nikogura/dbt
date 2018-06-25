@@ -61,7 +61,7 @@ DBT, as you see it here is set up for *my* test repo.  You'll need to make some 
 
 1. Fork the repo.
 
-2. Change the `metadata.json` file to reflect your own repository setup and preferences.  
+2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` line.
 
 3. Run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT.
 
@@ -93,7 +93,9 @@ There are, however, some common tasks that any user of DBT might want at their f
 
 * *Boilerplate*  A tool for generating tool boilerplate.  You could do it by hand, but why?  
 
-* *Trustmgr)*  A tool for managing who's public keys are trusted by DBT. (Still under construction.)
+* *Trustmgr)*  A tool for managing who's public keys are trusted by DBT. (Still under construction.  For now you'll need to fill the 'truststore' file with the PEM encoded key or keys you've decided to trust.)
+
+If for some reason you don't want to use the included tools, just remove them from your `metadata.json` and they won't publish.
 
 # Repository Support
 
