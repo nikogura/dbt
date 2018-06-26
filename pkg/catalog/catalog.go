@@ -80,7 +80,7 @@ func List(showVersions bool, homedir string) (err error) {
 
 			for _, v := range versions {
 				if v != version {
-					fmt.Printf("\t\t\t\t%s\n", v)
+					fmt.Printf("\t\t\t\t\t%s\n", v)
 				}
 			}
 		}
