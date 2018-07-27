@@ -4,7 +4,6 @@ REPO="{{.Repository}}"
 # Initial version to install
 VERSION="{{.Version}}"
 
-set -e
 echo "Installing DBT $VERSION..."
 
 # Config setup
@@ -52,6 +51,11 @@ TMPDIR=$(mktemp -d)
 DOWNLOAD_PATH="$TMPDIR/$FILE"
 
 curl -sX GET $URL -o $DOWNLOAD_PATH
+
+if [ $? != 0 ]; then
+  echo "Failed to download binary.  Installation aborted."
+  exit 1
+fi
 
 if [ -w $INSTALL_DIR ] ; then
     mv $DOWNLOAD_PATH $INSTALL_DIR
