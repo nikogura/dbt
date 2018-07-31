@@ -348,6 +348,7 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 	}
 
 	// download the binary
+	log.Printf("Downloading binary tool %q version %s.", toolName, version)
 	err = FetchFile(toolUrl, localPath)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("failed to fetch binary for %s from %s", toolName, toolUrl))
