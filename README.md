@@ -32,7 +32,7 @@ You can also choose to limit where your tools can run.  It's all up to you.  DBT
 
 # Why?
 
-I had a recent experience where a great many people did not agree with or accept that part of being a conscientious computer user was keeping their systems and tools up to date.  Expecting people to pay attention to upgrade announcements, or even run things like ```brew upgrade``` regularly was not only too much.  It was viewed as offensive, and a failure on my part as a toolsmith.  *wow huh?*
+I had an experience in a role where a great many people did not agree with or accept that part of being a conscientious computer user was keeping their systems and tools up to date.  Expecting people to pay attention to upgrade announcements, or even run things like ```brew upgrade``` regularly was not only too much.  It was viewed as offensive, and a failure on my part as a toolsmith.  *wow huh?*
 
 Necessity is, as they say, the mother of invention though, so I worked out a way to slice that particular Gordian Knot.  What I came up with was a way I could make everyone happy.  Users were happy because they didn't need to concern themselves with updates.  I could also make *myself* happy, because I could make sure the system was secure, reliable, and had some fall back.  What I came up with I now offer to you as 'DBT'.
 
@@ -42,6 +42,17 @@ Imagine this, you've got a system of dynamic VM's and Containers, all leveraging
 
 With DBT, you have the best of both worlds.  You can force your tools to use an explicit version (```dbt -v 1.2.3 <tool>```).  You can also dispense with the '-v' and run the latest.  Voila!  You're automatically picking up the latest version of the tooling from your trusted repository.
 
+Furthermore, sometimes you want to be a _user_ of a tool, and not it's _author_ or _maintainer_.  Those hardy souls that make wonderfully useful and reliable building blocks that the rest of us can use to construct our own towers of awesomeness are to be glorified and revered- it's true.  Face it though, you don't have _time_ to be that person for every library and tool in your bag of tricks.
+
+Are you on the latest version?  What is the latest version?  Do you need to upgrade?  How?  Will the version you have even work?  How do you know when you need a new version? These are questions that sometimes you'd rather not have to ask.  They're also questions that, odds are, the author of the tool is already tired of answering.  Why not let the machine handle it for you?
+
+While originally designed for Golang binaries, you can use anything that is a single file, and can have a 'detatched signature'.  Since you can digitally 'sign' any digital file, anything completely self contained in a single file is good to go.  Prefer Python?  Build your stuff with PyInstaller and DBT will distribute it to your users.  You could even have a bash script, signed by a trusted source, in a repo that DBT is configured to trust, and it will work.  Pretty cool huh?
+
+DBT is doing exactly what you would do, if you had time, resources, and face it, _interest_ in doing it all by hand in a secure fashion. 
+
+Be honest.  How often do you verify the checksum or signature on something you download and run?  Do you even know how to verify them?  Don't feel bad, many people don't. While it's a good thing to know how to do, the syntax for the tools are generally wonky and esoteric.  It's not the sort of thing you're going to remember how to do unless you do it a lot, and who wants that job?  Blech.
+
+DBT does your due diligence for you, and lets you get on with your day.
 
 # Security
 
