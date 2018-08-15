@@ -72,7 +72,7 @@ DBT, as you see it here is set up for *my* test repo.  You'll need to make some 
 
 1. Fork the repo.
 
-2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` line.
+2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` and `package` lines.
 
 3. Run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT.
 
