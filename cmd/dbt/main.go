@@ -12,7 +12,7 @@ import (
 const DBT = "/usr/local/bin/dbt"
 
 // VERSION the version of dbt.  Must match version in metadata.json
-const VERSION = "2.1.4"
+const VERSION = "2.1.5"
 
 // there are only two options for dbt itself, 'version' and 'offline'
 var version string
