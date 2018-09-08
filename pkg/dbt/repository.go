@@ -6,11 +6,13 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/net/html"
+	"gopkg.in/cheggaaa/pb.v1"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -146,6 +148,29 @@ func FetchFile(fileUrl string, destPath string) (err error) {
 
 	defer out.Close()
 
+	headResp, err := http.Head(fileUrl)
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer headResp.Body.Close()
+
+	sizeHeader := headResp.Header.Get("Content-Length")
+	if sizeHeader == "" {
+		sizeHeader = "0"
+	}
+
+	size, err := strconv.Atoi(sizeHeader)
+
+	if err != nil {
+		panic(err)
+	}
+
+	// create and start progress bar
+	bar := pb.New(size).SetUnits(pb.U_BYTES)
+	bar.Start()
+
 	resp, err := http.Get(fileUrl)
 
 	if err != nil {
@@ -155,6 +180,11 @@ func FetchFile(fileUrl string, destPath string) (err error) {
 
 	if resp != nil {
 		defer resp.Body.Close()
+		// create proxy reader
+		reader := bar.NewProxyReader(resp.Body)
+
+		// and copy from pb reader
+		io.Copy(out, reader)
 
 		_, err = io.Copy(out, resp.Body)
 
