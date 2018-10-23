@@ -169,6 +169,7 @@ func FetchFile(fileUrl string, destPath string) (err error) {
 
 	// create and start progress bar
 	bar := pb.New(size).SetUnits(pb.U_BYTES)
+	bar.Output = os.Stderr
 	bar.Start()
 
 	resp, err := http.Get(fileUrl)
