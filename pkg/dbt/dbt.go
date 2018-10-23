@@ -38,6 +38,7 @@ const DbtBinaryPath = "/usr/local/bin/dbt"
 type DBT struct {
 	Config  Config
 	Verbose bool
+	Logger  *log.Logger
 }
 
 // Config  configuration of the dbt object
@@ -67,6 +68,7 @@ func NewDbt() (dbt *DBT, err error) {
 	dbt = &DBT{
 		Config:  config,
 		Verbose: false,
+		Logger:  log.New(os.Stderr, "", 0),
 	}
 
 	return dbt, err
@@ -82,14 +84,16 @@ func LoadDbtConfig(homedir string, verbose bool) (config Config, err error) {
 		}
 	}
 
+	logger := log.New(os.Stderr, "", 0)
+
 	if verbose {
-		log.Printf("Creating DBT directory in %s.dbt", homedir)
+		logger.Printf("Creating DBT directory in %s.dbt", homedir)
 	}
 
 	filePath := fmt.Sprintf("%s/%s", homedir, ConfigFilePath)
 
 	if verbose {
-		log.Printf("Loading config from %s", filePath)
+		logger.Printf("Loading config from %s", filePath)
 	}
 
 	mdBytes, err := ioutil.ReadFile(filePath)
@@ -115,8 +119,10 @@ func GenerateDbtDir(homedir string, verbose bool) (err error) {
 		}
 	}
 
+	logger := log.New(os.Stderr, "", 0)
+
 	if verbose {
-		log.Printf("Creating DBT directory in %s.dbt", homedir)
+		logger.Printf("Creating DBT directory in %s.dbt", homedir)
 	}
 
 	dbtPath := fmt.Sprintf("%s/%s", homedir, DbtDir)
@@ -348,7 +354,7 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 	}
 
 	// download the binary
-	log.Printf("Downloading binary tool %q version %s.", toolName, version)
+	dbt.Logger.Printf("Downloading binary tool %q version %s.", toolName, version)
 	err = FetchFile(toolUrl, localPath)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("failed to fetch binary for %s from %s", toolName, toolUrl))
