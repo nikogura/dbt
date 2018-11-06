@@ -1,0 +1,31 @@
+module github.com/nikogura/dbt
+
+require (
+	github.com/davecgh/go-spew v0.0.0-20171005155431-ecdeabc65495
+	github.com/fsnotify/fsnotify v1.4.7
+	github.com/hashicorp/hcl v0.0.0-20180404174102-ef8a98b0bbce
+	github.com/inconshreveable/mousetrap v1.0.0
+	github.com/magiconair/properties v1.8.0
+	github.com/mattn/go-runewidth v0.0.3
+	github.com/mitchellh/go-homedir v0.0.0-20180523094522-3864e76763d9
+	github.com/mitchellh/mapstructure v0.0.0-20180511142126-bb74f1db0675
+	github.com/nikogura/gomason v0.0.0-20180623164404-5bb5e6a9169c
+	github.com/pelletier/go-toml v1.2.0
+	github.com/phayes/freeport v0.0.0-20171002185219-e27662a4a9d6
+	github.com/pkg/errors v0.0.0-20180311214515-816c9085562c
+	github.com/pmezard/go-difflib v1.0.0
+	github.com/spf13/afero v1.1.1
+	github.com/spf13/cast v1.2.0
+	github.com/spf13/cobra v0.0.0-20180531180338-1e58aa3361fd
+	github.com/spf13/jwalterweatherman v0.0.0-20180109140146-7c0cea34c8ec
+	github.com/spf13/pflag v0.0.0-20180601132542-3ebe029320b2
+	github.com/spf13/viper v0.0.0-20180507071007-15738813a09d
+	github.com/stretchr/testify v0.0.0-20171018052257-2aa2c176b9da
+	golang.org/x/crypto v0.0.0-20180621125126-a49355c7e3f8
+	golang.org/x/net v0.0.0-20180621144259-afe8f62b1d6b
+	golang.org/x/sys v0.0.0-20180907202204-917fdcba135d
+	golang.org/x/text v0.0.0-20180617084112-5cec4b58c438
+	gopkg.in/cheggaaa/pb.v1 v1.0.25
+	gopkg.in/ini.v1 v1.37.0
+	gopkg.in/yaml.v2 v2.2.1
+)
