@@ -263,12 +263,14 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 	ok, err := VerifyFileVersion(latestDbtVersionUrl, newBinaryFile)
 	if err != nil {
 		err = errors.Wrap(err, "failed to verify downloaded binary")
+		return err
 	}
 
 	if ok {
 		err = os.Rename(newBinaryFile, binaryPath)
 		if err != nil {
 			err = errors.Wrap(err, "failed to move new binary into place")
+			return err
 		}
 
 		err = os.Chmod(binaryPath, 0755)
