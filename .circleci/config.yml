@@ -12,8 +12,6 @@ jobs:
       - checkout
 
       # specify any bash command here prefixed with `run: `
-      - run: go get github.com/kardianos/govendor
-      - run: govendor sync
       - run:  gpg-agent --daemon
       - run: go test -v ./...
       - run: go get github.com/mattn/goveralls
