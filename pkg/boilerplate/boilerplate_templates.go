@@ -39,8 +39,12 @@ func MetadataContents() string {
   "repository": "{{.Repository}}",
   "building": {
     "targets": [
-      "darwin/amd64",
-      "linux/amd64"
+      {
+        "name": "darwin/amd64"
+      },
+      {
+        "name": "linux/amd64"
+      }
     ],
     "extras": [
       {
