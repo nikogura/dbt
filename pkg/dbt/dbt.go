@@ -279,6 +279,7 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 		err = ioutil.WriteFile(newBinaryTempFile, b, 0755)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to write new binary temp file %s", newBinaryTempFile)
+			return err
 		}
 
 		err = os.Rename(newBinaryTempFile, binaryPath)
