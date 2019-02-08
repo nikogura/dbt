@@ -267,7 +267,7 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 	}
 
 	if ok {
-		// This is slightly more painful than it might otherwise be in order to handle modern linux systems where /tmp is tmpfs (can't just rename cross partition)
+		// This is slightly more painful than it might otherwise be in order to handle modern linux systems where /tmp is tmpfs (can't just rename cross partition).
 		newBinaryTempFile := fmt.Sprintf("%s.new", binaryPath)
 
 		b, err := ioutil.ReadFile(newBinaryFile)
