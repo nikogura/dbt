@@ -82,7 +82,7 @@ func WriteConfigFiles(toolName string, packageName string, packageDescription st
 		}
 	}
 
-	os.Chdir(location)
+	err = os.Chdir(location)
 
 	return err
 }
@@ -284,7 +284,7 @@ func PromptForToolAuthor() (author ToolAuthor, err error) {
 // PromptForToolRepo prompts the user for a repository for the new tool.
 func PromptForToolRepo() (toolDescription string, err error) {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Printf("Enter the repository url for your new tool: ")
+	fmt.Printf("Enter the dbt tool repository url for your new tool (where compiled tools will be published): ")
 
 	input, err := reader.ReadString('\n')
 	if err != nil {
