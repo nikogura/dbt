@@ -36,20 +36,13 @@ type ToolInfo struct {
 }
 
 // WriteConfigFiles writes the various files for the tool we're creating
-func WriteConfigFiles(toolName string, packageName string, packageDescription string, author ToolAuthor, goPath string, repository string) (err error) {
-	var location string
-
-	if goPath == "" {
-		goPath = os.Getenv("GOPATH")
-		if goPath == "" {
-			if err != nil {
-				err = errors.Wrapf(err, "error determining current working directory")
-				return err
-			}
-		}
+func WriteConfigFiles(toolName string, packageName string, packageDescription string, author ToolAuthor, repository string) (err error) {
+	location, err := os.Getwd()
+	if err != nil {
+		err = errors.Wrap(err, "failed to get current working directory")
 	}
 
-	location = fmt.Sprintf("%s/src/%s", goPath, packageName)
+	location = fmt.Sprintf("%s/%s", location, packageName)
 
 	files, err := FilesForTool(location, toolName, packageName, packageDescription, author, repository)
 	if err != nil {
@@ -92,7 +85,6 @@ func DirsForPackageName(location string, toolName string) (dirs []string) {
 	dirs = make([]string, 0)
 
 	dirs = append(dirs, fmt.Sprintf("%s/pkg/%s", location, toolName))
-	dirs = append(dirs, fmt.Sprintf("%s/vendor", location))
 	dirs = append(dirs, fmt.Sprintf("%s/templates", location))
 	dirs = append(dirs, fmt.Sprintf("%s/cmd/%s", location, toolName))
 
@@ -137,15 +129,15 @@ func FilesForTool(location string, toolName string, packageName string, packageD
 	}
 	files = append(files, ToolFile{Name: fmt.Sprintf("%s/LICENSE", location), Content: content, Mode: 0644})
 
-	// vendor/vendor.json
-	fileName = "vendor.json"
-	content, err = fillTemplate(fileName, VendorJsonContents(), info)
+	// go.mod
+	fileName = "go.mod"
+	content, err = fillTemplate(fileName, GoModuleContents(), info)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
 		return files, err
 	}
 
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/vendor/vendor.json", location), Content: content, Mode: 0644})
+	files = append(files, ToolFile{Name: fmt.Sprintf("%s/go.mod", location), Content: content, Mode: 0644})
 
 	// main.go
 	fileName = "main.go"

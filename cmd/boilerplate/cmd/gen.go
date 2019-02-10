@@ -58,7 +58,7 @@ Then it will generate a basic, working tool for you that will compile and publis
 			log.Fatalf("Eror getting tool repository: %s", err)
 		}
 
-		err = boilerplate.WriteConfigFiles(commandName, packageName, packageDescription, author, "", repository)
+		err = boilerplate.WriteConfigFiles(commandName, packageName, packageDescription, author, repository)
 		if err != nil {
 			log.Fatalf("Error generating boilerplate files: %s", err)
 		}

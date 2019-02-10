@@ -24,9 +24,7 @@ func GitignoreContents() string {
 
 .idea/
 *.iml
-
-vendor/**
-!vendor/vendor.json`
+`
 }
 
 // MetadataContents contents of an initial metadata.json file
@@ -92,201 +90,31 @@ func PreCommitHookContents() string {
 /usr/local/go/bin/gofmt -w ./`
 }
 
-// VendorJsonContents  a vendor.json sufficient for a newly created tool to build
-func VendorJsonContents() string {
-	return `{
-	"comment": "",
-	"ignore": "test",
-	"package": [
-		{
-			"checksumSHA1": "mrz/kicZiUaHxkyfvC/DyQcr8Do=",
-			"path": "github.com/davecgh/go-spew/spew",
-			"revision": "ecdeabc65495df2dec95d7c4a4c3e021903035e5",
-			"revisionTime": "2017-10-02T20:02:53Z"
-		},
-		{
-			"checksumSHA1": "x2Km0Qy3WgJJnV19Zv25VwTJcBM=",
-			"path": "github.com/fsnotify/fsnotify",
-			"revision": "4da3e2cfbabc9f751898f250b49f2439785783a1",
-			"revisionTime": "2017-03-29T04:21:07Z"
-		},
-		{
-			"checksumSHA1": "HtpYAWHvd9mq+mHkpo7z8PGzMik=",
-			"path": "github.com/hashicorp/hcl",
-			"revision": "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8",
-			"revisionTime": "2017-10-17T18:19:29Z"
-		},
-		{
-			"checksumSHA1": "XQmjDva9JCGGkIecOgwtBEMCJhU=",
-			"path": "github.com/hashicorp/hcl/hcl/ast",
-			"revision": "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8",
-			"revisionTime": "2017-10-17T18:19:29Z"
-		},
-		{
-			"checksumSHA1": "/15SVLnCDzxICSatuYbfctrcpSM=",
-			"path": "github.com/hashicorp/hcl/hcl/parser",
-			"revision": "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8",
-			"revisionTime": "2017-10-17T18:19:29Z"
-		},
-		{
-			"checksumSHA1": "WR1BjzDKgv6uE+3ShcDTYz0Gl6A=",
-			"path": "github.com/hashicorp/hcl/hcl/printer",
-			"revision": "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8",
-			"revisionTime": "2017-10-17T18:19:29Z"
-		},
-		{
-			"checksumSHA1": "PYDzRc61T0pbwWuLNHgBRp/gJII=",
-			"path": "github.com/hashicorp/hcl/hcl/scanner",
-			"revision": "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8",
-			"revisionTime": "2017-10-17T18:19:29Z"
-		},
-		{
-			"checksumSHA1": "oS3SCN9Wd6D8/LG0Yx1fu84a7gI=",
-			"path": "github.com/hashicorp/hcl/hcl/strconv",
-			"revision": "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8",
-			"revisionTime": "2017-10-17T18:19:29Z"
-		},
-		{
-			"checksumSHA1": "c6yprzj06ASwCo18TtbbNNBHljA=",
-			"path": "github.com/hashicorp/hcl/hcl/token",
-			"revision": "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8",
-			"revisionTime": "2017-10-17T18:19:29Z"
-		},
-		{
-			"checksumSHA1": "PwlfXt7mFS8UYzWxOK5DOq0yxS0=",
-			"path": "github.com/hashicorp/hcl/json/parser",
-			"revision": "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8",
-			"revisionTime": "2017-10-17T18:19:29Z"
-		},
-		{
-			"checksumSHA1": "afrZ8VmAwfTdDAYVgNSXbxa4GsA=",
-			"path": "github.com/hashicorp/hcl/json/scanner",
-			"revision": "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8",
-			"revisionTime": "2017-10-17T18:19:29Z"
-		},
-		{
-			"checksumSHA1": "fNlXQCQEnb+B3k5UDL/r15xtSJY=",
-			"path": "github.com/hashicorp/hcl/json/token",
-			"revision": "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8",
-			"revisionTime": "2017-10-17T18:19:29Z"
-		},
-		{
-			"checksumSHA1": "40vJyUB4ezQSn/NSadsKEOrudMc=",
-			"path": "github.com/inconshreveable/mousetrap",
-			"revision": "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75",
-			"revisionTime": "2014-10-17T20:07:13Z"
-		},
-		{
-			"checksumSHA1": "8ae1DyNE/yY9NvY3PmvtQdLBJnc=",
-			"path": "github.com/magiconair/properties",
-			"revision": "49d762b9817ba1c2e9d0c69183c2b4a8b8f1d934",
-			"revisionTime": "2017-10-31T21:05:36Z"
-		},
-		{
-			"checksumSHA1": "V/quM7+em2ByJbWBLOsEwnY3j/Q=",
-			"path": "github.com/mitchellh/go-homedir",
-			"revision": "b8bc1bf767474819792c23f32d8286a45736f1c6",
-			"revisionTime": "2016-12-03T19:45:07Z"
-		},
-		{
-			"checksumSHA1": "gILp4IL+xwXLH6tJtRLrnZ56F24=",
-			"path": "github.com/mitchellh/mapstructure",
-			"revision": "06020f85339e21b2478f756a78e295255ffa4d6a",
-			"revisionTime": "2017-10-17T17:18:08Z"
-		},
-		{
-			"checksumSHA1": "H5wlR62j1Ru5rKRDM9eCb6iUKLA=",
-			"path": "github.com/pelletier/go-toml",
-			"revision": "0131db6d737cfbbfb678f8b7d92e55e27ce46224",
-			"revisionTime": "2017-12-22T11:45:48Z"
-		},
-		{
-			"checksumSHA1": "LuFv4/jlrmFNnDb/5SCSEPAM9vU=",
-			"path": "github.com/pmezard/go-difflib/difflib",
-			"revision": "792786c7400a136282c1664665ae0a8db921c6c2",
-			"revisionTime": "2016-01-10T10:55:54Z"
-		},
-		{
-			"checksumSHA1": "dW6L6oTOv4XfIahhwNzxb2Qu9to=",
-			"path": "github.com/spf13/afero",
-			"revision": "57afd63c68602b63ed976de00dd066ccb3c319db",
-			"revisionTime": "2017-12-28T12:50:11Z"
-		},
-		{
-			"checksumSHA1": "X6RueW0rO55PbOQ0sMWSQOxVl4I=",
-			"path": "github.com/spf13/afero/mem",
-			"revision": "57afd63c68602b63ed976de00dd066ccb3c319db",
-			"revisionTime": "2017-12-28T12:50:11Z"
-		},
-		{
-			"checksumSHA1": "Sq0QP4JywTr7UM4hTK1cjCi7jec=",
-			"path": "github.com/spf13/cast",
-			"revision": "acbeb36b902d72a7a4c18e8f3241075e7ab763e4",
-			"revisionTime": "2017-04-13T08:50:28Z"
-		},
-		{
-			"checksumSHA1": "aG5wPXVGAEu90TjPFNZFRtox2Zo=",
-			"path": "github.com/spf13/cobra",
-			"revision": "ccaecb155a2177302cb56cae929251a256d0f646",
-			"revisionTime": "2017-12-07T07:49:35Z"
-		},
-		{
-			"checksumSHA1": "suLj1G8Vd//a/a3sUEKz/ROalz0=",
-			"path": "github.com/spf13/jwalterweatherman",
-			"revision": "12bd96e66386c1960ab0f74ced1362f66f552f7b",
-			"revisionTime": "2017-09-01T15:06:07Z"
-		},
-		{
-			"checksumSHA1": "fKq6NiaqP3DFxnCRF5mmpJWTSUA=",
-			"path": "github.com/spf13/pflag",
-			"revision": "4c012f6dcd9546820e378d0bdda4d8fc772cdfea",
-			"revisionTime": "2017-11-06T14:28:49Z"
-		},
-		{
-			"checksumSHA1": "GWX9W5F1QBqLZsS1bYsG3jXjb3g=",
-			"path": "github.com/spf13/viper",
-			"revision": "aafc9e6bc7b7bb53ddaa75a5ef49a17d6e654be5",
-			"revisionTime": "2017-11-29T09:51:06Z"
-		},
-		{
-			"checksumSHA1": "mGbTYZ8dHVTiPTTJu3ktp+84pPI=",
-			"path": "github.com/stretchr/testify/assert",
-			"revision": "2aa2c176b9dab406a6970f6a55f513e8a8c8b18f",
-			"revisionTime": "2017-08-14T20:04:35Z"
-		},
-		{
-			"checksumSHA1": "ZwEZK9AUUeSqDnWUO4fDc9rwTIA=",
-			"path": "golang.org/x/sys/unix",
-			"revision": "83801418e1b59fb1880e363299581ee543af32ca",
-			"revisionTime": "2017-12-22T10:59:23Z"
-		},
-		{
-			"checksumSHA1": "ziMb9+ANGRJSSIuxYdRbA+cDRBQ=",
-			"path": "golang.org/x/text/transform",
-			"revision": "e19ae1496984b1c655b8044a65c0300a3c878dd3",
-			"revisionTime": "2017-12-24T20:31:28Z"
-		},
-		{
-			"checksumSHA1": "BCNYmf4Ek93G4lk5x3ucNi/lTwA=",
-			"path": "golang.org/x/text/unicode/norm",
-			"revision": "e19ae1496984b1c655b8044a65c0300a3c878dd3",
-			"revisionTime": "2017-12-24T20:31:28Z"
-		},
-		{
-			"checksumSHA1": "fRgp9UZPllOlkPssv7frzQx4z9A=",
-			"path": "gopkg.in/yaml.v2",
-			"revision": "287cf08546ab5e7e37d55a84f7ed3fd1db036de5",
-			"revisionTime": "2017-11-16T09:02:43Z"
-		},
-		{
-			"checksumSHA1": "SvPS4zqZYImMcBu+dLgp6+9eeUo=",
-			"path": "github.com/mitchellh/go-homedir",
-			"revision": "3864e76763d94a6df2f9960b16a20a33da9f9a66",
-			"revisionTime": "2018-05-23T09:45:22Z"
-		}
-	],
-	"rootPath": "{{.PackageName}}"
-}`
+// GoModuleContents requirements for a basic tool
+func GoModuleContents() string {
+	return `module {{.PackageName}}
+
+require (
+	github.com/davecgh/go-spew v0.0.0-20171005155431-ecdeabc65495
+	github.com/fsnotify/fsnotify v0.0.0-20170329110642-4da3e2cfbabc
+	github.com/hashicorp/hcl v0.0.0-20171017181929-23c074d0eceb
+	github.com/inconshreveable/mousetrap v1.0.0
+	github.com/magiconair/properties v0.0.0-20171031211101-49d762b9817b
+	github.com/mitchellh/go-homedir v0.0.0-20180523094522-3864e76763d9
+	github.com/mitchellh/mapstructure v0.0.0-20171017171808-06020f85339e
+	github.com/pelletier/go-toml v0.0.0-20171222114548-0131db6d737c
+	github.com/pmezard/go-difflib v1.0.0
+	github.com/spf13/afero v0.0.0-20171228125011-57afd63c6860
+	github.com/spf13/cast v1.1.0
+	github.com/spf13/cobra v0.0.0-20171207074935-ccaecb155a21
+	github.com/spf13/jwalterweatherman v0.0.0-20170901151539-12bd96e66386
+	github.com/spf13/pflag v0.0.0-20171106142849-4c012f6dcd95
+	github.com/spf13/viper v0.0.0-20171227194143-aafc9e6bc7b7
+	github.com/stretchr/testify v0.0.0-20171018052257-2aa2c176b9da
+	golang.org/x/sys v0.0.0-20171222143536-83801418e1b5
+	golang.org/x/text v0.0.0-20171227012246-e19ae1496984
+	gopkg.in/yaml.v2 v2.0.0-20171116090243-287cf08546ab
+`
 }
 
 // MainGoContents cobra main.go file

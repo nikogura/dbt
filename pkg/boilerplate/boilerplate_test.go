@@ -23,7 +23,7 @@ func TestMain(m *testing.M) {
 }
 
 func setUp() {
-	dir, err := ioutil.TempDir("", "creator")
+	dir, err := ioutil.TempDir("", "boilerplate")
 	if err != nil {
 		fmt.Printf("Error creating temp dir %q: %s\n", tmpDir, err)
 		os.Exit(1)
@@ -36,7 +36,7 @@ func setUp() {
 
 func tearDown() {
 	if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
-		os.Remove(tmpDir)
+		_ = os.Remove(tmpDir)
 	}
 
 }
@@ -51,7 +51,27 @@ func TestWriteCreateTool(t *testing.T) {
 
 	fmt.Printf("Created gopath: %s\n", goPath)
 
-	err = WriteConfigFiles(testToolName(), testPackageName(), testDescription(), testAuthor(), goPath, testToolRepo())
+	pkgDir := fmt.Sprintf("%s/src", goPath)
+
+	err = os.MkdirAll(pkgDir, 0755)
+	if err != nil {
+		fmt.Printf("failed to create package directory %s", pkgDir)
+		t.Fail()
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("failed to get current working dir: %s", err)
+		t.Fail()
+	}
+
+	err = os.Chdir(pkgDir)
+	if err != nil {
+		fmt.Printf("failed to cwd to %s", pkgDir)
+		t.Fail()
+	}
+
+	err = WriteConfigFiles(testToolName(), testPackageName(), testDescription(), testAuthor(), testToolRepo())
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Error writing config files: %s", err))
 		t.Fail()
@@ -98,5 +118,11 @@ func TestWriteCreateTool(t *testing.T) {
 		}
 
 		assert.Equal(t, testFiles[index].Content, string(fileContents), fmt.Sprintf("Written file %q contents does not meet expectations.", file.Name))
+	}
+
+	err = os.Chdir(cwd)
+	if err != nil {
+		fmt.Printf("failed to cwd to %s", cwd)
+		t.Fail()
 	}
 }
