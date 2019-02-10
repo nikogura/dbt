@@ -203,7 +203,7 @@ func (dbt *DBT) FetchTrustStore(homedir string, verbose bool) (err error) {
 	return err
 }
 
-// IsCurrent returns whether the currently running version is the latest version, and possibly an error if the version check failes
+// IsCurrent returns whether the currently running version is the latest version, and possibly an error if the version check fails
 func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 	if binaryPath == "" {
 		binaryPath = DbtBinaryPath

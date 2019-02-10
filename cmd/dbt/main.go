@@ -12,7 +12,7 @@ import (
 const DBT = "/usr/local/bin/dbt"
 
 // VERSION the version of dbt.  Must match version in metadata.json
-const VERSION = "2.1.12"
+const VERSION = "2.1.13"
 
 // there are only two options for dbt itself, 'version' and 'offline'
 var version string
@@ -67,9 +67,10 @@ func main() {
 	}
 
 	if len(args) > 0 {
-		possibles = []string{"-v", "-ov"}
+		versionPossibles := []string{"-v", "-ov"}
+		offlinePossibles := []string{"-o"}
 
-		if dbt.StringInSlice(args[0], possibles) {
+		if dbt.StringInSlice(args[0], versionPossibles) {
 			if len(args) > 2 {
 				version = args[1]
 
@@ -80,6 +81,12 @@ func main() {
 
 			} else {
 				log.Fatalf("-v flag requires a version.")
+			}
+
+		} else if dbt.StringInSlice(args[0], offlinePossibles) {
+			err = dbtObj.RunTool(version, args[1:], homedir, offline)
+			if err != nil {
+				log.Fatalf("Error running tool: %s", err)
 			}
 		} else {
 			err = dbtObj.RunTool(version, args, homedir, offline)
