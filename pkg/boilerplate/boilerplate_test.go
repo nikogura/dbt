@@ -77,7 +77,7 @@ func TestWriteCreateTool(t *testing.T) {
 		t.Fail()
 	}
 
-	location := fmt.Sprintf("%s/src/%s", goPath, testPackageName())
+	location := fmt.Sprintf("%s/src/%s", goPath, testToolName())
 
 	files, err := FilesForTool(location, testToolName(), testPackageName(), testDescription(), testAuthor(), testToolRepo())
 	if err != nil {

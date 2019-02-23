@@ -42,7 +42,7 @@ func WriteConfigFiles(toolName string, packageName string, packageDescription st
 		err = errors.Wrap(err, "failed to get current working directory")
 	}
 
-	location = fmt.Sprintf("%s/%s", location, packageName)
+	location = fmt.Sprintf("%s/%s", location, toolName)
 
 	files, err := FilesForTool(location, toolName, packageName, packageDescription, author, repository)
 	if err != nil {

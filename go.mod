@@ -12,7 +12,7 @@ require (
 	github.com/nikogura/gomason v0.0.0-20180623164404-5bb5e6a9169c
 	github.com/pelletier/go-toml v1.2.0
 	github.com/phayes/freeport v0.0.0-20171002185219-e27662a4a9d6
-	github.com/pkg/errors v0.0.0-20180311214515-816c9085562c
+	github.com/pkg/errors v0.8.1
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/spf13/afero v1.1.1
 	github.com/spf13/cast v1.2.0
