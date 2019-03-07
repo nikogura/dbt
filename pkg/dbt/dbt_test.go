@@ -149,7 +149,7 @@ func TestDBT_FetchTrustStore(t *testing.T) {
 	assert.Equal(t, expected, actual, "Read truststore contents matches expectations.")
 }
 
-func TestDBT_IsCurrent(t *testing.T) {
+func TestDbtIsCurrent(t *testing.T) {
 	dbt := &DBT{
 		Config:  dbtConfig,
 		Verbose: true,
@@ -159,7 +159,7 @@ func TestDBT_IsCurrent(t *testing.T) {
 	fileUrl := fmt.Sprintf("%s/1.2.2/%s/amd64/dbt", testDbtUrl(port), runtime.GOOS)
 	fileName := fmt.Sprintf("%s/dbt", targetDir)
 
-	err := FetchFile(fileUrl, fileName)
+	err := dbt.FetchFile(fileUrl, fileName)
 	if err != nil {
 		fmt.Printf("Error fetching file %q: %s\n", fileUrl, err)
 		t.Fail()
@@ -176,7 +176,7 @@ func TestDBT_IsCurrent(t *testing.T) {
 	fileUrl = fmt.Sprintf("%s/1.2.3/%s/amd64/dbt", testDbtUrl(port), runtime.GOOS)
 	fileName = fmt.Sprintf("%s/dbt", targetDir)
 
-	err = FetchFile(fileUrl, fileName)
+	err = dbt.FetchFile(fileUrl, fileName)
 	if err != nil {
 		fmt.Printf("Error fetching file %q: %s\n", fileUrl, err)
 		t.Fail()
@@ -191,7 +191,7 @@ func TestDBT_IsCurrent(t *testing.T) {
 	assert.True(t, ok, "Current version shows current.")
 }
 
-func TestDBT_UpgradeInPlace(t *testing.T) {
+func TestDbtUpgradeInPlace(t *testing.T) {
 	dbt := &DBT{
 		Config:  dbtConfig,
 		Verbose: true,
@@ -201,7 +201,7 @@ func TestDBT_UpgradeInPlace(t *testing.T) {
 	fileUrl := fmt.Sprintf("%s/1.2.2/%s/amd64/dbt", testDbtUrl(port), runtime.GOOS)
 	fileName := fmt.Sprintf("%s/dbt", targetDir)
 
-	err := FetchFile(fileUrl, fileName)
+	err := dbt.FetchFile(fileUrl, fileName)
 	if err != nil {
 		fmt.Printf("Error fetching file %q: %s\n", fileUrl, err)
 		t.Fail()

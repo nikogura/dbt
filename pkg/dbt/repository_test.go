@@ -4,26 +4,31 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
+	"log"
 	"os"
 	"testing"
 )
 
 func TestToolExists(t *testing.T) {
-	dbtObj := testDbtConfig(port)
+	dbtObj := &DBT{
+		Config:  dbtConfig,
+		Verbose: false,
+		Logger:  log.New(os.Stderr, "", 0),
+	}
 
-	exists, err := ToolExists(dbtObj.Tools.Repo, "foo")
+	exists, err := dbtObj.ToolExists("foo")
 	if err != nil {
 		fmt.Printf("Failed to check repo for %q", "foo")
 		t.Fail()
 	}
 	if !exists {
-		fmt.Println(fmt.Sprintf("Tool %q does not exist in repo %s", "dbt", dbtObj.Dbt.Repo))
+		fmt.Println(fmt.Sprintf("Tool %q does not exist in repo %s", "dbt", dbtObj.Config.Dbt.Repo))
 		t.Fail()
 	}
 
 	fakeToolName := "bar"
 
-	exists, err = ToolExists(dbtObj.Tools.Repo, fakeToolName)
+	exists, err = dbtObj.ToolExists(fakeToolName)
 	if err != nil {
 		fmt.Printf("Failed to check artifactory for %q", fakeToolName)
 		t.Fail()
@@ -36,25 +41,41 @@ func TestToolExists(t *testing.T) {
 }
 
 func TestToolVersionExists(t *testing.T) {
-	dbtObj := testDbtConfig(port)
+	dbtObj := &DBT{
+		Config:  dbtConfig,
+		Verbose: false,
+		Logger:  log.New(os.Stderr, "", 0),
+	}
 
-	if !ToolVersionExists(dbtObj.Tools.Repo, "foo", "1.2.3") {
-		fmt.Println(fmt.Sprintf("Tool %q version %q does not exist in repo %s", "foo", "1.2.3", dbtObj.Tools.Repo))
+	ok, err := dbtObj.ToolVersionExists("foo", "1.2.3")
+	if err != nil {
+		log.Printf("Error checking if version exists: %s", err)
 		t.Fail()
 	}
 
-	if ToolVersionExists(dbtObj.Tools.Repo, "foo", "0.0.0") {
+	if !ok {
+		fmt.Println(fmt.Sprintf("Tool %q version %q does not exist in repo %s", "foo", "1.2.3", dbtObj.Config.Tools.Repo))
+		t.Fail()
+	}
+
+	ok, err = dbtObj.ToolVersionExists("foo", "0.0.0")
+
+	if ok {
 		fmt.Println(fmt.Sprintf("Nonexistant tool version %q shows existing in repo.", "0.0.0"))
 		t.Fail()
 	}
 }
 
 func TestFetchToolVersions(t *testing.T) {
-	dbtObj := testDbtConfig(port)
+	dbtObj := &DBT{
+		Config:  dbtConfig,
+		Verbose: false,
+		Logger:  log.New(os.Stderr, "", 0),
+	}
 
-	versions, err := FetchToolVersions(dbtObj.Tools.Repo, "foo")
+	versions, err := dbtObj.FetchToolVersions("foo")
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Error searching for versions of tool %q in repo %q", "foo", dbtObj.Tools.Repo))
+		fmt.Println(fmt.Sprintf("Error searching for versions of tool %q in repo %q", "foo", dbtObj.Config.Tools.Repo))
 	}
 
 	assert.True(t, len(versions) == 2, "List of versions has 2 elements.")
@@ -65,13 +86,19 @@ func TestFetchFile(t *testing.T) {
 	fileUrl := fmt.Sprintf("%s/foo/1.2.2/linux/amd64/foo", testToolUrl(port))
 	fileName := fmt.Sprintf("%s/foo", targetDir)
 
-	err := FetchFile(fileUrl, fileName)
+	dbtObj := &DBT{
+		Config:  dbtConfig,
+		Verbose: false,
+		Logger:  log.New(os.Stderr, "", 0),
+	}
+
+	err := dbtObj.FetchFile(fileUrl, fileName)
 	if err != nil {
 		fmt.Printf("Error fetching file %q: %s\n", fileUrl, err)
 		t.Fail()
 	}
 
-	success, err := VerifyFileChecksum(fileName, dbtVersionASha256())
+	success, err := dbtObj.VerifyFileChecksum(fileName, dbtVersionASha256())
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Error checksumming test file: %s", err))
 		t.Fail()
@@ -79,7 +106,7 @@ func TestFetchFile(t *testing.T) {
 
 	assert.True(t, success, "Checksum of downloaded file matches expectations.")
 
-	success, err = VerifyFileVersion(fileUrl, fileName)
+	success, err = dbtObj.VerifyFileVersion(fileUrl, fileName)
 	if err != nil {
 		fmt.Printf("Failed to verify version: %s", err)
 		t.Fail()
@@ -87,7 +114,7 @@ func TestFetchFile(t *testing.T) {
 
 	assert.True(t, success, "Verified version of downloaded file.")
 
-	failure, err := VerifyFileVersion(fmt.Sprintf("%s/dbt/1.2.3/linux/amd64/dbt", testToolUrl(port)), fileName)
+	failure, err := dbtObj.VerifyFileVersion(fmt.Sprintf("%s/dbt/1.2.3/linux/amd64/dbt", testToolUrl(port)), fileName)
 	if err != nil {
 		fmt.Printf("Verified non-existent version: %s", err)
 		t.Fail()
@@ -99,7 +126,7 @@ func TestFetchFile(t *testing.T) {
 	trustStoreUrl := fmt.Sprintf("%s/truststore", testDbtUrl(port))
 	trustStoreFile := fmt.Sprintf("%s/%s", tmpDir, TruststorePath)
 
-	err = FetchFile(trustStoreUrl, trustStoreFile)
+	err = dbtObj.FetchFile(trustStoreUrl, trustStoreFile)
 	if err != nil {
 		fmt.Printf("Error fetching truststore %q: %s\n", fileUrl, err)
 		t.Fail()
@@ -122,7 +149,7 @@ func TestFetchFile(t *testing.T) {
 	sigUrl := fmt.Sprintf("%s.asc", fileUrl)
 	sigFile := fmt.Sprintf("%s.asc", fileName)
 
-	err = FetchFile(sigUrl, sigFile)
+	err = dbtObj.FetchFile(sigUrl, sigFile)
 	if err != nil {
 		fmt.Printf("Error fetching signature %q: %s\n", sigUrl, err)
 		t.Fail()
@@ -142,7 +169,7 @@ func TestFetchFile(t *testing.T) {
 	assert.False(t, string(sigBytes) == "", "Downloaded Signature is not empty")
 
 	// verify signature
-	success, err = VerifyFileSignature(tmpDir, fileName)
+	success, err = dbtObj.VerifyFileSignature(tmpDir, fileName)
 	if err != nil {
 		fmt.Printf("Error verifying signature: %s", err)
 		t.Fail()
@@ -152,12 +179,12 @@ func TestFetchFile(t *testing.T) {
 }
 
 func TestFindLatestVersion(t *testing.T) {
-	dbt := &DBT{
+	dbtObj := &DBT{
 		Config:  dbtConfig,
 		Verbose: true,
 	}
 
-	latest, err := FindLatestVersion(dbt.Config.Dbt.Repo, "")
+	latest, err := dbtObj.FindLatestVersion("foo")
 	if err != nil {
 		fmt.Printf("Error finding latest version: %s", err)
 		t.Fail()

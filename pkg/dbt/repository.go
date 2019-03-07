@@ -2,6 +2,7 @@ package dbt
 
 import (
 	"bufio"
+	"encoding/base64"
 	"fmt"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/openpgp"
@@ -17,20 +18,34 @@ import (
 )
 
 // ToolExists Returns true if a tool of the name input exists in the repository given.
-func ToolExists(repoUrl string, toolName string) (found bool, err error) {
+func (dbt *DBT) ToolExists(toolName string) (found bool, err error) {
 	var uri string
+	var repoUrl string
 
 	if toolName == "" {
+		repoUrl = dbt.Config.Dbt.Repo
 		uri = fmt.Sprintf("%s/", repoUrl)
 	} else {
+		repoUrl = dbt.Config.Tools.Repo
 		uri = fmt.Sprintf("%s/%s", repoUrl, toolName)
-
 	}
 
-	resp, err := http.Get(uri)
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", uri, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+		return found, err
+	}
+
+	if dbt.Config.Username != "" && dbt.Config.Password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(dbt.Config.Username+":"+dbt.Config.Password)))
+	}
+
+	resp, err := client.Do(req)
 
 	if err != nil {
-		errors.Wrap(err, fmt.Sprintf("Failed to find tool in repo %q: %s", repoUrl, err))
+		err = errors.Wrap(err, fmt.Sprintf("Failed to find tool in repo %q: %s", repoUrl, err))
 		return false, err
 	}
 
@@ -46,8 +61,10 @@ func ToolExists(repoUrl string, toolName string) (found bool, err error) {
 }
 
 // ToolVersionExists returns true if the specified version of a tool is in the repo
-func ToolVersionExists(repoUrl string, tool string, version string) bool {
+func (dbt *DBT) ToolVersionExists(tool string, version string) (ok bool, err error) {
 	var uri string
+
+	repoUrl := dbt.Config.Tools.Repo
 
 	if tool == "" {
 		uri = fmt.Sprintf("%s/%s/", repoUrl, version)
@@ -55,40 +72,67 @@ func ToolVersionExists(repoUrl string, tool string, version string) bool {
 	} else {
 		uri = fmt.Sprintf("%s/%s/%s/", repoUrl, tool, version)
 	}
-	resp, err := http.Get(uri)
+
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", uri, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+		return ok, err
+	}
+
+	if dbt.Config.Username != "" && dbt.Config.Password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(dbt.Config.Username+":"+dbt.Config.Password)))
+	}
+
+	resp, err := client.Do(req)
 
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Error looking for tool %q version %q in repo %q: %s", tool, version, uri, err))
 	}
 
 	if resp.StatusCode != 200 {
-		return false
+		return ok, err
 	}
 
-	return true
+	ok = true
 
+	return ok, err
 }
 
 // FetchToolVersions Given a repo and the name of the job, returns the available versions, and possibly an error if things didn't go well.
-func FetchToolVersions(repoUrl string, tool string) (versions []string, err error) {
+func (dbt *DBT) FetchToolVersions(toolName string) (versions []string, err error) {
 	var uri string
+	var repoUrl string
 
-	if tool == "" {
+	if toolName == "" {
+		repoUrl = dbt.Config.Dbt.Repo
 		uri = fmt.Sprintf("%s/", repoUrl)
-
 	} else {
-		uri = fmt.Sprintf("%s/%s/", repoUrl, tool)
+		repoUrl = dbt.Config.Tools.Repo
+		uri = fmt.Sprintf("%s/%s", repoUrl, toolName)
 	}
 
-	resp, err := http.Get(uri)
+	client := &http.Client{}
 
+	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Error looking for versions of tool %q in repo %q: %s", tool, uri, err))
+		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+		return versions, err
+	}
+
+	if dbt.Config.Username != "" && dbt.Config.Password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(dbt.Config.Username+":"+dbt.Config.Password)))
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("Error looking for versions of tool %q in repo %q: %s", toolName, uri, err))
 		return versions, err
 	}
 
 	if resp != nil {
-		versions = ParseVersionResponse(resp)
+		versions = dbt.ParseVersionResponse(resp)
 
 		defer resp.Body.Close()
 
@@ -98,7 +142,7 @@ func FetchToolVersions(repoUrl string, tool string) (versions []string, err erro
 }
 
 // ParseVersionResponse does an http get of an url and returns a list of semantic version links found at that place
-func ParseVersionResponse(resp *http.Response) (versions []string) {
+func (dbt *DBT) ParseVersionResponse(resp *http.Response) (versions []string) {
 	parser := html.NewTokenizer(resp.Body)
 
 	for {
@@ -134,7 +178,7 @@ func ParseVersionResponse(resp *http.Response) (versions []string) {
 
 // FetchFile Fetches a file and places it on the filesystem.
 // Does not validate the signature.  That's a different step.
-func FetchFile(fileUrl string, destPath string) (err error) {
+func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 
 	out, err := os.Create(destPath)
 	if err != nil {
@@ -148,7 +192,19 @@ func FetchFile(fileUrl string, destPath string) (err error) {
 
 	defer out.Close()
 
-	headResp, err := http.Head(fileUrl)
+	client := &http.Client{}
+
+	req, err := http.NewRequest("HEAD", fileUrl, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to create request for url: %s", fileUrl)
+		return err
+	}
+
+	if dbt.Config.Username != "" && dbt.Config.Password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(dbt.Config.Username+":"+dbt.Config.Password)))
+	}
+
+	headResp, err := client.Do(req)
 
 	if err != nil {
 		panic(err)
@@ -172,7 +228,17 @@ func FetchFile(fileUrl string, destPath string) (err error) {
 	bar.Output = os.Stderr
 	bar.Start()
 
-	resp, err := http.Get(fileUrl)
+	req, err = http.NewRequest("GET", fileUrl, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to create request for url: %s", fileUrl)
+		return err
+	}
+
+	if dbt.Config.Username != "" && dbt.Config.Password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(dbt.Config.Username+":"+dbt.Config.Password)))
+	}
+
+	resp, err := client.Do(req)
 
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("Error fetching file from %q", fileUrl))
@@ -198,7 +264,7 @@ func FetchFile(fileUrl string, destPath string) (err error) {
 }
 
 // VerifyFileChecksum Verifies the sha256 checksum of a given file against an expected value
-func VerifyFileChecksum(filePath string, expected string) (success bool, err error) {
+func (dbt *DBT) VerifyFileChecksum(filePath string, expected string) (success bool, err error) {
 	checksum, err := FileSha256(filePath)
 	if err != nil {
 		success = false
@@ -215,10 +281,22 @@ func VerifyFileChecksum(filePath string, expected string) (success bool, err err
 }
 
 // VerifyFileVersion verifies the version by matching it's Sha1 checksum against what the repo says it should be
-func VerifyFileVersion(repoUrl string, filePath string) (success bool, err error) {
-	uri := fmt.Sprintf("%s.sha1", repoUrl)
+func (dbt *DBT) VerifyFileVersion(fileUrl string, filePath string) (success bool, err error) {
+	uri := fmt.Sprintf("%s.sha1", fileUrl)
 
-	resp, err := http.Get(uri)
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", uri, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+		return success, err
+	}
+
+	if dbt.Config.Username != "" && dbt.Config.Password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(dbt.Config.Username+":"+dbt.Config.Password)))
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Error fetching checksum from %q: %s", uri, err))
 	}
@@ -254,7 +332,7 @@ func VerifyFileVersion(repoUrl string, filePath string) (success bool, err error
 }
 
 // VerifyFileSignature verifies the signature on the given file
-func VerifyFileSignature(homedir string, filePath string) (success bool, err error) {
+func (dbt *DBT) VerifyFileSignature(homedir string, filePath string) (success bool, err error) {
 	if homedir == "" {
 		homedir, err = GetHomeDir()
 		if err != nil {
@@ -330,17 +408,17 @@ func VerifyFileSignature(homedir string, filePath string) (success bool, err err
 }
 
 // FindLatestVersion finds the latest version of the tool given in the repo given.  If the tool name is "", it is expecting to parse versions in the root of the repo.  I.e. there's only one tool in the repo.
-func FindLatestVersion(repoUrl string, toolName string) (latest string, err error) {
-	toolInRepo, err := ToolExists(repoUrl, toolName)
+func (dbt *DBT) FindLatestVersion(toolName string) (latest string, err error) {
+	toolInRepo, err := dbt.ToolExists(toolName)
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("error checking repo %s for tool %s", repoUrl, toolName))
+		err = errors.Wrap(err, fmt.Sprintf("error checking repo for tool %s", toolName))
 		return latest, err
 	}
 
 	if toolInRepo {
-		versions, err := FetchToolVersions(repoUrl, toolName)
+		versions, err := dbt.FetchToolVersions(toolName)
 		if err != nil {
-			err = errors.Wrap(err, fmt.Sprintf("error getting versions for tool %s from repo %s", toolName, repoUrl))
+			err = errors.Wrap(err, fmt.Sprintf("error getting versions for tool %s", toolName))
 			return latest, err
 		}
 

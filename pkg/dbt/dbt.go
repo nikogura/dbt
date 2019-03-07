@@ -1,6 +1,7 @@
 package dbt
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/mitchellh/go-homedir"
@@ -43,8 +44,10 @@ type DBT struct {
 
 // Config  configuration of the dbt object
 type Config struct {
-	Dbt   DbtConfig   `json:"dbt"`
-	Tools ToolsConfig `json:"tools"`
+	Dbt      DbtConfig   `json:"dbt"`
+	Tools    ToolsConfig `json:"tools"`
+	Username string      `json:"username,omitempty"`
+	Password string      `json:"password,omitempty"`
 }
 
 // DbtConfig internal config of dbt
@@ -87,7 +90,7 @@ func LoadDbtConfig(homedir string, verbose bool) (config Config, err error) {
 	logger := log.New(os.Stderr, "", 0)
 
 	if verbose {
-		logger.Printf("Creating DBT directory in %s.dbt", homedir)
+		logger.Printf("Creating DBT directory in %s/.dbt", homedir)
 	}
 
 	filePath := fmt.Sprintf("%s/%s", homedir, ConfigFilePath)
@@ -173,7 +176,19 @@ func (dbt *DBT) FetchTrustStore(homedir string, verbose bool) (err error) {
 
 	uri := dbt.Config.Dbt.TrustStore
 
-	resp, err := http.Get(uri)
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", uri, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+		return err
+	}
+
+	if dbt.Config.Username != "" && dbt.Config.Password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(dbt.Config.Username+":"+dbt.Config.Password)))
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to fetch truststore from %s", uri)
 		return err
@@ -209,7 +224,7 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 		binaryPath = DbtBinaryPath
 	}
 
-	latest, err := FindLatestVersion(dbt.Config.Dbt.Repo, "")
+	latest, err := dbt.FindLatestVersion("")
 	if err != nil {
 		err = errors.Wrap(err, "failed to fetch dbt versions")
 		return ok, err
@@ -217,7 +232,7 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 
 	latestDbtVersionUrl := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, runtime.GOOS, runtime.GOARCH)
 
-	ok, err = VerifyFileVersion(latestDbtVersionUrl, binaryPath)
+	ok, err = dbt.VerifyFileVersion(latestDbtVersionUrl, binaryPath)
 	if err != nil {
 		err = errors.Wrap(err, "failed to check latest version")
 		return ok, err
@@ -246,7 +261,7 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 
 	newBinaryFile := fmt.Sprintf("%s/dbt", tmpDir)
 
-	latest, err := FindLatestVersion(dbt.Config.Dbt.Repo, "")
+	latest, err := dbt.FindLatestVersion("")
 	if err != nil {
 		err = errors.Wrap(err, "failed to find latest dbt version")
 		return err
@@ -254,13 +269,13 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 
 	latestDbtVersionUrl := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, runtime.GOOS, runtime.GOARCH)
 
-	err = FetchFile(latestDbtVersionUrl, newBinaryFile)
+	err = dbt.FetchFile(latestDbtVersionUrl, newBinaryFile)
 	if err != nil {
 		err = errors.Wrap(err, "failed to fetch new dbt binary")
 		return err
 	}
 
-	ok, err := VerifyFileVersion(latestDbtVersionUrl, newBinaryFile)
+	ok, err := dbt.VerifyFileVersion(latestDbtVersionUrl, newBinaryFile)
 	if err != nil {
 		err = errors.Wrap(err, "failed to verify downloaded binary")
 		return err
@@ -316,7 +331,7 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 	}
 
 	// we're not offline, so find the latest
-	latestVersion, err := FindLatestVersion(dbt.Config.Tools.Repo, toolName)
+	latestVersion, err := dbt.FindLatestVersion(toolName)
 	if err != nil {
 		err = errors.Wrap(err, "failed to find latest version")
 		return err
@@ -353,7 +368,7 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 	if _, err := os.Stat(localPath); !os.IsNotExist(err) {
 
 		// check to see if the latest version is what we have
-		uptodate, err := VerifyFileVersion(toolUrl, localPath)
+		uptodate, err := dbt.VerifyFileVersion(toolUrl, localPath)
 		if err != nil {
 			err = errors.Wrap(err, "failed to verify file version")
 			return err
@@ -373,7 +388,7 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 
 	// download the binary
 	dbt.Logger.Printf("Downloading binary tool %q version %s.", toolName, version)
-	err = FetchFile(toolUrl, localPath)
+	err = dbt.FetchFile(toolUrl, localPath)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("failed to fetch binary for %s from %s", toolName, toolUrl))
 		return err
@@ -383,7 +398,7 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 	toolChecksumUrl := fmt.Sprintf("%s.sha256", toolUrl)
 	toolChecksumFile := fmt.Sprintf("%s.sha256", localPath)
 
-	err = FetchFile(toolChecksumUrl, toolChecksumFile)
+	err = dbt.FetchFile(toolChecksumUrl, toolChecksumFile)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("failed to fetch checksum for %s from %s", toolName, toolChecksumUrl))
 		return err
@@ -393,7 +408,7 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 	toolSignatureUrl := fmt.Sprintf("%s.asc", toolUrl)
 	toolSignatureFile := fmt.Sprintf("%s.asc", localPath)
 
-	err = FetchFile(toolSignatureUrl, toolSignatureFile)
+	err = dbt.FetchFile(toolSignatureUrl, toolSignatureFile)
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("failed to fetch signature for %s from %s", toolName, toolSignatureUrl))
 		return err
@@ -417,7 +432,7 @@ func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 	}
 
 	if _, err := os.Stat(localPath); !os.IsNotExist(err) {
-		checksumOk, err := VerifyFileChecksum(localPath, string(checksumBytes))
+		checksumOk, err := dbt.VerifyFileChecksum(localPath, string(checksumBytes))
 		if err != nil {
 			err = errors.Wrap(err, "error validating checksum")
 			return err
@@ -428,7 +443,7 @@ func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 			return err
 		}
 
-		signatureOk, err := VerifyFileSignature(homedir, localPath)
+		signatureOk, err := dbt.VerifyFileSignature(homedir, localPath)
 		if err != nil {
 			err = errors.Wrap(err, "error validating signature")
 			return err

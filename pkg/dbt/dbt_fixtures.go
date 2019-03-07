@@ -16,13 +16,15 @@ func testDbtConfigContents(port int) string {
 
 func testDbtConfig(port int) Config {
 	return Config{
-		DbtConfig{
+		Dbt: DbtConfig{
 			Repo:       fmt.Sprintf("http://localhost:%d/dbt", port),
 			TrustStore: fmt.Sprintf("http://localhost:%d/dbt/truststore", port),
 		},
-		ToolsConfig{
+		Tools: ToolsConfig{
 			Repo: fmt.Sprintf("http://localhost:%d/dbt-tools", port),
 		},
+		Username: "",
+		Password: "",
 	}
 }
 

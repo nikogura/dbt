@@ -6,7 +6,9 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -54,8 +56,14 @@ func List(showVersions bool, homedir string) (err error) {
 	fmt.Printf("\tCommand Name\t\tLatest Version\t\tDescription\n\n")
 	fmt.Printf("\n\n")
 
+	dbtObj := &dbt.DBT{
+		Config:  config,
+		Verbose: false,
+		Logger:  log.New(os.Stderr, "", 0),
+	}
+
 	for _, tool := range tools {
-		version, err := dbt.FindLatestVersion(config.Tools.Repo, tool.Name)
+		version, err := dbtObj.FindLatestVersion(tool.Name)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to get latest version of %s from %s", tool.Name, config.Tools.Repo)
 			return err
@@ -72,7 +80,7 @@ func List(showVersions bool, homedir string) (err error) {
 		fmt.Printf("\t%s\t\t%s\t\t\t%s\n", tool.FormattedName, version, description)
 
 		if showVersions {
-			versions, err := dbt.FetchToolVersions(config.Tools.Repo, tool.Name)
+			versions, err := dbtObj.FetchToolVersions(tool.Name)
 			if err != nil {
 				err = errors.Wrapf(err, "failed to get versions of %s from %s", tool.Name, config.Tools.Repo)
 				return err

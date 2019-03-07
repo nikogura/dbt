@@ -126,6 +126,8 @@ An example dbt config file:
           "tools": {
             "repository": "http://localhost:8081/dbt-tools"
           }
+          "username": "",
+          "password": ""
         }
         
 It contains sections for the ```dbt``` tool itself, as well as for the tools dbt will download and run.
@@ -242,11 +244,19 @@ The file can consist of multiple public keys such as:
         
 There's nothing magical about this file.  It's just the keys you've decided to trust.  You're free to maintain it by hand if you like, or you can use the dbt tool ```trustmgr```.
 
-### tools
+## tools
 
 This section is for the tools ```dbt``` downloads, verifies, and runs for you.
 
-#### repository
+### repository
 
 Url of the repo where the tools are stored.  This is where tools are found, and where the tool ```catalog``` looks for tools.
+
+## username
+
+Username if basic auth is used on repos.  (Optional)
+
+## password
+
+Password if basic auth is used on repos. (Optional)
 
