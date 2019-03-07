@@ -100,7 +100,7 @@ func (dbt *DBT) ToolVersionExists(tool string, version string) (ok bool, err err
 	return ok, err
 }
 
-// FetchToolVersions Given a repo and the name of the job, returns the available versions, and possibly an error if things didn't go well.
+// FetchToolVersions Given the name of a tool, returns the available versions, and possibly an error if things didn't go well.  If tool name is "", fetches versions of dbt itself.
 func (dbt *DBT) FetchToolVersions(toolName string) (versions []string, err error) {
 	var uri string
 	var repoUrl string
@@ -407,7 +407,7 @@ func (dbt *DBT) VerifyFileSignature(homedir string, filePath string) (success bo
 	return false, err
 }
 
-// FindLatestVersion finds the latest version of the tool given in the repo given.  If the tool name is "", it is expecting to parse versions in the root of the repo.  I.e. there's only one tool in the repo.
+// FindLatestVersion finds the latest version of the tool available in the tool repo.  If the tool name is "", it is expecting to parse versions of dbt itself.
 func (dbt *DBT) FindLatestVersion(toolName string) (latest string, err error) {
 	toolInRepo, err := dbt.ToolExists(toolName)
 	if err != nil {
