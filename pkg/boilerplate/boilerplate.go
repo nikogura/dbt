@@ -86,7 +86,7 @@ func DirsForPackageName(location string, toolName string) (dirs []string) {
 
 	dirs = append(dirs, fmt.Sprintf("%s/pkg/%s", location, toolName))
 	dirs = append(dirs, fmt.Sprintf("%s/templates", location))
-	dirs = append(dirs, fmt.Sprintf("%s/cmd/%s", location, toolName))
+	dirs = append(dirs, fmt.Sprintf("%s/cmd", location))
 
 	return dirs
 }
