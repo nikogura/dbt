@@ -498,7 +498,7 @@ func testFilesForTool(location string, toolName string, packageName string, pack
 		return files, err
 	}
 
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/cmd/%s/main.go", location, toolName), Content: content, Mode: 0644})
+	files = append(files, ToolFile{Name: fmt.Sprintf("%s/main.go", location), Content: content, Mode: 0644})
 
 	// root.go
 	fileName = "root.go"
