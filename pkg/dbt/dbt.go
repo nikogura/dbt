@@ -12,6 +12,7 @@ import (
 	"os"
 	"runtime"
 	"syscall"
+	"time"
 )
 
 // DbtDir is the standard dbt directory.  Usually ~/.dbt
@@ -176,7 +177,9 @@ func (dbt *DBT) FetchTrustStore(homedir string, verbose bool) (err error) {
 
 	uri := dbt.Config.Dbt.TrustStore
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
 
 	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {

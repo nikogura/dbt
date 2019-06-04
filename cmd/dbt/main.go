@@ -12,7 +12,7 @@ import (
 const DBT = "/usr/local/bin/dbt"
 
 // VERSION the version of dbt.  Must match version in metadata.json
-const VERSION = "2.2.3"
+const VERSION = "2.2.4"
 
 // there are only two options for dbt itself, 'version' and 'offline'
 var version string
@@ -45,7 +45,7 @@ func main() {
 		// first fetch the current truststore
 		err = dbtObj.FetchTrustStore(homedir, false)
 		if err != nil {
-			log.Fatalf("Failed to fetch current truststore: %s", err)
+			log.Fatalf("Failed to fetch current truststore: %s.\n\nIf you want to try in 'offline' mode, try your command again with '-o'.", err)
 		}
 
 		ok, err := dbtObj.IsCurrent("")
