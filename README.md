@@ -104,7 +104,7 @@ There are, however, some common tasks that any user of DBT might want at their f
 
 * *Boilerplate*  A tool for generating tool boilerplate.  You could do it by hand, but why?  
 
-* *Trustmgr)*  A tool for managing who's public keys are trusted by DBT. (Still under construction.  For now you'll need to fill the 'truststore' file with the PEM encoded key or keys you've decided to trust.)
+* *Trustmgr*  A tool for managing who's public keys are trusted by DBT. (Still under construction.  For now you'll need to fill the 'truststore' file with the PEM encoded key or keys you've decided to trust.)
 
 If for some reason you don't want to use the included tools, just remove them from your `metadata.json` and they won't publish.
 
