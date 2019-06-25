@@ -58,7 +58,7 @@ func TestToolVersionExists(t *testing.T) {
 		t.Fail()
 	}
 
-	ok, err = dbtObj.ToolVersionExists("foo", "0.0.0")
+	ok, _ = dbtObj.ToolVersionExists("foo", "0.0.0")
 
 	if ok {
 		fmt.Println(fmt.Sprintf("Nonexistant tool version %q shows existing in repo.", "0.0.0"))

@@ -10,6 +10,8 @@
 
 [![Coverage Status](https://coveralls.io/repos/github/nikogura/dbt/badge.svg?branch=master&version=1.0.5)](https://coveralls.io/github/nikogura/dbt?branch=master)
 
+[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)  
+
 A framework for running self-updating, signed binary tools from a central, trusted repository.
 
 # Overview
