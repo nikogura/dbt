@@ -280,9 +280,9 @@ func (dbt *DBT) VerifyFileChecksum(filePath string, expected string) (success bo
 	return success, err
 }
 
-// VerifyFileVersion verifies the version by matching it's Sha1 checksum against what the repo says it should be
+// VerifyFileVersion verifies the version by matching it's Sha256 checksum against what the repo says it should be
 func (dbt *DBT) VerifyFileVersion(fileUrl string, filePath string) (success bool, err error) {
-	uri := fmt.Sprintf("%s.sha1", fileUrl)
+	uri := fmt.Sprintf("%s.sha256", fileUrl)
 
 	client := &http.Client{}
 
@@ -312,7 +312,7 @@ func (dbt *DBT) VerifyFileVersion(fileUrl string, filePath string) (success bool
 		}
 
 		expected := string(checksumBytes)
-		actual, err := FileSha1(filePath)
+		actual, err := FileSha256(filePath)
 
 		if err != nil {
 			success = false

@@ -54,9 +54,9 @@ func dbtVersionASha256() string {
 	return "1b47f99f277cad8c5e31f21e688e4d0b8803cb591b0383e2319869b520d061a1"
 }
 
-func dbtVersionASha1() string {
-	return "5b7c9753dd9800a16969bf65e2330b40e657277b"
-}
+//func dbtVersionASha1() string {
+//	return "5b7c9753dd9800a16969bf65e2330b40e657277b"
+//}
 
 //func dbtVersionAMd5() string {
 //	return "6e8bafd13ba44c93b63cead889cd21a6"
@@ -98,13 +98,13 @@ func dbtVersionBContent() string {
 	return "Twas brillig, and the slithy toves did gyre and gimble in the wabe."
 }
 
-//func dbtVersionBSha256() string {
-//	return "f1f4f38ccbc574d457110f8994d5a127d6441aa915ddfc3247a1132e212fcda0"
-//}
-
-func dbtVersionBSha1() string {
-	return "2b0c08dd5c80e654b2ce0c4b86fd9e29e8cd479a"
+func dbtVersionBSha256() string {
+	return "f1f4f38ccbc574d457110f8994d5a127d6441aa915ddfc3247a1132e212fcda0"
 }
+
+//func dbtVersionBSha1() string {
+//	return "2b0c08dd5c80e654b2ce0c4b86fd9e29e8cd479a"
+//}
 
 //func dbtVersionBMd5() string {
 //	return "38c3f92660f1cd49bcb428ee2932000e"
