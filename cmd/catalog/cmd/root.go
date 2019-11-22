@@ -1,4 +1,4 @@
-// Copyright © 2017 NAME HERE <EMAIL ADDRESS>
+// Copyright © 2017 Nik Ogura <nik.ogura@gmail.com>
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,7 @@ package cmd
 
 import (
 	"fmt"
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"os"
 )
 
@@ -33,13 +31,8 @@ Tool for showing available DBT tools.
 
 DBT tools are made available in a trusted repository.  This tool show's what's available there.
 `,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -48,29 +41,5 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-
 	RootCmd.PersistentFlags().BoolVarP(&versions, "versions", "v", false, "Show all version information for tools.")
-
-}
-
-// initConfig reads in config file and ENV variables if set.
-func initConfig() {
-	// Find home directory.
-	home, err := homedir.Dir()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	// Search config in home directory with name ".catalog" (without extension).
-	viper.AddConfigPath(home)
-	viper.SetConfigName(".catalog")
-
-	viper.AutomaticEnv() // read in environment variables that match
-
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	}
 }
