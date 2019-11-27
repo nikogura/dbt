@@ -90,6 +90,8 @@ DBT, as you see it here is set up for *my* test repo.  You'll need to make some 
 
 3. You'll also need to change the package name in go.mod, cmd/dbt/main.go, cmd/boilerplate/main.go, and cmd/catalog/main.go.  Basically you'll need to wire it up so that your fork is referencing itself, not mine.  Basic golang stuff.  Don't forget to check your changes into your fork.  (Sorry.  When I work out a good way to make that easier, I will implement it.)
 
+_When I personally maintain an internal fork, I set up a clone of the fork with 2 upstreams: 'origin' is my internal fork, and 'upstream' which is the public github.com/nikogura/dbt.  Then I make all my internal changes as required, and when upstream changes, do a `git pull upstream ...`.  Usually the only changes/conflicts are in the `metadata.json`.  Correct the conflicts in `metadata.json`, commit, and `git push origin master` and my CI system takes it from there.  It sounds complicated, but it's been very reliable to date._
+
 4. Install `gomason` via `go get github.com/nikogura/gomason`. Then run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT.
 
 The details of what all is supported in `metadata.json` can be found in [https://github.com/nikogura/gomason](https://github.com/nikogura/gomason).  
