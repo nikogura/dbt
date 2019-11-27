@@ -86,9 +86,11 @@ DBT, as you see it here is set up for *my* test repo.  You'll need to make some 
 
 1. Fork the repo.
 
-2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` and `package` lines.
+2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` and `package` lines.  
 
-3. Install `gomason` via `go get github.com/nikogura/gomason`. Then run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT.
+3. You'll also need to change the package name in go.mod, cmd/dbt/main.go, cmd/boilerplate/main.go, and cmd/catalog/main.go.  Basically you'll need to wire it up so that your fork is referencing itself, not mine.  Basic golang stuff.  Don't forget to check your changes into your fork.  (Sorry.  When I work out a good way to make that easier, I will implement it.)
+
+4. Install `gomason` via `go get github.com/nikogura/gomason`. Then run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT.
 
 The details of what all is supported in `metadata.json` can be found in [https://github.com/nikogura/gomason](https://github.com/nikogura/gomason).  
 
@@ -104,7 +106,7 @@ Then you should see a file `http://localhost:8081/artifactory/dbt/install_dbt.sh
         
 And voila!  Your DBT is now installed.
 
-You will, however need to populate the `truststore` file, which by default, with the above config would be located at `http://localhost:8081/artifactory/dbt/truststore`.  This file contains the public keys of the entities you trust to create DBT binaries.  You can edit this file by hand, it's just a bunch of PEM data squashed together, or you can use one of the tools listed in the next section.
+You will, however need to populate the `truststore` file, which by default, with the above config would be located at `http://localhost:8081/artifactory/dbt/truststore`.  This file contains the public keys of the entities you trust to create DBT binaries.  You can edit this file by hand, it's just a bunch of PEM data squashed together.
 
 # Included Tools
 
