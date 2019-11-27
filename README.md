@@ -88,7 +88,7 @@ DBT, as you see it here is set up for *my* test repo.  You'll need to make some 
 
 2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` and `package` lines.  
 
-3. You'll also need to change the package name in go.mod, cmd/dbt/main.go, cmd/boilerplate/main.go, and cmd/catalog/main.go.  Basically you'll need to wire it up so that your fork is referencing itself, not mine.  Basic golang stuff.  Don't forget to check your changes into your fork.  (Sorry.  When I work out a good way to make that easier, I will implement it.)
+3. You'll also need to change the package name in go.mod, cmd/dbt/main.go, cmd/boilerplate/main.go, and cmd/catalog/main.go.  Basically you'll need to wire it up so that your fork is referencing itself, not my public repo.  Basic golang stuff.  Don't forget to check your changes into your fork.  (Sorry.  When I work out a good way to make that easier, I will implement it.)
 
 _When I personally maintain an internal fork, I set up a clone of the fork with 2 upstreams: 'origin' is my internal fork, and 'upstream' which is the public github.com/nikogura/dbt.  Then I make all my internal changes as required, and when upstream changes, do a `git pull upstream ...`.  Usually the only changes/conflicts are in the `metadata.json`.  Correct the conflicts in `metadata.json`, commit, and `git push origin master` and my CI system takes it from there.  It sounds complicated, but it's been very reliable to date._
 
