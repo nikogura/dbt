@@ -24,6 +24,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"runtime"
 	"syscall"
 	"time"
@@ -187,6 +188,10 @@ func GetHomeDir() (dir string, err error) {
 func (dbt *DBT) FetchTrustStore(homedir string, verbose bool) (err error) {
 
 	uri := dbt.Config.Dbt.TrustStore
+
+	if verbose {
+		fmt.Printf("Fetching truststore from %q\n", uri)
+	}
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,
@@ -481,16 +486,34 @@ func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 	return err
 }
 
+var testExec bool
+
 func (dbt *DBT) runExec(homedir string, args []string) (err error) {
 	toolName := args[0]
 	localPath := fmt.Sprintf("%s/%s/%s", homedir, ToolDir, toolName)
 
 	env := os.Environ()
 
-	err = syscall.Exec(localPath, args, env)
-	if err != nil {
-		err = errors.Wrap(err, "error running exec")
-		return err
+	if testExec {
+		env = append(env, "GO_WANT_HELPER_PROCESS=1")
+		cs := []string{"-test.run=TestHelperProcess", "--", localPath}
+		cs = append(cs, args...)
+		cmd := exec.Command(os.Args[0], cs...)
+		bytes, err := cmd.Output()
+		if err != nil {
+			err = errors.Wrap(err, "error running exec")
+			return err
+		}
+
+		fmt.Printf("\nTest Command Output: %q\n", string(bytes))
+
+	} else {
+		err = syscall.Exec(localPath, args, env)
+		if err != nil {
+			err = errors.Wrap(err, "error running exec")
+			return err
+		}
+
 	}
 
 	return err

@@ -77,7 +77,7 @@ func setUp() {
 
 func tearDown() {
 	if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
-		os.Remove(tmpDir)
+		_ = os.Remove(tmpDir)
 	}
 
 }
@@ -282,4 +282,60 @@ func TestGetHomeDir(t *testing.T) {
 		fmt.Printf("Error getting homedir: %s", err)
 		t.Fail()
 	}
+}
+
+func TestRunTool(t *testing.T) {
+	dbt := &DBT{
+		Config:  dbtConfig,
+		Verbose: true,
+	}
+
+	script := `#!/bin/bash
+echo "foo"
+`
+
+	sig := `-----BEGIN PGP SIGNATURE-----
+  
+iQFABAABCAAqFiEE3Ww86tgfSQ9lgLSizmhGNf2l0x8FAl3nXyUMHGRidEBkYnQu
+Y29tAAoJEM5oRjX9pdMf49cIAKXlHna+QX8NZirDmqJkHg/SQXfSSwSpSVBxtD/B
+lcgiERJLRy9yUUOxj9mF7uY+0l2Q0N9tqH+ZsqI8T0o6rOw3m9fpRymWhtvZkn/3
+TUGYqXtllm9N5H/XCXm/GmRhS/nwSU/dxt8uEOMxbOGeNoEnSvRLX6UUBe5lzdbQ
+p05JqgbJHm7Im/xjqvXeiCkhO6LsiH44PA7fn82XczUExiFf29YbqSxoaTFbNUml
+EAIt0IfO16Jj6BfZiqlAdklK6gvyRyMIkQrSwXG0Umb2dPlJjz1x+DCbruUqnQX7
+CP+c4NMnm7ZH7Ap+pII6ZPHdc5KxJNWh6ZVioY7EUINJKZk=
+=/zev
+-----END PGP SIGNATURE-----`
+
+	fileName := fmt.Sprintf("%s/%s/bar", tmpDir, ToolDir)
+	checksumFile := fmt.Sprintf("%s/%s/bar.sha256", tmpDir, ToolDir)
+	sigFile := fmt.Sprintf("%s/%s/bar.asc", tmpDir, ToolDir)
+
+	err := ioutil.WriteFile(fileName, []byte(script), 0755)
+	if err != nil {
+		fmt.Printf("Error writing test file: %s", err)
+		t.Fail()
+	}
+
+	checksum, err := FileSha256(fileName)
+	if err != nil {
+		fmt.Printf("Error checksumming test file: %s", err)
+		t.Fail()
+	}
+
+	err = ioutil.WriteFile(checksumFile, []byte(checksum), 0644)
+	if err != nil {
+		fmt.Printf("Error writing checksum file: %s", err)
+		t.Fail()
+	}
+
+	err = ioutil.WriteFile(sigFile, []byte(sig), 0644)
+
+	testExec = true
+
+	err = dbt.RunTool("", []string{"bar"}, tmpDir, true)
+	if err != nil {
+		fmt.Printf("Error running test tool: %s", err)
+		t.Fail()
+	}
+
 }
