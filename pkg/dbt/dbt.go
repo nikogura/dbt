@@ -1,3 +1,17 @@
+// Copyright © 2019 Nik Ogura <nik.ogura@gmail.com>
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package dbt
 
 import (
@@ -10,6 +24,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"runtime"
 	"syscall"
 	"time"
@@ -32,9 +47,6 @@ const ConfigFilePath = ConfigDir + "/dbt.json"
 
 // TruststorePath is the actual file path to the downloaded trust store
 const TruststorePath = TrustDir + "/truststore"
-
-// DbtBinaryPath is the default locaiton where the dbt binary gets installed to
-const DbtBinaryPath = "/usr/local/bin/dbt"
 
 // DBT the dbt object itself
 type DBT struct {
@@ -177,6 +189,10 @@ func (dbt *DBT) FetchTrustStore(homedir string, verbose bool) (err error) {
 
 	uri := dbt.Config.Dbt.TrustStore
 
+	if verbose {
+		fmt.Printf("Fetching truststore from %q\n", uri)
+	}
+
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
@@ -223,10 +239,6 @@ func (dbt *DBT) FetchTrustStore(homedir string, verbose bool) (err error) {
 
 // IsCurrent returns whether the currently running version is the latest version, and possibly an error if the version check fails
 func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
-	if binaryPath == "" {
-		binaryPath = DbtBinaryPath
-	}
-
 	latest, err := dbt.FindLatestVersion("")
 	if err != nil {
 		err = errors.Wrap(err, "failed to fetch dbt versions")
@@ -242,7 +254,7 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 	}
 
 	if !ok {
-		fmt.Fprint(os.Stderr, fmt.Sprintf("Newer version of dbt available: %s\n\n", latest))
+		_, _ = fmt.Fprint(os.Stderr, fmt.Sprintf("Newer version of dbt available: %s\n\n", latest))
 	}
 
 	return ok, err
@@ -250,10 +262,6 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 
 // UpgradeInPlace upgraded dbt in place
 func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
-	if binaryPath == "" {
-		binaryPath = DbtBinaryPath
-	}
-
 	tmpDir, err := ioutil.TempDir("", "dbt")
 	if err != nil {
 		err = errors.Wrap(err, "failed to create temp dir")
@@ -320,6 +328,12 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 // RunTool runs the dbt tool indicated by the args
 func (dbt *DBT) RunTool(version string, args []string, homedir string, offline bool) (err error) {
 	toolName := args[0]
+
+	if toolName == "--" {
+		toolName = args[1]
+		args = args[1:]
+	}
+
 	localPath := fmt.Sprintf("%s/%s/%s", homedir, ToolDir, toolName)
 
 	// if offline, if tool is present and verifies, run it
@@ -425,6 +439,11 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 
 func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 	toolName := args[0]
+	if toolName == "--" {
+		toolName = args[1]
+		args = args[1:]
+	}
+
 	localPath := fmt.Sprintf("%s/%s/%s", homedir, ToolDir, toolName)
 	localChecksumPath := fmt.Sprintf("%s/%s/%s.sha256", homedir, ToolDir, toolName)
 
@@ -467,16 +486,34 @@ func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 	return err
 }
 
+var testExec bool
+
 func (dbt *DBT) runExec(homedir string, args []string) (err error) {
 	toolName := args[0]
 	localPath := fmt.Sprintf("%s/%s/%s", homedir, ToolDir, toolName)
 
 	env := os.Environ()
 
-	err = syscall.Exec(localPath, args, env)
-	if err != nil {
-		err = errors.Wrap(err, "error running exec")
-		return err
+	if testExec {
+		env = append(env, "GO_WANT_HELPER_PROCESS=1")
+		cs := []string{"-test.run=TestHelperProcess", "--", localPath}
+		cs = append(cs, args...)
+		cmd := exec.Command(os.Args[0], cs...)
+		bytes, err := cmd.Output()
+		if err != nil {
+			err = errors.Wrap(err, "error running exec")
+			return err
+		}
+
+		fmt.Printf("\nTest Command Output: %q\n", string(bytes))
+
+	} else {
+		err = syscall.Exec(localPath, args, env)
+		if err != nil {
+			err = errors.Wrap(err, "error running exec")
+			return err
+		}
+
 	}
 
 	return err
