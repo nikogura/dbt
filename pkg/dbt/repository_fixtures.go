@@ -27,7 +27,7 @@ func testToolUrl(port int) string {
 func dbtIndexOutput() string {
 	return `<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 <html>
-<head><title>Index of dbt-tools/foo</title>
+<head><title>Index of dbt/foo</title>
 </head>
 <body>
 <h1>Index of dbt/foo</h1>
