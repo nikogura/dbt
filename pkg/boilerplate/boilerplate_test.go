@@ -43,10 +43,11 @@ func tearDown() {
 
 func TestWriteCreateTool(t *testing.T) {
 	// create workspace
-	goPath, err := gomason.CreateGoPath(tmpDir)
+	lang, _ := gomason.GetByName("golang")
+	goPath, err := lang.CreateWorkDir(tmpDir)
 	if err != nil {
-		log.Printf("Error creating GOPATH in %s: %s\n", tmpDir, err)
-		t.Fail()
+		log.Printf("Error creating gopath in %q: %s", tmpDir, err)
+		t.FailNow()
 	}
 
 	fmt.Printf("Created gopath: %s\n", goPath)
