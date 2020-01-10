@@ -3,7 +3,7 @@
 
 METADATA_VERSION=$(grep version metadata.json | awk '{print $2}' | sed 's/[",]//g')
 
-CODE_VERSION=$(grep VERSION cmd/dbt/main.go | grep -v version | awk '{print $4}' | sed 's/"//g')
+CODE_VERSION=$(grep Version: cmd/root.go | grep -v version | awk '{print $2}' | sed 's/"//g' | sed 's/,//g')
 
 if [[ ${METADATA_VERSION} != ${CODE_VERSION} ]]; then
   echo "Versions do not match!"

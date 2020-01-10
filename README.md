@@ -18,7 +18,7 @@ A framework for running self-updating, signed binary tools from a central, trust
 
 DBT consists of a binary ```dbt``` and a config file.  The ```dbt``` binary checks a trusted repository for tools, which are themselves signed binaries.
 
-Tools are automatically downloaded, and verified for checksum and signature before running.
+Tools are automatically downloaded, and verified for checksum and signature, then if they pass, they're run. e.g.
 
 The DBT binary itself auto-updates from the trusted repository, and if it's checksum and signature checks out, it executes a 'Single White Female' on itself, replacing itself on the fly with the new version and then running the downloaded tool.
 
@@ -54,7 +54,19 @@ DBT does your due diligence for you, and lets you get on with your day.
 
 Another real-world example:  Imagine this, you've got a system of dynamic VM's and Containers, all leveraging common tooling.  You might even have a serious DAG or web of 'things' dynamically generating other 'things' in a busy and automated fashion.  What is there's a problem, or an upgrade?  With normal utility tools and scripts you have to re-bake your machine images and containers to pick up the changes.  You might say that that's a good thing.  But what if it's not?
 
-With DBT, you have the best of both worlds.  You can force your tools to use an explicit version (```dbt -v 1.2.3 <tool>```).  You can also dispense with the '-v' and run the latest.  Voila!  You're automatically picking up the latest version of the tooling from your trusted repository.
+With DBT, you have the best of both worlds.  You can force your tools to use an explicit version (```dbt -v 1.2.3  -- <tool>```).  You can also dispense with the '-v' and run the latest.  Voila!  You're automatically picking up the latest version of the tooling from your trusted repository.
+
+# Usage
+
+Generally speaking, you will run your tools with a command of the form:
+
+    dbt [flags] -- <command>  <command args and flags>
+    
+Take special note of the `--`  That double dash separates the flags for `dbt` itself from those of the command.  It can get confusing if you don't spot the double dash and grok it's meaning.
+
+Without it, any flags you try to run on `<command>` will be consumed by `dbt` itself, and the result will probably not be what you intend.
+
+Of course, if your command has no flags itself, only positional arguments, you can run it straight without the double dash.  
 
 # Security
 
@@ -74,9 +86,11 @@ DBT, as you see it here is set up for *my* test repo.  You'll need to make some 
 
 1. Fork the repo.
 
-2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` and `package` lines.
+2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` and `package` lines.  
 
-3. Run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT.
+3. You'll also need to change the package name in go.mod, cmd/dbt/main.go, cmd/boilerplate/main.go, and cmd/catalog/main.go.  Basically you'll need to wire it up so that your fork is referencing itself, not my public repo.  Basic golang stuff.  Don't forget to check your changes into your fork.  (Sorry.  When I work out a good way to make that easier, I will implement it.)
+
+4. Install `gomason` via `go get github.com/nikogura/gomason`. Then run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT.
 
 The details of what all is supported in `metadata.json` can be found in [https://github.com/nikogura/gomason](https://github.com/nikogura/gomason).  
 
@@ -92,7 +106,13 @@ Then you should see a file `http://localhost:8081/artifactory/dbt/install_dbt.sh
         
 And voila!  Your DBT is now installed.
 
-You will, however need to populate the `truststore` file, which by default, with the above config would be located at `http://localhost:8081/artifactory/dbt/truststore`.  This file contains the public keys of the entities you trust to create DBT binaries.  You can edit this file by hand, it's just a bunch of PEM data squashed together, or you can use one of the tools listed in the next section.
+You will, however need to populate the `truststore` file, which by default, with the above config would be located at `http://localhost:8081/artifactory/dbt/truststore`.  This file contains the public keys of the entities you trust to create DBT binaries.  You can edit this file by hand, it's just a bunch of PEM data squashed together.
+
+_AUTHOR'S NOTE: When I personally maintain an internal fork, I set up a clone of the fork with 2 upstreams: 'origin' is my internal fork, and 'upstream' which is the public github.com/nikogura/dbt.  Then I make all my internal changes as required, and when upstream changes, do a `git pull upstream ...`.  Usually the only changes/conflicts are in the `metadata.json`._  
+
+_Correct the conflicts in `metadata.json`, commit, and `git push origin master` and my CI system takes it from there.  It sounds complicated, and it's certainly not trivial, but it's been very reliable to date._
+
+_Rest assured, when I come across a better method, I will not keep it to myself._
 
 # Included Tools
 
@@ -106,13 +126,11 @@ There are, however, some common tasks that any user of DBT might want at their f
 
 * *Boilerplate*  A tool for generating tool boilerplate.  You could do it by hand, but why?  
 
-* *Trustmgr*  A tool for managing who's public keys are trusted by DBT. (Still under construction.  For now you'll need to fill the 'truststore' file with the PEM encoded key or keys you've decided to trust.)
-
 If for some reason you don't want to use the included tools, just remove them from your `metadata.json` and they won't publish.
 
 # Repository Support
 
-The initial versions of DBT are targeted at the [Artifactory Open Source](https://www.jfrog.com/open-source) repo.  Any sort of WebDAV server that supports authenticated REST should work fine though.
+The initial versions of DBT are targeted at the [Artifactory Open Source](https://www.jfrog.com/open-source) repo.  Any sort of WebDAV server that supports authenticated PUT's and GET's should work fine though.
 
 # Configuration
 
@@ -244,7 +262,7 @@ The file can consist of multiple public keys such as:
         =KIOK
         -----END PGP PUBLIC KEY BLOCK-----
         
-There's nothing magical about this file.  It's just the keys you've decided to trust.  You're free to maintain it by hand if you like, or you can use the dbt tool ```trustmgr```.
+There's nothing magical about this file.  It's just the keys you've decided to trust, concatenated together.  Comments after an `-----END PGP PUBLIC KEY BLOCK-----` or before an `-----BEGIN PGP PUBLIC KEY BLOCK---` are ignored, and can be quite useful for humans trying to maintain this file.
 
 ## tools
 
