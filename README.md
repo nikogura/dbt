@@ -8,7 +8,7 @@
 
 [![Go Doc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/nikogura/dbt/pkg/dbt)
 
-[![Coverage Status](https://coveralls.io/repos/github/nikogura/dbt/badge.svg?branch=master&version=1.0.5)](https://coveralls.io/github/nikogura/dbt?branch=master)
+[![Coverage Status](https://codecov.io/gh/nikogura/dbt/branch/master/graph/badge.svg)](https://codecov.io/gh/nikogura/dbt)
 
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)  
 
