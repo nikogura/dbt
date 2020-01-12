@@ -2,19 +2,31 @@ package reposerver
 
 import (
 	"fmt"
+	"github.com/nikogura/dbt/pkg/dbt"
 	"github.com/nikogura/gomason/pkg/gomason"
 	"github.com/phayes/freeport"
 	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
 var tmpDir string
 var port int
 var trustedKeys map[string]string
+var testFiles []testFile
+var repo DBTRepo
+
+type testFile struct {
+	Name     string
+	FilePath string
+	UrlPath  string
+}
 
 func TestMain(m *testing.M) {
 	setUp()
@@ -46,28 +58,6 @@ func setUp() {
 
 	trustedKeys = make(map[string]string)
 
-	// setup the file tree for dbt repo
-	// truststore
-	// install_dbt.sh
-	// instal_dbt.sh.asc
-
-	err = buildDbt(tmpDir)
-	if err != nil {
-		log.Fatalf("Error building dbt binaries: %s", err)
-	}
-
-	// setup the file tree for dbt tools
-
-	// Set up the repo server
-	repo := DBTRepo{
-		Address:    "127.0.0.1",
-		Port:       port,
-		ServerRoot: tmpDir,
-		PubkeyFunc: nil,
-	}
-
-	// Run it in the background
-	go repo.RunRepoServer()
 }
 
 func tearDown() {
@@ -78,12 +68,136 @@ func tearDown() {
 	// TODO shut down test server?
 }
 
-func buildDbt(repoRoot string) (err error) {
-	buildPath := fmt.Sprintf("%s/go", tmpDir)
+func buildTestRepo() (err error) {
 	dbtRoot := fmt.Sprintf("%s/repo/dbt", tmpDir)
 	trustFile := fmt.Sprintf("%s/truststore", dbtRoot)
 	toolRoot := fmt.Sprintf("%s/repo/dbt-tools", tmpDir)
 	version := "1.2.3"
+
+	os.Setenv("GOMASON_NO_USER_CONFIG", "true")
+
+	testFiles = []testFile{
+		{
+			Name:     "boilerplate-description.txt",
+			FilePath: fmt.Sprintf("%s/boilerplate/%s/description.txt", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/description.txt", version),
+		},
+		{
+			Name:     "boilerplate-description.txt.asc",
+			FilePath: fmt.Sprintf("%s/boilerplate/%s/description.txt.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/description.txt.asc", version),
+		},
+		{
+			Name:     "boilerplate_darwin_amd64",
+			FilePath: fmt.Sprintf("%s/boilerplate/%s/darwin/amd64/boilerplate", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate", version),
+		},
+		{
+			Name:     "boilerplate_darwin_amd64.asc",
+			FilePath: fmt.Sprintf("%s/boilerplate/%s/darwin/amd64/boilerplate.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate.asc", version),
+		},
+		{
+			Name:     "boilerplate_linux_amd64",
+			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/linux/amd64/boilerplate", version),
+		},
+		{
+			Name:     "boilerplate_linux_amd64.asc",
+			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate.asc", version),
+		},
+		{
+			Name:     "catalog-description.txt",
+			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt", version),
+		},
+		{
+			Name:     "catalog-description.txt.asc",
+			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt.asc", version),
+		},
+		{
+			Name:     "catalog_darwin_amd64",
+			FilePath: fmt.Sprintf("%s/catalog/%s/darwin/amd64/catalog", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/darwin/amd64/catalog", version),
+		},
+		{
+			Name:     "catalog_darwin_amd64.asc",
+			FilePath: fmt.Sprintf("%s/catalog/%s/darwin/amd64/catalog.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/darwin/amd64/catalog.asc", version),
+		},
+		{
+			Name:     "catalog_linux_amd64",
+			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog", version),
+		},
+		{
+			Name:     "catalog_linux_amd64.asc",
+			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog.asc", version),
+		},
+		{
+			Name:     "reposerver-description.txt",
+			FilePath: fmt.Sprintf("%s/reposerver/%s/description.txt", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/description.txt", version),
+		},
+		{
+			Name:     "reposerver-description.txt.asc",
+			FilePath: fmt.Sprintf("%s/reposerver/%s/description.txt.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/description.txt.asc", version),
+		},
+		{
+			Name:     "reposerver_darwin_amd64",
+			FilePath: fmt.Sprintf("%s/reposerver/%s/darwin/amd64/reposerver", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/darwin/amd64/reposerver", version),
+		},
+		{
+			Name:     "reposerver_darwin_amd64.asc",
+			FilePath: fmt.Sprintf("%s/reposerver/%s/darwin/amd64/reposerver.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/darwin/amd64/reposerver.asc", version),
+		},
+		{
+			Name:     "reposerver_linux_amd64",
+			FilePath: fmt.Sprintf("%s/reposerver/%s/linux/amd64/reposerver", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/linux/amd64/reposerver", version),
+		},
+		{
+			Name:     "reposerver_linux_amd64.asc",
+			FilePath: fmt.Sprintf("%s/reposerver/%s/linux/amd64/reposerver.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/darwin/amd64/reposerver.asc", version),
+		},
+		{
+			Name:     "dbt_darwin_amd64",
+			FilePath: fmt.Sprintf("%s/%s/darwin/amd64/dbt", dbtRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt/%s/darwin/amd64/dbt", version),
+		},
+		{
+			Name:     "dbt_darwin_amd64.asc",
+			FilePath: fmt.Sprintf("%s/%s/darwin/amd64/dbt.asc", dbtRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt/%s/darwin/amd64/dbt.asc", version),
+		},
+		{
+			Name:     "dbt_linux_amd64",
+			FilePath: fmt.Sprintf("%s/%s/linux/amd64/dbt", dbtRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt", version),
+		},
+		{
+			Name:     "dbt_linux_amd64.asc",
+			FilePath: fmt.Sprintf("%s/%s/linux/amd64/dbt.asc", dbtRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt.asc", version),
+		},
+		{
+			Name:     "install_dbt.sh",
+			FilePath: fmt.Sprintf("%s/install_dbt.sh", dbtRoot),
+			UrlPath:  "/dbt/install_dbt.sh",
+		},
+		{
+			Name:     "install_dbt.sh.asc",
+			FilePath: fmt.Sprintf("%s/install_dbt.sh.asc", dbtRoot),
+			UrlPath:  "/dbt/install_dbt.sh.asc",
+		},
+	}
 
 	// set up test keys
 	keyring := filepath.Join(tmpDir, "keyring.gpg")
@@ -173,12 +287,26 @@ Expire-Date: 0
 		log.Fatalf("Invalid language: %v", err)
 	}
 
-	workDir, err := lang.CreateWorkDir(buildPath)
+	workDir, err := lang.CreateWorkDir(tmpDir)
 	if err != nil {
 		log.Fatalf("Failed to create ephemeral workDir: %s", err)
 	}
 
-	err = lang.Build(workDir, meta, "")
+	// Normally with gomason we'd check it out from VCS.  In this case, I want to build *THIS* version
+
+	src := strings.TrimRight(cwd, "/pkg/reposerver")
+	dst := fmt.Sprintf("%s/src/github.com/nikogura/dbt", workDir)
+	err = os.MkdirAll(dst, 0755)
+	if err != nil {
+		log.Fatalf("Failed creating directory %s: %s", dst, err)
+	}
+
+	err = dbt.DirCopy(src, dst)
+	if err != nil {
+		log.Fatalf("Failed copying directory %s to %s: %s", src, dst, err)
+	}
+
+	err = lang.Build(workDir, meta)
 	if err != nil {
 		log.Fatalf("build failed: %s", err)
 	}
@@ -193,37 +321,14 @@ Expire-Date: 0
 		log.Fatalf("Extra artifact processing failed: %s", err)
 	}
 
-	// TODO write truststore file (get pubkey out of gpg-agent)
-
-	targets := map[string]string{
-		"boilerplate-description.txt":     fmt.Sprintf("%s/boilerplate/%s/description.txt", toolRoot, version),
-		"boilerplate-description.txt.asc": fmt.Sprintf("%s/boilerplate/%s/description.txt.asc", toolRoot, version),
-		"boilerplate_darwin_amd64":        fmt.Sprintf("%s/boilerplate/%s/darwin/amd64/boilerplate", toolRoot, version),
-		"boilerplate_darwin_amd64.asc":    fmt.Sprintf("%s/boilerplate/%s/darwin/amd64/boilerplate.asc", toolRoot, version),
-		"boilerplate_linux_amd64":         fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate", toolRoot, version),
-		"boilerplate_linux_amd64.asc":     fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate.asc", toolRoot, version),
-		"catalog-description.txt":         fmt.Sprintf("%s/catalog/%s/description.txt", toolRoot, version),
-		"catalog-description.txt.asc":     fmt.Sprintf("%s/catalog/%s/description.txt.asc", toolRoot, version),
-		"catalog_darwin_amd64":            fmt.Sprintf("%s/catalog/%s/darwin/amd64/catalog", toolRoot, version),
-		"catalog_darwin_amd64.asc":        fmt.Sprintf("%s/catalog/%s/darwin/amd64/catalog.asc", toolRoot, version),
-		"catalog_linux_amd64":             fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog", toolRoot, version),
-		"catalog_linux_amd64.asc":         fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog.asc", toolRoot, version),
-		"dbt_darwin_amd64":                fmt.Sprintf("%s/%s/darwin/amd64/dbt", dbtRoot, version),
-		"dbt_darwin_amd64.asc":            fmt.Sprintf("%s/%s/darwin/amd64/dbt.asc", dbtRoot, version),
-		"dbt_linux_amd64":                 fmt.Sprintf("%s/%s/linux/amd64/dbt", dbtRoot, version),
-		"dbt_linux_amd64.asc":             fmt.Sprintf("%s/%s/linux/amd64/dbt.asc", dbtRoot, version),
-		"install_dbt.sh":                  fmt.Sprintf("%s/install_dbt.sh", dbtRoot),
-		"install_dbt.sh.asc":              fmt.Sprintf("%s/install_dbt.sh.asc", dbtRoot),
-	}
-
 	// Write the files into place
-	for k, v := range targets {
-		src := fmt.Sprintf("%s/%s", cwd, k)
-		dir := filepath.Dir(v)
+	for _, f := range testFiles {
+		src := fmt.Sprintf("%s/%s", cwd, f.Name)
+		dir := filepath.Dir(f.FilePath)
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			err = os.MkdirAll(dir, 0755)
 			if err != nil {
-				log.Fatalf("Error creating dir %s: %s", v, err)
+				log.Fatalf("Error creating dir %s: %s", dir, err)
 			}
 		}
 
@@ -232,9 +337,9 @@ Expire-Date: 0
 			log.Fatalf("Failed to read file %s: %s", src, err)
 		}
 
-		err = ioutil.WriteFile(v, input, 0644)
+		err = ioutil.WriteFile(f.FilePath, input, 0644)
 		if err != nil {
-			log.Fatalf("Failed to write file %s: %s", v, err)
+			log.Fatalf("Failed to write file %s: %s", f.FilePath, err)
 		}
 
 		err = os.Remove(src)
@@ -244,4 +349,39 @@ Expire-Date: 0
 	}
 
 	return err
+}
+
+func TestRunRepoServer(t *testing.T) {
+	err := buildTestRepo()
+	if err != nil {
+		fmt.Printf("Error building dbt binaries: %s\n", err)
+		t.Fail()
+	}
+
+	// Set up the repo server
+	repo = DBTRepo{
+		Address:    "127.0.0.1",
+		Port:       port,
+		ServerRoot: fmt.Sprintf("%s/repo", tmpDir),
+		PubkeyFunc: nil,
+	}
+
+	// Run it in the background
+	go repo.RunRepoServer()
+
+	host := fmt.Sprintf("http://%s:%d", repo.Address, repo.Port)
+	fmt.Sprintf("--- Serving requests on %s ---\n", host)
+	for _, f := range testFiles {
+		t.Run(f.Name, func(t *testing.T) {
+			url := fmt.Sprintf("%s%s", host, f.UrlPath)
+
+			resp, err := http.Get(url)
+			if err != nil {
+				fmt.Printf("Failed to fetch %s: %s", f.Name, err)
+				t.Fail()
+			}
+
+			assert.True(t, resp.StatusCode < 300, "Non success error code fetching %s (%d)", url, resp.StatusCode)
+		})
+	}
 }

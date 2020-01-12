@@ -28,17 +28,24 @@ func (d *DBTRepo) RunRepoServer() (err error) {
 
 	r := mux.NewRouter()
 
-	//r.Handle("/", http.FileServer(http.Dir(path)))
-	//r.Handle("/get-token", GetTokenHandler).Methods("GET")
+	// handle the uploads
+	r.PathPrefix("/").Handler(http.HandlerFunc(d.PutHandler)).Methods("PUT")
 
-	r.Handle("/", http.HandlerFunc(d.RootHandler))
+	// handle the downloads and indices
+	r.PathPrefix("/").Handler(http.FileServer(http.Dir(d.ServerRoot))).Methods("GET")
 
+	// run the server
 	err = http.ListenAndServe(fullAddress, r)
 
 	return err
 }
 
-func (d *DBTRepo) RootHandler(w http.ResponseWriter, r *http.Request) {
+// TODO verify sent checksums
+
+func (d *DBTRepo) PutHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Received Put")
+	w.WriteHeader(http.StatusBadRequest)
+
 	//tokenString := r.Header.Get("Token")
 
 	// Parse the token, which includes setting up it's internals so it can be verified.
