@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 var tmpDir string
@@ -368,6 +369,9 @@ func TestRunRepoServer(t *testing.T) {
 
 	// Run it in the background
 	go repo.RunRepoServer()
+
+	// Give things a moment to come up.
+	time.Sleep(time.Second)
 
 	host := fmt.Sprintf("http://%s:%d", repo.Address, repo.Port)
 	fmt.Sprintf("--- Serving requests on %s ---\n", host)
