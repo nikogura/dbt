@@ -48,6 +48,9 @@ const ConfigFilePath = ConfigDir + "/dbt.json"
 // TruststorePath is the actual file path to the downloaded trust store
 const TruststorePath = TrustDir + "/truststore"
 
+// VERSION DBT's version
+const VERSION = "3.0.2"
+
 // DBT the dbt object itself
 type DBT struct {
 	Config  Config

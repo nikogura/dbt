@@ -16,7 +16,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/nikogura/dbt/pkg/catalog"
+	"github.com/nikogura/dbt/pkg/dbt"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -29,7 +29,7 @@ var listCmd = &cobra.Command{
 List available tools.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		err := catalog.List(versions, "")
+		err := dbt.List(versions, "")
 		if err != nil {
 			fmt.Printf("Error running list: %s\n", err)
 			os.Exit(1)

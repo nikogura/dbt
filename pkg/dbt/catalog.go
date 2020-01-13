@@ -1,8 +1,7 @@
-package catalog
+package dbt
 
 import (
 	"fmt"
-	"github.com/nikogura/dbt/pkg/dbt"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 	"io/ioutil"
@@ -17,14 +16,14 @@ func List(showVersions bool, homedir string) (err error) {
 	fmt.Printf("Fetching information from the repository...\n")
 
 	if homedir == "" {
-		homedir, err = dbt.GetHomeDir()
+		homedir, err = GetHomeDir()
 		if err != nil {
 			err = errors.Wrap(err, "failed to derive user home dir")
 			return err
 		}
 	}
 
-	config, err := dbt.LoadDbtConfig(homedir, false)
+	config, err := LoadDbtConfig(homedir, false)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to load config from %s/.dbt/conf/dbt.json", homedir)
 		return err
@@ -56,7 +55,7 @@ func List(showVersions bool, homedir string) (err error) {
 	fmt.Printf("\tCommand Name\t\tLatest Version\t\tDescription\n\n")
 	fmt.Printf("\n\n")
 
-	dbtObj := &dbt.DBT{
+	dbtObj := &DBT{
 		Config:  config,
 		Verbose: false,
 		Logger:  log.New(os.Stderr, "", 0),
@@ -102,7 +101,7 @@ func List(showVersions bool, homedir string) (err error) {
 }
 
 // FetchDescription fetches the tool description from the repository.
-func FetchDescription(config dbt.Config, tool string, version string) (description string, err error) {
+func FetchDescription(config Config, tool string, version string) (description string, err error) {
 	uri := fmt.Sprintf("%s/%s/%s/description.txt", config.Tools.Repo, tool, version)
 
 	resp, err := http.Get(uri)
@@ -128,7 +127,7 @@ func FetchDescription(config dbt.Config, tool string, version string) (descripti
 }
 
 // FetchTools returns a list of tool names found in the trusted repo
-func FetchTools(config dbt.Config) (tools []Tool, err error) {
+func FetchTools(config Config) (tools []Tool, err error) {
 	uri := config.Tools.Repo
 	resp, err := http.Get(uri)
 

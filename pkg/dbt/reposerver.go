@@ -1,4 +1,4 @@
-package reposerver
+package dbt
 
 import (
 	"fmt"
@@ -12,7 +12,8 @@ func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 }
 
-type DBTRepo struct {
+// DBTRepoServer
+type DBTRepoServer struct {
 	Address    string
 	Port       int
 	ServerRoot string
@@ -20,7 +21,7 @@ type DBTRepo struct {
 }
 
 // Run runs the test repository server.
-func (d *DBTRepo) RunRepoServer() (err error) {
+func (d *DBTRepoServer) RunRepoServer() (err error) {
 
 	log.Printf("Running dbt artifact server on %s port %d.  Serving tree at: %s", d.Address, d.Port, d.ServerRoot)
 
@@ -42,7 +43,7 @@ func (d *DBTRepo) RunRepoServer() (err error) {
 
 // TODO verify sent checksums
 
-func (d *DBTRepo) PutHandler(w http.ResponseWriter, r *http.Request) {
+func (d *DBTRepoServer) PutHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Received Put")
 	w.WriteHeader(http.StatusBadRequest)
 
@@ -64,11 +65,3 @@ func (d *DBTRepo) PutHandler(w http.ResponseWriter, r *http.Request) {
 	//log.Infof("Subject %s successfuly authenticated", subject)
 
 }
-
-/*
-
-Need to calculate checksums automatically on upload like Artifactory does.
-
-also need to serve indexes
-
-*/

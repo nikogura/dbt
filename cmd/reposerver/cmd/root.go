@@ -16,7 +16,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/nikogura/dbt/pkg/reposerver"
+	"github.com/nikogura/dbt/pkg/dbt"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
@@ -54,7 +54,7 @@ func Execute() {
 }
 
 func Run(cmd *cobra.Command, args []string) {
-	repo := reposerver.DBTRepo{}
+	repo := dbt.DBTRepoServer{}
 	err := repo.RunRepoServer()
 	if err != nil {
 		log.Fatalf("Error running server: %s", err)

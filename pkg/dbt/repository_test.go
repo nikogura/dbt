@@ -30,9 +30,9 @@ func TestToolExists(t *testing.T) {
 		Logger:  log.New(os.Stderr, "", 0),
 	}
 
-	exists, err := dbtObj.ToolExists("foo")
+	exists, err := dbtObj.ToolExists("boilerplate")
 	if err != nil {
-		fmt.Printf("Failed to check repo for %q", "foo")
+		fmt.Printf("Failed to check repo for %q", "boilerplate")
 		t.Fail()
 	}
 	if !exists {
@@ -61,14 +61,16 @@ func TestToolVersionExists(t *testing.T) {
 		Logger:  log.New(os.Stderr, "", 0),
 	}
 
-	ok, err := dbtObj.ToolVersionExists("foo", "1.2.3")
+	toolName := "boilerplate"
+
+	ok, err := dbtObj.ToolVersionExists(toolName, VERSION)
 	if err != nil {
 		log.Printf("Error checking if version exists: %s", err)
 		t.Fail()
 	}
 
 	if !ok {
-		fmt.Println(fmt.Sprintf("Tool %q version %q does not exist in repo %s", "foo", "1.2.3", dbtObj.Config.Tools.Repo))
+		fmt.Println(fmt.Sprintf("Tool %q version %q does not exist in repo %s", toolName, VERSION, dbtObj.Config.Tools.Repo))
 		t.Fail()
 	}
 
@@ -87,18 +89,21 @@ func TestFetchToolVersions(t *testing.T) {
 		Logger:  log.New(os.Stderr, "", 0),
 	}
 
-	versions, err := dbtObj.FetchToolVersions("foo")
+	toolName := "boilerplate"
+
+	versions, err := dbtObj.FetchToolVersions(toolName)
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Error searching for versions of tool %q in repo %q", "foo", dbtObj.Config.Tools.Repo))
+		fmt.Println(fmt.Sprintf("Error searching for versions of tool %q in repo %q", toolName, dbtObj.Config.Tools.Repo))
 	}
 
-	assert.True(t, len(versions) == 2, "List of versions has 2 elements.")
+	assert.True(t, len(versions) == 1, "List of versions has 1 element.")
 }
 
 func TestFetchFile(t *testing.T) {
-	targetDir := fmt.Sprintf("%s/%s", tmpDir, ToolDir)
-	fileUrl := fmt.Sprintf("%s/foo/1.2.2/linux/amd64/foo", testToolUrl(port))
-	fileName := fmt.Sprintf("%s/foo", targetDir)
+	toolName := "catalog_darwin_amd64"
+	testFile := testFileMap[toolName]
+	fileUrl := testFile.TestUrl
+	fileName := testFile.FilePath
 
 	dbtObj := &DBT{
 		Config:  dbtConfig,
@@ -106,13 +111,22 @@ func TestFetchFile(t *testing.T) {
 		Logger:  log.New(os.Stderr, "", 0),
 	}
 
+	// TODO this won't work, you're clobbering the file in the repo.  Need a temp dir somewhere to download the file to
 	err := dbtObj.FetchFile(fileUrl, fileName)
 	if err != nil {
 		fmt.Printf("Error fetching file %q: %s\n", fileUrl, err)
 		t.Fail()
 	}
 
-	success, err := dbtObj.VerifyFileChecksum(fileName, dbtVersionASha256())
+	checksumBytes, err := ioutil.ReadFile(fmt.Sprintf("%s.sha256", fileName))
+	if err != nil {
+		fmt.Printf("Error reading checksumfile %s.sha256: %s\n", toolName, err)
+		t.Fail()
+	}
+
+	fmt.Printf("--- checksum: %s ---\n", checksumBytes)
+
+	success, err := dbtObj.VerifyFileChecksum(fileName, string(checksumBytes))
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Error checksumming test file: %s", err))
 		t.Fail()
@@ -198,12 +212,16 @@ func TestFindLatestVersion(t *testing.T) {
 		Verbose: true,
 	}
 
-	latest, err := dbtObj.FindLatestVersion("foo")
+	toolName := "catalog"
+
+	latest, err := dbtObj.FindLatestVersion(toolName)
 	if err != nil {
 		fmt.Printf("Error finding latest version: %s", err)
 		t.Fail()
 	}
 
-	assert.Equal(t, "1.2.3", latest, "Latest version meets expectations.")
+	assert.Equal(t, VERSION, latest, "Latest version meets expectations.")
 
 }
+
+// TODO Make old versions of tools so we can test that we're getting the latest
