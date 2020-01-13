@@ -19,9 +19,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
 	"strconv"
 	"strings"
@@ -222,4 +224,38 @@ func DirCopy(src string, dst string) error {
 		}
 	}
 	return nil
+}
+
+// GetFunc runs a shell command that is a getter function.  This could certainly be dangerous, so be careful how you use it.
+func GetFunc(shellCommand string) (result string, err error) {
+	cmd := exec.Command("sh", "-c", shellCommand)
+
+	stdout, err := cmd.StdoutPipe()
+
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+
+	cmd.Env = os.Environ()
+
+	err = cmd.Start()
+	if err != nil {
+		err = errors.Wrapf(err, "failed to run %q", shellCommand)
+		return result, err
+	}
+
+	stdoutBytes, err := ioutil.ReadAll(stdout)
+	if err != nil {
+		err = errors.Wrapf(err, "error reading stdout from func")
+		return result, err
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		err = errors.Wrapf(err, "error waiting for %q to exit", shellCommand)
+		return result, err
+	}
+
+	result = strings.TrimSuffix(string(stdoutBytes), "\n")
+
+	return result, err
 }
