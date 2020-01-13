@@ -147,7 +147,9 @@ An example dbt config file:
             "repository": "http://localhost:8081/dbt-tools"
           }
           "username": "",
-          "password": ""
+          "password": "",
+          "usernamefunc": "echo $USERNAME",
+          "passwordfunc": "echo $PASSWORD"
         }
         
 It contains sections for the ```dbt``` tool itself, as well as for the tools dbt will download and run.
@@ -279,4 +281,12 @@ Username if basic auth is used on repos.  (Optional)
 ## password
 
 Password if basic auth is used on repos. (Optional)
+
+## usernamefunc
+
+Shell function to retrieive username.
+
+## passwordfunc
+
+Shell funciton to retrieve password.
 

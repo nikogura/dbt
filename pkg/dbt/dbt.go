@@ -57,10 +57,12 @@ type DBT struct {
 
 // Config  configuration of the dbt object
 type Config struct {
-	Dbt      DbtConfig   `json:"dbt"`
-	Tools    ToolsConfig `json:"tools"`
-	Username string      `json:"username,omitempty"`
-	Password string      `json:"password,omitempty"`
+	Dbt          DbtConfig   `json:"dbt"`
+	Tools        ToolsConfig `json:"tools"`
+	Username     string      `json:"username,omitempty"`
+	Password     string      `json:"password,omitempty"`
+	UsernameFunc string      `json:"usernamefunc,omitempty"`
+	PasswordFunc string      `json:"passwordfunc,omitempty"`
 }
 
 // DbtConfig internal config of dbt
@@ -186,7 +188,6 @@ func GetHomeDir() (dir string, err error) {
 
 // FetchTrustStore writes the downloaded trusted signing public keys to disk.
 func (dbt *DBT) FetchTrustStore(homedir string, verbose bool) (err error) {
-
 	uri := dbt.Config.Dbt.TrustStore
 
 	if verbose {
@@ -203,8 +204,29 @@ func (dbt *DBT) FetchTrustStore(homedir string, verbose bool) (err error) {
 		return err
 	}
 
-	if dbt.Config.Username != "" && dbt.Config.Password != "" {
-		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(dbt.Config.Username+":"+dbt.Config.Password)))
+	username := dbt.Config.Username
+	password := dbt.Config.Password
+
+	// Username func takes precedence over hardcoded username
+	if dbt.Config.UsernameFunc != "" {
+		username, err = GetFunc(dbt.Config.UsernameFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
+			return err
+		}
+	}
+
+	// PasswordFunc takes precedence over hardcoded password
+	if dbt.Config.PasswordFunc != "" {
+		password, err = GetFunc(dbt.Config.PasswordFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
+			return err
+		}
+	}
+
+	if username != "" && password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
 	}
 
 	resp, err := client.Do(req)
