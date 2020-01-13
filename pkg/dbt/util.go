@@ -18,7 +18,11 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
+	"github.com/pkg/errors"
 	"io/ioutil"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 )
@@ -158,4 +162,40 @@ func FileSha1(fileName string) (checksum string, err error) {
 	checksum = hex.EncodeToString(hasher.Sum(nil))
 
 	return checksum, err
+}
+
+// GetFunc runs a shell command that is a getter function.  This could certainly be dangerous, so be careful how you use it.
+func GetFunc(shellCommand string) (result string, err error) {
+	cmd := exec.Command("sh", "-c", shellCommand)
+
+	fmt.Printf("[DEBUG] Getting input with shell function %q\n", shellCommand)
+
+	stdout, err := cmd.StdoutPipe()
+
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+
+	cmd.Env = os.Environ()
+
+	err = cmd.Start()
+	if err != nil {
+		err = errors.Wrapf(err, "failed to run %q", shellCommand)
+		return result, err
+	}
+
+	stdoutBytes, err := ioutil.ReadAll(stdout)
+	if err != nil {
+		err = errors.Wrapf(err, "error reading stdout from func")
+		return result, err
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		err = errors.Wrapf(err, "error waiting for %q to exit", shellCommand)
+		return result, err
+	}
+
+	result = strings.TrimSuffix(string(stdoutBytes), "\n")
+
+	return result, err
 }

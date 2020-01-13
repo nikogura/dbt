@@ -52,8 +52,29 @@ func (dbt *DBT) ToolExists(toolName string) (found bool, err error) {
 		return found, err
 	}
 
-	if dbt.Config.Username != "" && dbt.Config.Password != "" {
-		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(dbt.Config.Username+":"+dbt.Config.Password)))
+	username := dbt.Config.Username
+	password := dbt.Config.Password
+
+	// Username func takes precedence over hardcoded username
+	if dbt.Config.UsernameFunc != "" {
+		username, err = GetFunc(dbt.Config.UsernameFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
+			return found, err
+		}
+	}
+
+	// PasswordFunc takes precedence over hardcoded password
+	if dbt.Config.PasswordFunc != "" {
+		password, err = GetFunc(dbt.Config.PasswordFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
+			return found, err
+		}
+	}
+
+	if username != "" && password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
 	}
 
 	resp, err := client.Do(req)
@@ -95,8 +116,29 @@ func (dbt *DBT) ToolVersionExists(tool string, version string) (ok bool, err err
 		return ok, err
 	}
 
-	if dbt.Config.Username != "" && dbt.Config.Password != "" {
-		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(dbt.Config.Username+":"+dbt.Config.Password)))
+	username := dbt.Config.Username
+	password := dbt.Config.Password
+
+	// Username func takes precedence over hardcoded username
+	if dbt.Config.UsernameFunc != "" {
+		username, err = GetFunc(dbt.Config.UsernameFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
+			return ok, err
+		}
+	}
+
+	// PasswordFunc takes precedence over hardcoded password
+	if dbt.Config.PasswordFunc != "" {
+		password, err = GetFunc(dbt.Config.PasswordFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
+			return ok, err
+		}
+	}
+
+	if username != "" && password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
 	}
 
 	resp, err := client.Do(req)
@@ -135,8 +177,29 @@ func (dbt *DBT) FetchToolVersions(toolName string) (versions []string, err error
 		return versions, err
 	}
 
-	if dbt.Config.Username != "" && dbt.Config.Password != "" {
-		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(dbt.Config.Username+":"+dbt.Config.Password)))
+	username := dbt.Config.Username
+	password := dbt.Config.Password
+
+	// Username func takes precedence over hardcoded username
+	if dbt.Config.UsernameFunc != "" {
+		username, err = GetFunc(dbt.Config.UsernameFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
+			return versions, err
+		}
+	}
+
+	// PasswordFunc takes precedence over hardcoded password
+	if dbt.Config.PasswordFunc != "" {
+		password, err = GetFunc(dbt.Config.PasswordFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
+			return versions, err
+		}
+	}
+
+	if username != "" && password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
 	}
 
 	resp, err := client.Do(req)
@@ -214,8 +277,29 @@ func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 		return err
 	}
 
-	if dbt.Config.Username != "" && dbt.Config.Password != "" {
-		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(dbt.Config.Username+":"+dbt.Config.Password)))
+	username := dbt.Config.Username
+	password := dbt.Config.Password
+
+	// Username func takes precedence over hardcoded username
+	if dbt.Config.UsernameFunc != "" {
+		username, err = GetFunc(dbt.Config.UsernameFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
+			return err
+		}
+	}
+
+	// PasswordFunc takes precedence over hardcoded password
+	if dbt.Config.PasswordFunc != "" {
+		password, err = GetFunc(dbt.Config.PasswordFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
+			return err
+		}
+	}
+
+	if username != "" && password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
 	}
 
 	headResp, err := client.Do(req)
@@ -248,8 +332,8 @@ func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 		return err
 	}
 
-	if dbt.Config.Username != "" && dbt.Config.Password != "" {
-		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(dbt.Config.Username+":"+dbt.Config.Password)))
+	if username != "" && password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
 	}
 
 	resp, err := client.Do(req)
@@ -306,8 +390,29 @@ func (dbt *DBT) VerifyFileVersion(fileUrl string, filePath string) (success bool
 		return success, err
 	}
 
-	if dbt.Config.Username != "" && dbt.Config.Password != "" {
-		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(dbt.Config.Username+":"+dbt.Config.Password)))
+	username := dbt.Config.Username
+	password := dbt.Config.Password
+
+	// Username func takes precedence over hardcoded username
+	if dbt.Config.UsernameFunc != "" {
+		username, err = GetFunc(dbt.Config.UsernameFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
+			return success, err
+		}
+	}
+
+	// PasswordFunc takes precedence over hardcoded password
+	if dbt.Config.PasswordFunc != "" {
+		password, err = GetFunc(dbt.Config.PasswordFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
+			return success, err
+		}
+	}
+
+	if username != "" && password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
 	}
 
 	resp, err := client.Do(req)
