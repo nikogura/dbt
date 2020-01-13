@@ -41,7 +41,7 @@ func (dbt *DBT) ToolExists(toolName string) (found bool, err error) {
 		uri = fmt.Sprintf("%s/", repoUrl)
 	} else {
 		repoUrl = dbt.Config.Tools.Repo
-		uri = fmt.Sprintf("%s/%s", repoUrl, toolName)
+		uri = fmt.Sprintf("%s/%s/", repoUrl, toolName)
 	}
 
 	client := &http.Client{}
@@ -166,7 +166,7 @@ func (dbt *DBT) FetchToolVersions(toolName string) (versions []string, err error
 		uri = fmt.Sprintf("%s/", repoUrl)
 	} else {
 		repoUrl = dbt.Config.Tools.Repo
-		uri = fmt.Sprintf("%s/%s", repoUrl, toolName)
+		uri = fmt.Sprintf("%s/%s/", repoUrl, toolName)
 	}
 
 	client := &http.Client{}
