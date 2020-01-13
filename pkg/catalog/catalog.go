@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/nikogura/dbt/pkg/dbt"
 	"github.com/pkg/errors"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 // List shows you what tools are available in your trusted repo.  Repo is figured out from the config in ~/.dbt/conf/dbt.json
@@ -105,7 +107,42 @@ func List(showVersions bool, homedir string) (err error) {
 func FetchDescription(config dbt.Config, tool string, version string) (description string, err error) {
 	uri := fmt.Sprintf("%s/%s/%s/description.txt", config.Tools.Repo, tool, version)
 
-	resp, err := http.Get(uri)
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	req, err := http.NewRequest("GET", uri, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+		return description, err
+	}
+
+	username := config.Username
+	password := config.Password
+
+	// Username func takes precedence over hardcoded username
+	if config.UsernameFunc != "" {
+		username, err = dbt.GetFunc(config.UsernameFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get username from shell function %q", config.UsernameFunc)
+			return description, err
+		}
+	}
+
+	// PasswordFunc takes precedence over hardcoded password
+	if config.PasswordFunc != "" {
+		password, err = dbt.GetFunc(config.PasswordFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get password from shell function %q", config.PasswordFunc)
+			return description, err
+		}
+	}
+
+	if username != "" && password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+	}
+
+	resp, err := client.Do(req)
 
 	if err != nil {
 		err = errors.Wrapf(err, "Error looking for command description in repo %q", uri)
@@ -134,7 +171,43 @@ func FetchTools(config dbt.Config) (tools []Tool, err error) {
 	munged := strings.TrimRight(rawUrl, "/")
 	// Then add one cos we definitely need one
 	uri := fmt.Sprintf("%s/", munged)
-	resp, err := http.Get(uri)
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	req, err := http.NewRequest("GET", uri, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+		return tools, err
+	}
+
+	username := config.Username
+	password := config.Password
+
+	// Username func takes precedence over hardcoded username
+	if config.UsernameFunc != "" {
+		username, err = dbt.GetFunc(config.UsernameFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get username from shell function %q", config.UsernameFunc)
+			return tools, err
+		}
+	}
+
+	// PasswordFunc takes precedence over hardcoded password
+	if config.PasswordFunc != "" {
+		password, err = dbt.GetFunc(config.PasswordFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get password from shell function %q", config.PasswordFunc)
+			return tools, err
+		}
+	}
+
+	if username != "" && password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+	}
+
+	resp, err := client.Do(req)
 
 	tools = make([]Tool, 0)
 
