@@ -18,7 +18,6 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
@@ -167,8 +166,6 @@ func FileSha1(fileName string) (checksum string, err error) {
 // GetFunc runs a shell command that is a getter function.  This could certainly be dangerous, so be careful how you use it.
 func GetFunc(shellCommand string) (result string, err error) {
 	cmd := exec.Command("sh", "-c", shellCommand)
-
-	fmt.Printf("[DEBUG] Getting input with shell function %q\n", shellCommand)
 
 	stdout, err := cmd.StdoutPipe()
 
