@@ -129,7 +129,11 @@ func FetchDescription(config dbt.Config, tool string, version string) (descripti
 
 // FetchTools returns a list of tool names found in the trusted repo
 func FetchTools(config dbt.Config) (tools []Tool, err error) {
-	uri := config.Tools.Repo
+	// strip off a trailing slash if there is one
+	rawUrl := config.Tools.Repo
+	munged := strings.TrimRight(rawUrl, "/")
+	// Then add one cos we definitely need one
+	uri := fmt.Sprintf("%s/", munged)
 	resp, err := http.Get(uri)
 
 	tools = make([]Tool, 0)
