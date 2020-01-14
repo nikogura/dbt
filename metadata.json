@@ -1,5 +1,5 @@
 {
-  "version": "3.0.1",
+  "version": "3.0.2",
   "package": "github.com/nikogura/dbt",
   "description": "Dynamic Binary Toolkit - A framework for running self-updating signed binaries from a central, trusted repository.",
   "repository": "http://localhost:8081/artifactory/dbt",
@@ -19,6 +19,11 @@
         "executable": true
       },
       {
+        "template": "templates/install_dbt_mac_keychain.tmpl",
+        "filename": "install_dbt_mac_keychain.sh",
+        "executable": true
+      },
+      {
         "template": "templates/catalog-description.tmpl",
         "filename": "catalog-description.txt",
         "executable": false
@@ -26,6 +31,11 @@
       {
         "template": "templates/boilerplate-description.tmpl",
         "filename": "boilerplate-description.txt",
+        "executable": false
+      },
+      {
+        "template": "templates/reposerver-description.tmpl",
+        "filename": "reposerver-description.txt",
         "executable": false
       }
     ]
@@ -36,55 +46,79 @@
         "src": "install_dbt.sh",
         "dst": "{{.Repository}}/install_dbt.sh",
         "sig": true,
-        "checksums": false
+        "checksums": true
+      },
+      {
+        "src": "install_dbt_mac_keychain.sh",
+        "dst": "{{.Repository}}/install_dbt.sh",
+        "sig": true,
+        "checksums": true
       },
       {
         "src": "dbt_darwin_amd64",
         "dst": "{{.Repository}}/{{.Version}}/darwin/amd64/dbt",
         "sig": true,
-        "checksums": false
+        "checksums": true
       },
       {
         "src": "dbt_linux_amd64",
         "dst": "{{.Repository}}/{{.Version}}/linux/amd64/dbt",
         "sig": true,
-        "checksums": false
+        "checksums": true
       },
       {
         "src": "catalog-description.txt",
         "dst": "{{.Repository}}-tools/catalog/{{.Version}}/description.txt",
         "sig": true,
-        "checksums": false
+        "checksums": true
       },
       {
         "src": "catalog_darwin_amd64",
         "dst": "{{.Repository}}-tools/catalog/{{.Version}}/darwin/amd64/catalog",
         "sig": true,
-        "checksums": false
+        "checksums": true
       },
       {
         "src": "catalog_linux_amd64",
         "dst": "{{.Repository}}-tools/catalog/{{.Version}}/linux/amd64/catalog",
         "sig": true,
-        "checksums": false
+        "checksums": true
       },
       {
         "src": "boilerplate-description.txt",
         "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/description.txt",
         "sig": true,
-        "checksums": false
+        "checksums": true
       },
       {
         "src": "boilerplate_darwin_amd64",
         "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/darwin/amd64/boilerplate",
         "sig": true,
-        "checksums": false
+        "checksums": true
       },
       {
         "src": "boilerplate_linux_amd64",
         "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/linux/amd64/boilerplate",
         "sig": true,
-        "checksums": false
+        "checksums": true
+      },
+      {
+        "src": "reposerver-description.txt",
+        "dst": "{{.Repository}}-tools/reposerver/{{.Version}}/description.txt",
+        "sig": true,
+        "checksums": true
+      },
+      {
+        "src": "reposerver_darwin_amd64",
+        "dst": "{{.Repository}}-tools/reposerver/{{.Version}}/darwin/amd64/reposerver",
+        "sig": true,
+        "checksums": true
+      },
+      {
+        "src": "reposerver_linux_amd64",
+        "dst": "{{.Repository}}-tools/reposerver/{{.Version}}/linux/amd64/reposerver",
+        "sig": true,
+        "checksums": true
       }
     ]
   }
