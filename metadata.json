@@ -33,11 +33,6 @@
         "filename": "boilerplate-description.txt",
         "executable": false
       },
-      {
-        "template": "templates/reposerver-description.tmpl",
-        "filename": "reposerver-description.txt",
-        "executable": false
-      }
     ]
   },
   "publishing": {
@@ -99,24 +94,6 @@
       {
         "src": "boilerplate_linux_amd64",
         "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/linux/amd64/boilerplate",
-        "sig": true,
-        "checksums": true
-      },
-      {
-        "src": "reposerver-description.txt",
-        "dst": "{{.Repository}}-tools/reposerver/{{.Version}}/description.txt",
-        "sig": true,
-        "checksums": true
-      },
-      {
-        "src": "reposerver_darwin_amd64",
-        "dst": "{{.Repository}}-tools/reposerver/{{.Version}}/darwin/amd64/reposerver",
-        "sig": true,
-        "checksums": true
-      },
-      {
-        "src": "reposerver_linux_amd64",
-        "dst": "{{.Repository}}-tools/reposerver/{{.Version}}/linux/amd64/reposerver",
         "sig": true,
         "checksums": true
       }
