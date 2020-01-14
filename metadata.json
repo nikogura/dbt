@@ -32,7 +32,7 @@
         "template": "templates/boilerplate-description.tmpl",
         "filename": "boilerplate-description.txt",
         "executable": false
-      },
+      }
     ]
   },
   "publishing": {
