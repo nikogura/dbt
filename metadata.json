@@ -45,7 +45,7 @@
       },
       {
         "src": "install_dbt_mac_keychain.sh",
-        "dst": "{{.Repository}}/install_dbt.sh",
+        "dst": "{{.Repository}}/install_dbt_mac_keychain.sh",
         "sig": true,
         "checksums": true
       },
