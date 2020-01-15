@@ -77,10 +77,6 @@ func setUp() {
 
 	dbtConfig = testDbtConfig(port)
 
-	//tr := TestRepo{}
-
-	//go tr.Run(port)
-
 	err = buildTestRepo()
 	if err != nil {
 		log.Fatalf("Error building test repo: %s", err)
@@ -652,37 +648,37 @@ func TestFetchTrustStore(t *testing.T) {
 //	assert.True(t, ok, "Current version shows current.")
 //}
 
-//func TestNewDbt(t *testing.T) {
-//	homedir, err := GetHomeDir()
-//	if err != nil {
-//		fmt.Printf("Error getting homedir: %s", err)
-//		t.Fail()
-//	}
-//
-//	configPath := fmt.Sprintf("%s/%s", homedir, ConfigDir)
-//	fileName := fmt.Sprintf("%s/dbt.json", configPath)
-//
-//	if _, err := os.Stat(fileName); os.IsNotExist(err) {
-//		fmt.Printf("Writing test dbt config to %s", fileName)
-//		err = GenerateDbtDir("", true)
-//		if err != nil {
-//			fmt.Printf("Error generating dbt dir: %s", err)
-//			t.Fail()
-//		}
-//
-//		err = ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
-//		if err != nil {
-//			log.Printf("Error writing config file to %s: %s", fileName, err)
-//			t.Fail()
-//		}
-//	}
-//
-//	_, err = NewDbt()
-//	if err != nil {
-//		fmt.Printf("Error creating DBT object: %s", err)
-//		t.Fail()
-//	}
-//}
+func TestNewDbt(t *testing.T) {
+	homedir, err := GetHomeDir()
+	if err != nil {
+		fmt.Printf("Error getting homedir: %s", err)
+		t.Fail()
+	}
+
+	configPath := fmt.Sprintf("%s/%s", homedir, ConfigDir)
+	fileName := fmt.Sprintf("%s/dbt.json", configPath)
+
+	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+		fmt.Printf("Writing test dbt config to %s", fileName)
+		err = GenerateDbtDir("", true)
+		if err != nil {
+			fmt.Printf("Error generating dbt dir: %s", err)
+			t.Fail()
+		}
+
+		err = ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
+		if err != nil {
+			log.Printf("Error writing config file to %s: %s", fileName, err)
+			t.Fail()
+		}
+	}
+
+	_, err = NewDbt()
+	if err != nil {
+		fmt.Printf("Error creating DBT object: %s", err)
+		t.Fail()
+	}
+}
 
 func TestGetHomeDir(t *testing.T) {
 	_, err := GetHomeDir()
