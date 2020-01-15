@@ -277,6 +277,16 @@ func createTestFiles(toolRoot string, version string, dbtRoot string) {
 			FilePath: fmt.Sprintf("%s/install_dbt.sh.asc", dbtRoot),
 			UrlPath:  "/dbt/install_dbt.sh.asc",
 		},
+		{
+			Name:     "install_dbt_mac_keychain.sh",
+			FilePath: fmt.Sprintf("%s/install_dbt_mac_keychain.sh", dbtRoot),
+			UrlPath:  "/dbt/install_dbt.sh",
+		},
+		{
+			Name:     "install_dbt_mac_keychain.sh.asc",
+			FilePath: fmt.Sprintf("%s/install_dbt_mac_keychain.sh.asc", dbtRoot),
+			UrlPath:  "/dbt/install_dbt.sh.asc",
+		},
 	}
 
 	hostname := "127.0.0.1"
