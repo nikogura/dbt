@@ -95,7 +95,7 @@ func TestFetchToolVersions(t *testing.T) {
 		fmt.Println(fmt.Sprintf("Error searching for versions of tool %q in repo %q", toolName, dbtObj.Config.Tools.Repo))
 	}
 
-	assert.True(t, len(versions) == 1, "List of versions has 1 element.")
+	assert.True(t, len(versions) == 1, "ListCatalog of versions has 1 element.")
 }
 
 //func TestFetchFile(t *testing.T) {
@@ -210,22 +210,22 @@ func TestFetchToolVersions(t *testing.T) {
 //	assert.True(t, success, "Signature of downloaded file verified.")
 //}
 
-//func TestFindLatestVersion(t *testing.T) {
-//	dbtObj := &DBT{
-//		Config:  dbtConfig,
-//		Verbose: true,
-//	}
-//
-//	toolName := "catalog"
-//
-//	latest, err := dbtObj.FindLatestVersion(toolName)
-//	if err != nil {
-//		fmt.Printf("Error finding latest version: %s", err)
-//		t.Fail()
-//	}
-//
-//	assert.Equal(t, VERSION, latest, "Latest version meets expectations.")
-//
-//}
+func TestFindLatestVersion(t *testing.T) {
+	dbtObj := &DBT{
+		Config:  dbtConfig,
+		Verbose: true,
+	}
+
+	toolName := "catalog"
+
+	latest, err := dbtObj.FindLatestVersion(toolName)
+	if err != nil {
+		fmt.Printf("Error finding latest version: %s", err)
+		t.Fail()
+	}
+
+	assert.Equal(t, VERSION, latest, "Latest version meets expectations.")
+
+}
 
 // TODO Make old versions of tools so we can test that we're getting the latest

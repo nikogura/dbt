@@ -3,6 +3,8 @@ package dbt
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
+	"log"
 	"testing"
 )
 
@@ -47,10 +49,19 @@ func TestFetchTools(t *testing.T) {
 	assert.Equal(t, expected, actual, "returned list of tools meets expectations")
 }
 
-//func TestList(t *testing.T) {
-//	err := List(true, tmpDir)
-//	if err != nil {
-//		fmt.Printf("Error listing tools: %s\n", err)
-//		t.Fail()
-//	}
-//}
+func TestListCatalog(t *testing.T) {
+	configPath := fmt.Sprintf("%s/%s", tmpDir, ConfigDir)
+	fileName := fmt.Sprintf("%s/dbt.json", configPath)
+
+	err := ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
+	if err != nil {
+		log.Printf("Error writing config file to %s: %s", fileName, err)
+		t.Fail()
+	}
+
+	err = ListCatalog(true, tmpDir)
+	if err != nil {
+		fmt.Printf("Error listing tools: %s\n", err)
+		t.Fail()
+	}
+}

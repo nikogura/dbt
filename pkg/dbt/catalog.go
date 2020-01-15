@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-// List shows you what tools are available in your trusted repo.  Repo is figured out from the config in ~/.dbt/conf/dbt.json
-func List(showVersions bool, homedir string) (err error) {
+// ListCatalog shows you what tools are available in your trusted repo.  Repo is figured out from the config in ~/.dbt/conf/dbt.json
+func ListCatalog(showVersions bool, homedir string) (err error) {
 	fmt.Printf("Fetching information from the repository...\n")
 
 	if homedir == "" {

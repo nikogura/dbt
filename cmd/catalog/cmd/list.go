@@ -24,12 +24,12 @@ import (
 // listCmd represents the list command
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List available tools.",
+	Short: "ListCatalog available tools.",
 	Long: `
-List available tools.
+ListCatalog available tools.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		err := dbt.List(versions, "")
+		err := dbt.ListCatalog(versions, "")
 		if err != nil {
 			fmt.Printf("Error running list: %s\n", err)
 			os.Exit(1)
