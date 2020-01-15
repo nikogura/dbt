@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+
+set -e
+
+# URL for your trusted repository
+REPO="{{.Repository}}"
+
+# Initial version to install
+VERSION="{{.Version}}"
+
+echo "Enter your DBT username: "
+read USERNAME
+
+echo "Enter your DBT password: "
+read -s PASSWORD
+
+# wipe out previous values
+security -q delete-generic-password -a $(whoami) -s dbt-username &>/dev/null || true
+security -q delete-generic-password -a $(whoami) -s dbt-password &>/dev/null || true
+
+# Set New values
+security add-generic-password -a $(whoami) -s dbt-username -p "$USERNAME"
+security add-generic-password -a $(whoami) -s dbt-password -p "$PASSWORD"
+
+# Functions to get your basic auth credentials
+USERNAMEFUNC="security find-generic-password -a $(whoami) -s dbt-username -w"
+PASSWORDFUNC="security find-generic-password -a $(whoami) -s dbt-password -w"
+
+echo "Installing DBT $VERSION..."
+
+# Config setup
+CONFIG=$(cat <<EOF
+{
+  "dbt": {
+    "repository": "${REPO}",
+    "truststore": "${REPO}/truststore"
+  },
+  "tools": {
+    "repository": "${REPO}-tools"
+  },
+  "usernamefunc": "$USERNAMEFUNC",
+  "passwordfunc": "$PASSWORDFUNC"
+}
+EOF
+)
+
+# create directories
+DIRS=(~/.dbt ~/.dbt/trust ~/.dbt/conf ~/.dbt/tools)
+
+for i in ${DIRS[@]}; do
+    [[ -d $i ]] || mkdir $i && chmod 700 $i
+done
+
+# write config
+echo "$CONFIG" > ~/.dbt/conf/dbt.json
+chmod 600 ~/.dbt/conf/dbt.json
+
+INSTALL_DIR="/usr/local/bin"
+FILE="dbt"
+
+OS=$(echo $(uname -s) | awk '{print tolower($0)}')
+ARCH=$(uname -m)
+
+# have to translate uname to goxish
+if [[ "$ARCH" =~ "x86_64" ]]; then
+    ARCH="amd64"
+fi
+
+URL="$REPO/$VERSION/$OS/$ARCH/$FILE"
+
+echo "Installing from $URL"
+
+TMPDIR=$(mktemp -d)
+
+DOWNLOAD_PATH="$TMPDIR/$FILE"
+
+USERNAME=$($USERNAMEFUNC)
+PASSWORD=$($PASSWORDFUNC)
+
+curl -sX GET -u $USERNAME:$PASSWORD $URL -o $DOWNLOAD_PATH
+
+if [ $? != 0 ]; then
+  echo "Failed to download binary.  Installation aborted."
+  exit 1
+fi
+
+if [ -w $INSTALL_DIR ] ; then
+    mv $DOWNLOAD_PATH $INSTALL_DIR
+    chmod 755 "$INSTALL_DIR/$FILE"
+else
+    sudo mv $DOWNLOAD_PATH $INSTALL_DIR
+    sudo chmod 755 "$INSTALL_DIR/$FILE"
+
+fi
+
+rm -r $TMPDIR
+
+echo "Installation complete.

@@ -19,6 +19,11 @@
         "executable": true
       },
       {
+        "template": "templates/install_dbt_mac_keychain.tmpl",
+        "filename": "install_dbt_mac_keychain.sh",
+        "executable": true
+      },
+      {
         "template": "templates/catalog-description.tmpl",
         "filename": "catalog-description.txt",
         "executable": false
@@ -40,6 +45,12 @@
       {
         "src": "install_dbt.sh",
         "dst": "{{.Repository}}/install_dbt.sh",
+        "sig": true,
+        "checksums": true
+      },
+      {
+        "src": "install_dbt_mac_keychain.sh",
+        "dst": "{{.Repository}}/install_dbt_mac_keychain.sh",
         "sig": true,
         "checksums": true
       },

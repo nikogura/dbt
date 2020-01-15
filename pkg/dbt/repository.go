@@ -256,7 +256,6 @@ func (dbt *DBT) ParseVersionResponse(resp *http.Response) (versions []string) {
 // FetchFile Fetches a file and places it on the filesystem.
 // Does not validate the signature.  That's a different step.
 func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
-
 	out, err := os.Create(destPath)
 	if err != nil {
 		return err

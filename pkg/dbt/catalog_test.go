@@ -47,10 +47,10 @@ func TestFetchTools(t *testing.T) {
 	assert.Equal(t, expected, actual, "returned list of tools meets expectations")
 }
 
-func TestList(t *testing.T) {
-	err := List(true, tmpDir)
-	if err != nil {
-		fmt.Printf("Error listing tools: %s", err)
-		t.Fail()
-	}
-}
+//func TestList(t *testing.T) {
+//	err := List(true, tmpDir)
+//	if err != nil {
+//		fmt.Printf("Error listing tools: %s\n", err)
+//		t.Fail()
+//	}
+//}
