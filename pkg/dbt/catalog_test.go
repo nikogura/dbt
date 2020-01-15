@@ -64,4 +64,6 @@ func TestListCatalog(t *testing.T) {
 		fmt.Printf("Error listing tools: %s\n", err)
 		t.Fail()
 	}
+
+	assert.Nil(t, err, "ListCatalog produced errors.")
 }
