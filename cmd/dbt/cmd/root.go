@@ -48,6 +48,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&offline, "offline", "o", false, "Offline mode.")
 }
 
+// Execute - execute the command
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

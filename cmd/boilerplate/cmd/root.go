@@ -36,6 +36,7 @@ Sometimes, however, you have better things to do with your time, and just want t
 `,
 }
 
+// Execute - execute the command
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
