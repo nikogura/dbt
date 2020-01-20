@@ -228,5 +228,22 @@ func ExampleRunTool() {
 	}
 
 	dbt.RunTool("", []string{"catalog", "help"}, tmpDir, false)
-	// Output: Tool for showing available DBT tools.
+	// Output: Downloading binary tool "catalog" version 3.0.3.
+	//
+	//Tool for showing available DBT tools.
+
+	//DBT tools are made available in a trusted repository.  This tool show's what's available there.
+	//
+	//	Usage:
+	//  catalog [command]
+	//
+	//Available Commands:
+	//  help        Help about any command
+	//  list        ListCatalog available tools.
+	//
+	//Flags:
+	//  -h, --help       help for catalog
+	//  -v, --versions   Show all version information for tools.
+	//
+	//	Use "catalog [command] --help" for more information about a command.
 }
