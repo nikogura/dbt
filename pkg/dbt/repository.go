@@ -29,7 +29,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
+
+// NOPROGRESS turns off the progress bar on file fetches.  Primarily used for testing to avoid cluttering up the output and confusing the test harness.
+var NOPROGRESS = false
 
 // ToolExists Returns true if a tool of the name input exists in the repository given.
 func (dbt *DBT) ToolExists(toolName string) (found bool, err error) {
@@ -268,7 +272,9 @@ func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 
 	defer out.Close()
 
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 300 * time.Second,
+	}
 
 	req, err := http.NewRequest("HEAD", fileUrl, nil)
 	if err != nil {
@@ -301,29 +307,39 @@ func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
 	}
 
-	headResp, err := client.Do(req)
+	var bar *pb.ProgressBar
 
-	if err != nil {
-		panic(err)
+	if !NOPROGRESS {
+		headResp, err := client.Do(req)
+		defer headResp.Body.Close()
+
+		if err != nil {
+			err = errors.Wrapf(err, "error making request to %s", fileUrl)
+			return err
+		}
+
+		if headResp.StatusCode > 399 {
+			err = errors.New(fmt.Sprintf("unable to request headers for %s: %d %s", fileUrl, headResp.StatusCode, headResp.Status))
+			return err
+		}
+
+		sizeHeader := headResp.Header.Get("Content-Length")
+		if sizeHeader == "" {
+			sizeHeader = "0"
+		}
+
+		size, err := strconv.Atoi(sizeHeader)
+		if err != nil {
+			err = errors.Wrap(err, "unable to convert Content-Length header to integer")
+			return err
+		}
+
+		// create and start progress bar
+		bar = pb.New(size).SetUnits(pb.U_BYTES)
+		bar.Output = os.Stderr
+		bar.Start()
+
 	}
-
-	defer headResp.Body.Close()
-
-	sizeHeader := headResp.Header.Get("Content-Length")
-	if sizeHeader == "" {
-		sizeHeader = "0"
-	}
-
-	size, err := strconv.Atoi(sizeHeader)
-
-	if err != nil {
-		panic(err)
-	}
-
-	// create and start progress bar
-	bar := pb.New(size).SetUnits(pb.U_BYTES)
-	bar.Output = os.Stderr
-	bar.Start()
 
 	req, err = http.NewRequest("GET", fileUrl, nil)
 	if err != nil {
@@ -336,19 +352,26 @@ func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 	}
 
 	resp, err := client.Do(req)
-
 	if err != nil {
 		err = errors.Wrap(err, fmt.Sprintf("Error fetching file from %q", fileUrl))
 		return err
 	}
 
+	if resp.StatusCode > 399 {
+		err = errors.New(fmt.Sprintf("unable to make request to %s: %d %s", fileUrl, resp.StatusCode, resp.Status))
+		return err
+	}
+
 	if resp != nil {
 		defer resp.Body.Close()
-		// create proxy reader
-		reader := bar.NewProxyReader(resp.Body)
 
-		// and copy from pb reader
-		_, _ = io.Copy(out, reader)
+		if bar != nil {
+			// create proxy reader
+			reader := bar.NewProxyReader(resp.Body)
+
+			// and copy from pb reader
+			_, _ = io.Copy(out, reader)
+		}
 
 		_, err = io.Copy(out, resp.Body)
 

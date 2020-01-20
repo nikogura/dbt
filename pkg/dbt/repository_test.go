@@ -17,6 +17,7 @@ package dbt
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"log"
 	"os"
 	"testing"
@@ -95,120 +96,114 @@ func TestFetchToolVersions(t *testing.T) {
 		fmt.Println(fmt.Sprintf("Error searching for versions of tool %q in repo %q", toolName, dbtObj.Config.Tools.Repo))
 	}
 
-	assert.True(t, len(versions) == 1, "ListCatalog of versions has 1 element.")
+	assert.True(t, len(versions) == 2, "ListCatalog of versions should have 2 elements.")
 }
 
-//func TestFetchFile(t *testing.T) {
-//	toolName := "catalog_darwin_amd64"
-//	testFile := testFileMap[toolName]
-//	fileUrl := testFile.TestUrl
-//	fileName := fmt.Sprintf("%s/fetchfile", tmpDir)
-//	checksumUrl := fmt.Sprintf("%s.sha256", fileUrl)
-//	checksumFile := fmt.Sprintf("%s.sha256", fileName)
-//
-//	dbtObj := &DBT{
-//		Config:  dbtConfig,
-//		Verbose: false,
-//		Logger:  log.New(os.Stderr, "", 0),
-//	}
-//
-//	err := dbtObj.FetchFile(fileUrl, fileName)
-//	if err != nil {
-//		fmt.Printf("Error fetching file %q: %s\n", fileUrl, err)
-//		t.Fail()
-//	}
-//
-//	err = dbtObj.FetchFile(checksumUrl, checksumFile)
-//	if err != nil {
-//		fmt.Printf("Error fetching file %q: %s\n", fileUrl, err)
-//		t.Fail()
-//	}
-//
-//	checksumBytes, err := ioutil.ReadFile(checksumFile)
-//	if err != nil {
-//		fmt.Printf("Error reading checksumfile %s.sha256: %s\n", toolName, err)
-//		t.Fail()
-//	}
-//
-//	success, err := dbtObj.VerifyFileChecksum(fileName, string(checksumBytes))
-//	if err != nil {
-//		fmt.Println(fmt.Sprintf("Error checksumming test file: %s", err))
-//		t.Fail()
-//	}
-//
-//	assert.True(t, success, "Checksum of downloaded file matches expectations.")
-//
-//	success, err = dbtObj.VerifyFileVersion(fileUrl, fileName)
-//	if err != nil {
-//		fmt.Printf("Failed to verify version: %s", err)
-//		t.Fail()
-//	}
-//
-//	assert.True(t, success, "Verified version of downloaded file.")
-//
-//	failure, err := dbtObj.VerifyFileVersion(fmt.Sprintf("%s/dbt/1.2.3/linux/amd64/dbt", testToolUrl(port)), fileName)
-//	if err != nil {
-//		fmt.Printf("Verified non-existent version: %s", err)
-//		t.Fail()
-//	}
-//
-//	assert.False(t, failure, "Verified a false version does not match.")
-//
-//	// download trust store
-//	trustStoreUrl := fmt.Sprintf("%s/truststore", testDbtUrl(port))
-//	trustStoreFile := fmt.Sprintf("%s/%s", tmpDir, TruststorePath)
-//
-//	err = dbtObj.FetchFile(trustStoreUrl, trustStoreFile)
-//	if err != nil {
-//		fmt.Printf("Error fetching truststore %q: %s\n", fileUrl, err)
-//		t.Fail()
-//	}
-//
-//	if _, err = os.Stat(trustStoreFile); os.IsNotExist(err) {
-//		fmt.Printf("Failed to download truststore")
-//		t.Fail()
-//	}
-//
-//	trustBytes, err := ioutil.ReadFile(trustStoreFile)
-//	if err != nil {
-//		fmt.Printf("Failed to read downloaded truststore: %s\n", err)
-//		t.Fail()
-//	}
-//
-//	assert.False(t, string(trustBytes) == "", "Downloaded Truststore is not empty")
-//
-//	// download signature
-//	sigUrl := fmt.Sprintf("%s.asc", fileUrl)
-//	sigFile := fmt.Sprintf("%s.asc", fileName)
-//
-//	err = dbtObj.FetchFile(sigUrl, sigFile)
-//	if err != nil {
-//		fmt.Printf("Error fetching signature %q: %s\n", sigUrl, err)
-//		t.Fail()
-//	}
-//
-//	if _, err = os.Stat(sigFile); os.IsNotExist(err) {
-//		fmt.Printf("Failed to download signature")
-//		t.Fail()
-//	}
-//
-//	sigBytes, err := ioutil.ReadFile(sigFile)
-//	if err != nil {
-//		fmt.Printf("Failed to read downloaded signature: %s\n", err)
-//		t.Fail()
-//	}
-//
-//	assert.False(t, string(sigBytes) == "", "Downloaded Signature is not empty")
-//
-//	// verify signature
-//	success, err = dbtObj.VerifyFileSignature(tmpDir, fileName)
-//	if err != nil {
-//		fmt.Printf("Error verifying signature: %s", err)
-//		t.Fail()
-//	}
-//
-//	assert.True(t, success, "Signature of downloaded file verified.")
-//}
+func TestFetchFile(t *testing.T) {
+	toolName := "catalog_darwin_amd64"
+	testFile := testFilesA[toolName]
+	fileUrl := testFile.TestUrl
+	fileName := fmt.Sprintf("%s/fetchfile", tmpDir)
+	checksumUrl := fmt.Sprintf("%s.sha256", fileUrl)
+	checksumFile := fmt.Sprintf("%s.sha256", fileName)
+
+	dbtObj := &DBT{
+		Config:  dbtConfig,
+		Verbose: false,
+		Logger:  log.New(os.Stderr, "", 0),
+	}
+
+	t.Logf("downloading %s", fileUrl)
+	err := dbtObj.FetchFile(fileUrl, fileName)
+	if err != nil {
+		t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
+	}
+
+	t.Logf("downloading %s", checksumUrl)
+	err = dbtObj.FetchFile(checksumUrl, checksumFile)
+	if err != nil {
+		t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
+	}
+	//
+	checksumBytes, err := ioutil.ReadFile(checksumFile)
+	if err != nil {
+		t.Errorf("Error reading checksumfile %s.sha256: %s\n", toolName, err)
+	}
+
+	success, err := dbtObj.VerifyFileChecksum(fileName, string(checksumBytes))
+	if err != nil {
+		t.Errorf(fmt.Sprintf("Error checksumming test file: %s", err))
+	}
+
+	assert.True(t, success, "Checksum of downloaded file matches expectations.")
+
+	t.Logf("Verifying version of %s", fileUrl)
+	success, err = dbtObj.VerifyFileVersion(fileUrl, fileName)
+	if err != nil {
+		t.Errorf("Failed to verify version: %s", err)
+	}
+
+	assert.True(t, success, "Verified version of downloaded file.")
+
+	failure, err := dbtObj.VerifyFileVersion(fmt.Sprintf("%s/dbt/1.2.3/linux/amd64/dbt", testToolUrl(port)), fileName)
+	if err != nil {
+		t.Errorf("Verified non-existent version: %s", err)
+	}
+
+	assert.False(t, failure, "Verified a false version does not match.")
+
+	// download trust store
+	trustStoreUrl := fmt.Sprintf("%s/truststore", testDbtUrl(port))
+	trustStoreFile := fmt.Sprintf("%s/%s", tmpDir, TruststorePath)
+
+	t.Logf("Fetching truststore from %s", trustStoreUrl)
+	err = dbtObj.FetchFile(trustStoreUrl, trustStoreFile)
+	if err != nil {
+		t.Errorf("Error fetching truststore %q: %s\n", fileUrl, err)
+	}
+
+	if _, err = os.Stat(trustStoreFile); os.IsNotExist(err) {
+		t.Errorf("Failed to download truststore")
+	}
+
+	trustBytes, err := ioutil.ReadFile(trustStoreFile)
+	if err != nil {
+		t.Errorf("Failed to read downloaded truststore: %s\n", err)
+	}
+
+	assert.False(t, string(trustBytes) == "", "Downloaded Truststore is not empty")
+
+	// download signature
+	sigUrl := fmt.Sprintf("%s.asc", fileUrl)
+	sigFile := fmt.Sprintf("%s.asc", fileName)
+
+	t.Logf("Downloading %s", sigUrl)
+	err = dbtObj.FetchFile(sigUrl, sigFile)
+	if err != nil {
+		t.Errorf("Error fetching signature %q: %s\n", sigUrl, err)
+	}
+
+	if _, err = os.Stat(sigFile); os.IsNotExist(err) {
+		t.Errorf("Failed to download signature")
+	}
+
+	sigBytes, err := ioutil.ReadFile(sigFile)
+	if err != nil {
+		t.Errorf("Failed to read downloaded signature: %s\n", err)
+	}
+
+	assert.False(t, string(sigBytes) == "", "Downloaded Signature is not empty")
+
+	// verify signature
+	t.Logf("verifying signature of %s", fileName)
+	success, err = dbtObj.VerifyFileSignature(tmpDir, fileName)
+	if err != nil {
+		t.Errorf("Error verifying signature: %s", err)
+	}
+
+	assert.True(t, success, "Signature of downloaded file verified.")
+	t.Logf("Signature Verified")
+}
 
 func TestFindLatestVersion(t *testing.T) {
 	dbtObj := &DBT{
@@ -220,12 +215,8 @@ func TestFindLatestVersion(t *testing.T) {
 
 	latest, err := dbtObj.FindLatestVersion(toolName)
 	if err != nil {
-		fmt.Printf("Error finding latest version: %s", err)
-		t.Fail()
+		t.Errorf("Error finding latest version: %s", err)
 	}
 
 	assert.Equal(t, VERSION, latest, "Latest version meets expectations.")
-
 }
-
-// TODO Make old versions of tools so we can test that we're getting the latest

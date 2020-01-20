@@ -33,7 +33,7 @@ func (d *DBTRepoServer) RunRepoServer() (err error) {
 	r.PathPrefix("/").Handler(http.HandlerFunc(d.PutHandler)).Methods("PUT")
 
 	// handle the downloads and indices
-	r.PathPrefix("/").Handler(http.FileServer(http.Dir(d.ServerRoot))).Methods("GET")
+	r.PathPrefix("/").Handler(http.FileServer(http.Dir(d.ServerRoot))).Methods("GET", "HEAD")
 
 	// run the server
 	err = http.ListenAndServe(fullAddress, r)

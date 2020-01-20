@@ -1,6 +1,7 @@
 module github.com/nikogura/dbt
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.9.0 // indirect
 	github.com/gorilla/mux v1.7.3
 	github.com/mattn/go-runewidth v0.0.3 // indirect
