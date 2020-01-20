@@ -14,6 +14,10 @@
 
 A framework for running self-updating, signed binary tools from a central, trusted repository.
 
+What kind of tools you say?  Anything that can be compiled into a stand-alone binary.
+
+Tools are always up to date (unless you specify an older version), as is `dbt` itself.  How?  _magic_. 
+
 # Overview
 
 DBT consists of a binary ```dbt``` and a config file.  The ```dbt``` binary checks a trusted repository for tools, which are themselves signed binaries.
