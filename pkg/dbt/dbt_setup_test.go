@@ -91,11 +91,11 @@ func setUp() {
 	port = freePort
 
 	fmt.Printf("-- Creating Version A Test Files ---\n")
-	testFilesA = createTestFiles(toolRoot, oldVersion, dbtRoot)
+	testFilesA = createTestFilesA(toolRoot, oldVersion, dbtRoot)
 	fmt.Printf("--- Created %d Test Files ---\n", len(testFilesA))
 
 	fmt.Printf("-- Creating Version B Test Files ---\n")
-	testFilesB = createTestFiles(toolRoot, VERSION, dbtRoot)
+	testFilesB = createTestFilesB(toolRoot, VERSION, dbtRoot)
 	fmt.Printf("--- Created %d Test Files ---\n", len(testFilesB))
 
 	dbtConfig = Config{
@@ -173,7 +173,120 @@ func testToolUrl(port int) string {
 	return fmt.Sprintf("http://127.0.0.1:%d/dbt-tools", port)
 }
 
-func createTestFiles(toolRoot string, version string, dbtRoot string) (testFiles map[string]*testFile) {
+func createTestFilesA(toolRoot string, version string, dbtRoot string) (testFiles map[string]*testFile) {
+	testFiles = make(map[string]*testFile)
+	files := []*testFile{
+		{
+			Name:     "boilerplate-description.txt",
+			FilePath: fmt.Sprintf("%s/boilerplate/%s/description.txt", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/description.txt", version),
+		},
+		{
+			Name:     "boilerplate-description.txt.asc",
+			FilePath: fmt.Sprintf("%s/boilerplate/%s/description.txt.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/description.txt.asc", version),
+		},
+		{
+			Name:     "boilerplate_darwin_amd64",
+			FilePath: fmt.Sprintf("%s/boilerplate/%s/darwin/amd64/boilerplate", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate", version),
+		},
+		{
+			Name:     "boilerplate_darwin_amd64.asc",
+			FilePath: fmt.Sprintf("%s/boilerplate/%s/darwin/amd64/boilerplate.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate.asc", version),
+		},
+		{
+			Name:     "boilerplate_linux_amd64",
+			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/linux/amd64/boilerplate", version),
+		},
+		{
+			Name:     "boilerplate_linux_amd64.asc",
+			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate.asc", version),
+		},
+		{
+			Name:     "catalog-description.txt",
+			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt", version),
+		},
+		{
+			Name:     "catalog-description.txt.asc",
+			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt.asc", version),
+		},
+		{
+			Name:     "catalog_darwin_amd64",
+			FilePath: fmt.Sprintf("%s/catalog/%s/darwin/amd64/catalog", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/darwin/amd64/catalog", version),
+		},
+		{
+			Name:     "catalog_darwin_amd64.asc",
+			FilePath: fmt.Sprintf("%s/catalog/%s/darwin/amd64/catalog.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/darwin/amd64/catalog.asc", version),
+		},
+		{
+			Name:     "catalog_linux_amd64",
+			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog", version),
+		},
+		{
+			Name:     "catalog_linux_amd64.asc",
+			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog.asc", version),
+		},
+		{
+			Name:     "dbt_darwin_amd64",
+			FilePath: fmt.Sprintf("%s/%s/darwin/amd64/dbt", dbtRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt/%s/darwin/amd64/dbt", version),
+		},
+		{
+			Name:     "dbt_darwin_amd64.asc",
+			FilePath: fmt.Sprintf("%s/%s/darwin/amd64/dbt.asc", dbtRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt/%s/darwin/amd64/dbt.asc", version),
+		},
+		{
+			Name:     "dbt_linux_amd64",
+			FilePath: fmt.Sprintf("%s/%s/linux/amd64/dbt", dbtRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt", version),
+		},
+		{
+			Name:     "dbt_linux_amd64.asc",
+			FilePath: fmt.Sprintf("%s/%s/linux/amd64/dbt.asc", dbtRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt.asc", version),
+		},
+		{
+			Name:     "install_dbt.sh",
+			FilePath: fmt.Sprintf("%s/install_dbt.sh", dbtRoot),
+			UrlPath:  "/dbt/install_dbt.sh",
+		},
+		{
+			Name:     "install_dbt.sh.asc",
+			FilePath: fmt.Sprintf("%s/install_dbt.sh.asc", dbtRoot),
+			UrlPath:  "/dbt/install_dbt.sh.asc",
+		},
+		{
+			Name:     "install_dbt_mac_keychain.sh",
+			FilePath: fmt.Sprintf("%s/install_dbt_mac_keychain.sh", dbtRoot),
+			UrlPath:  "/dbt/install_dbt.sh",
+		},
+		{
+			Name:     "install_dbt_mac_keychain.sh.asc",
+			FilePath: fmt.Sprintf("%s/install_dbt_mac_keychain.sh.asc", dbtRoot),
+			UrlPath:  "/dbt/install_dbt.sh.asc",
+		},
+	}
+
+	hostname := "127.0.0.1"
+	for _, f := range files {
+		f.TestUrl = fmt.Sprintf("http://%s:%d%s", hostname, port, f.UrlPath)
+		testFiles[f.Name] = f
+	}
+
+	return testFiles
+}
+func createTestFilesB(toolRoot string, version string, dbtRoot string) (testFiles map[string]*testFile) {
 	testFiles = make(map[string]*testFile)
 	files := []*testFile{
 		{
@@ -499,7 +612,130 @@ func buildTestRepo() (err error) {
 
 	buildSource(meta, "", sourceDirB, testFilesB)
 
-	buildSource(meta, fmt.Sprintf("v%s", oldVersion), sourceDirA, testFilesA)
+	oldMetadata := `{
+  "version": "3.0.2",
+  "package": "github.com/nikogura/dbt",
+  "description": "Dynamic Binary Toolkit - A framework for running self-updating signed binaries from a central, trusted repository.",
+  "repository": "http://localhost:8081/artifactory/dbt",
+  "building": {
+    "targets": [
+      {
+        "name": "darwin/amd64"
+      },
+      {
+        "name": "linux/amd64"
+      }
+    ],
+    "extras": [
+      {
+        "template": "templates/install_dbt.tmpl",
+        "filename": "install_dbt.sh",
+        "executable": true
+      },
+      {
+        "template": "templates/install_dbt_mac_keychain.tmpl",
+        "filename": "install_dbt_mac_keychain.sh",
+        "executable": true
+      },
+      {
+        "template": "templates/catalog-description.tmpl",
+        "filename": "catalog-description.txt",
+        "executable": false
+      },
+      {
+        "template": "templates/boilerplate-description.tmpl",
+        "filename": "boilerplate-description.txt",
+        "executable": false
+      }
+    ]
+  },
+  "publishing": {
+    "targets": [
+      {
+        "src": "install_dbt.sh",
+        "dst": "{{.Repository}}/install_dbt.sh",
+        "sig": true,
+        "checksums": true
+      },
+      {
+        "src": "install_dbt_mac_keychain.sh",
+        "dst": "{{.Repository}}/install_dbt_mac_keychain.sh",
+        "sig": true,
+        "checksums": true
+      },
+      {
+        "src": "dbt_darwin_amd64",
+        "dst": "{{.Repository}}/{{.Version}}/darwin/amd64/dbt",
+        "sig": true,
+        "checksums": true
+      },
+      {
+        "src": "dbt_linux_amd64",
+        "dst": "{{.Repository}}/{{.Version}}/linux/amd64/dbt",
+        "sig": true,
+        "checksums": true
+      },
+      {
+        "src": "catalog-description.txt",
+        "dst": "{{.Repository}}-tools/catalog/{{.Version}}/description.txt",
+        "sig": true,
+        "checksums": true
+      },
+      {
+        "src": "catalog_darwin_amd64",
+        "dst": "{{.Repository}}-tools/catalog/{{.Version}}/darwin/amd64/catalog",
+        "sig": true,
+        "checksums": true
+      },
+      {
+        "src": "catalog_linux_amd64",
+        "dst": "{{.Repository}}-tools/catalog/{{.Version}}/linux/amd64/catalog",
+        "sig": true,
+        "checksums": true
+      },
+      {
+        "src": "boilerplate-description.txt",
+        "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/description.txt",
+        "sig": true,
+        "checksums": true
+      },
+      {
+        "src": "boilerplate_darwin_amd64",
+        "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/darwin/amd64/boilerplate",
+        "sig": true,
+        "checksums": true
+      },
+      {
+        "src": "boilerplate_linux_amd64",
+        "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/linux/amd64/boilerplate",
+        "sig": true,
+        "checksums": true
+      }
+    ]
+  }
+}`
+
+	oldMetadataFile := fmt.Sprintf("%s/oldmetadata.json", tmpDir)
+
+	err = ioutil.WriteFile(oldMetadataFile, []byte(oldMetadata), 0644)
+	if err != nil {
+		log.Fatalf("Failed to write old metadatafile %s", oldMetadataFile)
+	}
+
+	oldMeta, err := gomason.ReadMetadata(oldMetadataFile)
+	if err != nil {
+		log.Fatalf("couldn't read package information from old metadatafile %s: %s", oldMetadataFile, err)
+	}
+
+	oldMeta.Options = make(map[string]interface{})
+	oldMeta.Options["keyring"] = keyring
+	oldMeta.Options["trustdb"] = trustdb
+	oldMeta.SignInfo = gomason.SignInfo{
+		Program: "gpg",
+		Email:   "tester@nikogura.com",
+	}
+
+	buildSource(oldMeta, fmt.Sprintf("v%s", oldVersion), sourceDirA, testFilesA)
 
 	return err
 }
