@@ -52,12 +52,6 @@ github.com/mitchellh/mapstructure v0.0.0-20180511142126-bb74f1db0675 h1:/rdJjIiK
 github.com/mitchellh/mapstructure v0.0.0-20180511142126-bb74f1db0675/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh9fWfEaFds41c1Y=
 github.com/mitchellh/mapstructure v1.1.2 h1:fmNYVwqnSfB9mZU6OS2O6GsXM+wcskZDuKQzvN1EDeE=
 github.com/mitchellh/mapstructure v1.1.2/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh9fWfEaFds41c1Y=
-github.com/nikogura/gomason v0.0.0-20191211045839-93dbb8d3e863 h1:UGvFFpk0gHf6KTdSl3e475aMqlHhSEWaGe2lrvLYEAY=
-github.com/nikogura/gomason v0.0.0-20191211045839-93dbb8d3e863/go.mod h1:s47+QJcdwzxPq+yc9t928sBjbjbvFHfznvK6luglVJI=
-github.com/nikogura/gomason v0.0.0-20200112011639-2c11899aea60 h1:2wQasvfv+kppGZ8EspqA73fOxoXxkfFvMsGnR06jRh4=
-github.com/nikogura/gomason v0.0.0-20200112011639-2c11899aea60/go.mod h1:s47+QJcdwzxPq+yc9t928sBjbjbvFHfznvK6luglVJI=
-github.com/nikogura/gomason v0.0.0-20200112181946-56ca9eb6557f h1:5cKYATTLxmrxLNFhpRSZ4aKbb3yQiiXzmWYjeCe6lHI=
-github.com/nikogura/gomason v0.0.0-20200112181946-56ca9eb6557f/go.mod h1:s47+QJcdwzxPq+yc9t928sBjbjbvFHfznvK6luglVJI=
 github.com/nikogura/gomason v0.0.0-20200112201141-917e5211f34f h1:PIVyw2a6mkx/rH7IxjnlrlsVjtSVeVOYXigZnbxiW60=
 github.com/nikogura/gomason v0.0.0-20200112201141-917e5211f34f/go.mod h1:s47+QJcdwzxPq+yc9t928sBjbjbvFHfznvK6luglVJI=
 github.com/pelletier/go-toml v1.2.0 h1:T5zMGML61Wp+FlcbWjRDT7yAxhJNAiPPLOFECq181zc=

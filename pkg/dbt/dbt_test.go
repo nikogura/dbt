@@ -220,15 +220,13 @@ func TestGetHomeDir(t *testing.T) {
 	}
 }
 
-func TestRunTool(t *testing.T) {
+func ExampleRunTool() {
 	dbt := &DBT{
 		Config:  dbtConfig,
 		Verbose: true,
 		Logger:  log.New(os.Stderr, "", 0),
 	}
 
-	err := dbt.RunTool("", []string{"catalog", "list"}, tmpDir, false)
-	if err != nil {
-		t.Errorf("Error running test tool: %s", err)
-	}
+	dbt.RunTool("", []string{"catalog", "help"}, tmpDir, false)
+	// Output: Tool for showing available DBT tools.
 }
