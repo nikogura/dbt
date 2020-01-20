@@ -32,8 +32,7 @@ func TestRunRepoServer(t *testing.T) {
 
 			resp, err := http.Get(url)
 			if err != nil {
-				fmt.Printf("Failed to fetch %s: %s", f.Name, err)
-				t.Fail()
+				t.Errorf("Failed to fetch %s: %s", f.Name, err)
 			}
 
 			assert.True(t, resp.StatusCode < 300, "Non success error code fetching %s (%d)", url, resp.StatusCode)
@@ -45,27 +44,23 @@ func TestGenerateDbtDir(t *testing.T) {
 	dbtDirPath := fmt.Sprintf("%s/%s", tmpDir, DbtDir)
 
 	if _, err := os.Stat(dbtDirPath); os.IsNotExist(err) {
-		log.Printf("dbt dir %s did not create as expected", dbtDirPath)
-		t.Fail()
+		t.Errorf("dbt dir %s did not create as expected", dbtDirPath)
 	}
 
 	trustPath := fmt.Sprintf("%s/%s", tmpDir, TrustDir)
 
 	if _, err := os.Stat(trustPath); os.IsNotExist(err) {
-		log.Printf("trust dir %s did not create as expected", trustPath)
-		t.Fail()
+		t.Errorf("trust dir %s did not create as expected", trustPath)
 	}
 
 	toolPath := fmt.Sprintf("%s/%s", tmpDir, ToolDir)
 	if _, err := os.Stat(toolPath); os.IsNotExist(err) {
-		log.Printf("tool dir %s did not create as expected", toolPath)
-		t.Fail()
+		t.Errorf("tool dir %s did not create as expected", toolPath)
 	}
 
 	configPath := fmt.Sprintf("%s/%s", tmpDir, ConfigDir)
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		log.Printf("config dir %s did not create as expected", configPath)
-		t.Fail()
+		t.Errorf("config dir %s did not create as expected", configPath)
 	}
 
 }
@@ -76,15 +71,13 @@ func TestLoadDbtConfig(t *testing.T) {
 
 	err := ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
 	if err != nil {
-		log.Printf("Error writing config file to %s: %s", fileName, err)
-		t.Fail()
+		t.Errorf("Error writing config file to %s: %s", fileName, err)
 	}
 
 	expected := dbtConfig
 	actual, err := LoadDbtConfig(tmpDir, true)
 	if err != nil {
-		log.Printf("Error loading config file: %s", err)
-		t.Fail()
+		t.Errorf("Error loading config file: %s", err)
 	}
 
 	assert.Equal(t, expected, actual, "Parsed config meets expectations")
@@ -99,22 +92,19 @@ func TestFetchTrustStore(t *testing.T) {
 
 	err := dbt.FetchTrustStore(tmpDir, true)
 	if err != nil {
-		log.Printf("Error fetching trust store: %s", err)
-		t.Fail()
+		t.Errorf("Error fetching trust store: %s", err)
 	}
 
 	expected := trustfileContents
 	trustPath := fmt.Sprintf("%s/%s", tmpDir, TruststorePath)
 
 	if _, err := os.Stat(trustPath); os.IsNotExist(err) {
-		log.Printf("File not written")
-		t.Fail()
+		t.Errorf("File not written")
 	}
 
 	actualBytes, err := ioutil.ReadFile(trustPath)
 	if err != nil {
-		log.Printf("Error reading trust store: %s", err)
-		t.Fail()
+		t.Errorf("Error reading trust store: %s", err)
 	}
 
 	actual := string(actualBytes)
@@ -134,14 +124,12 @@ func TestDbtIsCurrent(t *testing.T) {
 
 	err := dbt.FetchFile(fileUrl, fileName)
 	if err != nil {
-		fmt.Printf("Error fetching file %q: %s\n", fileUrl, err)
-		t.Fail()
+		t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
 	}
 
 	ok, err := dbt.IsCurrent(fileName)
 	if err != nil {
-		fmt.Printf("error checking to see if download file is current: %s\n", err)
-		t.Fail()
+		t.Errorf("error checking to see if download file is current: %s\n", err)
 	}
 
 	assert.False(t, ok, "Old version should not show up as current.")
@@ -151,14 +139,12 @@ func TestDbtIsCurrent(t *testing.T) {
 
 	err = dbt.FetchFile(fileUrl, fileName)
 	if err != nil {
-		fmt.Printf("Error fetching file %q: %s\n", fileUrl, err)
-		t.Fail()
+		t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
 	}
 
 	ok, err = dbt.IsCurrent(fileName)
 	if err != nil {
-		fmt.Printf("error checking to see if download file is current: %s\n", err)
-		t.Fail()
+		t.Errorf("error checking to see if download file is current: %s\n", err)
 	}
 
 	assert.True(t, ok, "Current version shows current.")
@@ -176,28 +162,24 @@ func TestDbtUpgradeInPlace(t *testing.T) {
 
 	err := dbt.FetchFile(fileUrl, fileName)
 	if err != nil {
-		fmt.Printf("Error fetching file %q: %s\n", fileUrl, err)
-		t.Fail()
+		t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
 	}
 
 	ok, err := dbt.IsCurrent(fileName)
 	if err != nil {
-		fmt.Printf("error checking to see if download file is current: %s\n", err)
-		t.Fail()
+		t.Errorf("error checking to see if download file is current: %s\n", err)
 	}
 
 	assert.False(t, ok, "Old version should not show up as current.")
 
 	err = dbt.UpgradeInPlace(fileName)
 	if err != nil {
-		fmt.Printf("Error upgrading in place: %s", err)
-		t.Fail()
+		t.Errorf("Error upgrading in place: %s", err)
 	}
 
 	ok, err = dbt.IsCurrent(fileName)
 	if err != nil {
-		fmt.Printf("error checking to see if download file is current: %s\n", err)
-		t.Fail()
+		t.Errorf("error checking to see if download file is current: %s\n", err)
 	}
 
 	assert.True(t, ok, "Current version shows current.")
@@ -206,8 +188,7 @@ func TestDbtUpgradeInPlace(t *testing.T) {
 func TestNewDbt(t *testing.T) {
 	homedir, err := GetHomeDir()
 	if err != nil {
-		fmt.Printf("Error getting homedir: %s", err)
-		t.Fail()
+		t.Errorf("Error getting homedir: %s", err)
 	}
 
 	configPath := fmt.Sprintf("%s/%s", homedir, ConfigDir)
@@ -217,29 +198,25 @@ func TestNewDbt(t *testing.T) {
 		fmt.Printf("Writing test dbt config to %s", fileName)
 		err = GenerateDbtDir("", true)
 		if err != nil {
-			fmt.Printf("Error generating dbt dir: %s", err)
-			t.Fail()
+			t.Errorf("Error generating dbt dir: %s", err)
 		}
 
 		err = ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
 		if err != nil {
-			log.Printf("Error writing config file to %s: %s", fileName, err)
-			t.Fail()
+			t.Errorf("Error writing config file to %s: %s", fileName, err)
 		}
 	}
 
 	_, err = NewDbt()
 	if err != nil {
-		fmt.Printf("Error creating DBT object: %s", err)
-		t.Fail()
+		t.Errorf("Error creating DBT object: %s", err)
 	}
 }
 
 func TestGetHomeDir(t *testing.T) {
 	_, err := GetHomeDir()
 	if err != nil {
-		fmt.Printf("Error getting homedir: %s", err)
-		t.Fail()
+		t.Errorf("Error getting homedir: %s", err)
 	}
 }
 
@@ -247,11 +224,11 @@ func TestRunTool(t *testing.T) {
 	dbt := &DBT{
 		Config:  dbtConfig,
 		Verbose: true,
+		Logger:  log.New(os.Stderr, "", 0),
 	}
 
-	err := dbt.RunTool("", []string{"catalog", "list"}, tmpDir, true)
+	err := dbt.RunTool("", []string{"catalog", "list"}, tmpDir, false)
 	if err != nil {
-		fmt.Printf("Error running test tool: %s", err)
-		t.Fail()
+		t.Errorf("Error running test tool: %s", err)
 	}
 }

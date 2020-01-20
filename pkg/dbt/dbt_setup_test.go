@@ -40,7 +40,7 @@ var dbtRoot string
 var toolRoot string
 var trustFile string
 var setup bool
-var oldVersion = "3.0.0"
+var oldVersion = "3.0.2"
 
 type testFile struct {
 	Name     string
