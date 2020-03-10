@@ -16,8 +16,13 @@ package dbt
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/base64"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	awss3 "github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/nikogura/dbt/pkg/dbt/s3"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/net/html"
@@ -253,6 +258,23 @@ func (dbt *DBT) ParseVersionResponse(resp *http.Response) (versions []string) {
 	}
 }
 
+// TODO Version detection failing in s3.
+/*
+	$ dbt catalog help
+	tool not in repo
+	Newer version of dbt available:
+
+	2020/03/09 20:56:09 Downloading and verifying new version of dbt.
+	tool not in repo
+	testing https://orionlabs-dbt.s3.us-east-1.amazonaws.com/dbt//darwin/amd64/dbt
+	2020/03/09 20:56:16 Error: upgrade in place failed: failed to fetch new dbt binary: failed to get metadata for https://orionlabs-dbt.s3.us-east-1.amazonaws.com/dbt//darwin/amd64/dbt: NotFound: Not Found
+	status code: 404, request id: 08DE1C11D990BB6A
+	host id: 0Rfg6OfmxCG9bYlBrwRb/pDCvsz95Du1FuG/2nBQevQeZVJ9FV5omk2MYl7twrJ1983JVDgS5yM=
+
+	Need to add s3 support to ToolVersionExists, ToolExists, ToolVersionExists, and FetchToolVersions
+
+*/
+
 // FetchFile Fetches a file and places it on the filesystem.
 // Does not validate the signature.  That's a different step.
 func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
@@ -269,96 +291,150 @@ func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 
 	defer out.Close()
 
-	client := &http.Client{}
+	// Check to see if this is an S3 URL
+	isS3, s3Meta := s3.S3Url(fileUrl)
 
-	req, err := http.NewRequest("HEAD", fileUrl, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to create request for url: %s", fileUrl)
-		return err
-	}
-
-	username := dbt.Config.Username
-	password := dbt.Config.Password
-
-	// Username func takes precedence over hardcoded username
-	if dbt.Config.UsernameFunc != "" {
-		username, err = GetFunc(dbt.Config.UsernameFunc)
+	if isS3 {
+		sess, err := s3.DefaultSession()
 		if err != nil {
-			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
+			err = errors.Wrap(err, "Failed to create AWS session")
 			return err
 		}
-	}
 
-	// PasswordFunc takes precedence over hardcoded password
-	if dbt.Config.PasswordFunc != "" {
-		password, err = GetFunc(dbt.Config.PasswordFunc)
+		headOptions := &awss3.HeadObjectInput{
+			Bucket: aws.String(s3Meta.Bucket),
+			Key:    aws.String(s3Meta.Key),
+		}
+
+		headSvc := awss3.New(sess)
+
+		fileMeta, err := headSvc.HeadObject(headOptions)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
+			err = errors.Wrapf(err, "failed to get metadata for %s", fileUrl)
 			return err
 		}
-	}
 
-	if username != "" && password != "" {
-		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
-	}
+		// create and start progress bar
+		bar := pb.New(int(*fileMeta.ContentLength)).SetUnits(pb.U_BYTES)
+		bar.Output = os.Stderr
+		bar.Start()
 
-	headResp, err := client.Do(req)
+		downloader := s3manager.NewDownloader(sess)
+		downloadOptions := &awss3.GetObjectInput{
+			Bucket: aws.String(s3Meta.Bucket),
+			Key:    aws.String(s3Meta.Key),
+		}
 
-	if err != nil {
-		panic(err)
-	}
+		buf := &aws.WriteAtBuffer{}
 
-	defer headResp.Body.Close()
+		_, err = downloader.Download(buf, downloadOptions)
+		if err != nil {
+			err = errors.Wrapf(err, "unable to download file from %s", fileUrl)
+			return err
+		}
 
-	sizeHeader := headResp.Header.Get("Content-Length")
-	if sizeHeader == "" {
-		sizeHeader = "0"
-	}
-
-	size, err := strconv.Atoi(sizeHeader)
-
-	if err != nil {
-		panic(err)
-	}
-
-	// create and start progress bar
-	bar := pb.New(size).SetUnits(pb.U_BYTES)
-	bar.Output = os.Stderr
-	bar.Start()
-
-	req, err = http.NewRequest("GET", fileUrl, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to create request for url: %s", fileUrl)
-		return err
-	}
-
-	if username != "" && password != "" {
-		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
-	}
-
-	resp, err := client.Do(req)
-
-	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Error fetching file from %q", fileUrl))
-		return err
-	}
-
-	if resp != nil {
-		defer resp.Body.Close()
 		// create proxy reader
-		reader := bar.NewProxyReader(resp.Body)
+		reader := bar.NewProxyReader(bytes.NewBuffer(buf.Bytes()))
 
 		// and copy from pb reader
 		_, _ = io.Copy(out, reader)
 
-		_, err = io.Copy(out, resp.Body)
+		_, err = io.Copy(out, bytes.NewReader(buf.Bytes()))
 
+		return err
+
+	} else {
+		client := &http.Client{}
+
+		req, err := http.NewRequest("HEAD", fileUrl, nil)
 		if err != nil {
+			err = errors.Wrapf(err, "failed to create request for url: %s", fileUrl)
 			return err
 		}
-	}
 
-	return err
+		username := dbt.Config.Username
+		password := dbt.Config.Password
+
+		// Username func takes precedence over hardcoded username
+		if dbt.Config.UsernameFunc != "" {
+			username, err = GetFunc(dbt.Config.UsernameFunc)
+			if err != nil {
+				err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
+				return err
+			}
+		}
+
+		// PasswordFunc takes precedence over hardcoded password
+		if dbt.Config.PasswordFunc != "" {
+			password, err = GetFunc(dbt.Config.PasswordFunc)
+			if err != nil {
+				err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
+				return err
+			}
+		}
+
+		if username != "" && password != "" {
+			req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+		}
+
+		headResp, err := client.Do(req)
+
+		if err != nil {
+			panic(err)
+		}
+
+		defer headResp.Body.Close()
+
+		sizeHeader := headResp.Header.Get("Content-Length")
+		if sizeHeader == "" {
+			sizeHeader = "0"
+		}
+
+		size, err := strconv.Atoi(sizeHeader)
+
+		if err != nil {
+			panic(err)
+		}
+
+		// create and start progress bar
+		bar := pb.New(size).SetUnits(pb.U_BYTES)
+		bar.Output = os.Stderr
+		bar.Start()
+
+		req, err = http.NewRequest("GET", fileUrl, nil)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to create request for url: %s", fileUrl)
+			return err
+		}
+
+		if username != "" && password != "" {
+			req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+		}
+
+		resp, err := client.Do(req)
+
+		if err != nil {
+			err = errors.Wrap(err, fmt.Sprintf("Error fetching file from %q", fileUrl))
+			return err
+		}
+
+		if resp != nil {
+			defer resp.Body.Close()
+			// create proxy reader
+			reader := bar.NewProxyReader(resp.Body)
+
+			// and copy from pb reader
+			_, _ = io.Copy(out, reader)
+
+			_, err = io.Copy(out, resp.Body)
+
+			if err != nil {
+				return err
+			}
+		}
+
+		return err
+	}
 }
 
 // VerifyFileChecksum Verifies the sha256 checksum of a given file against an expected value
