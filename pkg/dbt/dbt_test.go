@@ -16,10 +16,17 @@ package dbt
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/johannesboyne/gofakes3"
+	"github.com/johannesboyne/gofakes3/backend/s3mem"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
+	"net/http/httptest"
 	"os"
 	"runtime"
 	"testing"
@@ -29,6 +36,7 @@ import (
 var tmpDir string
 var dbtConfig Config
 var port int
+var testServer *httptest.Server
 
 func TestMain(m *testing.M) {
 	setUp()
@@ -64,7 +72,41 @@ func setUp() {
 
 	go tr.Run(port)
 
-	log.Printf("Sleeping for 1 second for the test artifact server to start up.")
+	backend := s3mem.New()
+	faker := gofakes3.New(backend)
+	testServer = httptest.NewServer(faker.Server())
+
+	s3Config := &aws.Config{
+		Credentials:      credentials.NewStaticCredentials("foo", "bar", ""),
+		Endpoint:         aws.String(testServer.URL),
+		Region:           aws.String("us-east-1"),
+		DisableSSL:       aws.Bool(true),
+		S3ForcePathStyle: aws.Bool(true),
+	}
+
+	sess, err := session.NewSession(s3Config)
+	if err != nil {
+		log.Fatalf("failed creating fake aws session: %s", err)
+	}
+
+	dbtBucket := "dbt"
+	toolsBucket := "dbt-tools"
+
+	s3Client := s3.New(sess)
+	cparams := &s3.CreateBucketInput{Bucket: aws.String(dbtBucket)}
+
+	_, err = s3Client.CreateBucket(cparams)
+	if err != nil {
+		log.Fatalf("Failed to create bucket %s: %s", dbtBucket, err)
+	}
+
+	cparams = &s3.CreateBucketInput{Bucket: aws.String(toolsBucket)}
+	_, err = s3Client.CreateBucket(cparams)
+	if err != nil {
+		log.Fatalf("Failed to create bucket %s: %s", toolsBucket, err)
+	}
+
+	log.Printf("Sleeping for 1 second for the test servers to start up.")
 	time.Sleep(time.Second * 1)
 
 	err = GenerateDbtDir(tmpDir, true)
@@ -72,7 +114,6 @@ func setUp() {
 		log.Printf("Error generating dbt dir: %s", err)
 		os.Exit(1)
 	}
-
 }
 
 func tearDown() {
@@ -80,6 +121,7 @@ func tearDown() {
 		_ = os.Remove(tmpDir)
 	}
 
+	testServer.Close()
 }
 
 func TestGenerateDbtDir(t *testing.T) {
