@@ -16,10 +16,17 @@ package dbt
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/johannesboyne/gofakes3"
+	"github.com/johannesboyne/gofakes3/backend/s3mem"
 	"github.com/nikogura/gomason/pkg/gomason"
 	"github.com/phayes/freeport"
 	"io/ioutil"
 	"log"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,6 +48,7 @@ var toolRoot string
 var trustFile string
 var setup bool
 var oldVersion = "3.0.2"
+var testServer *httptest.Server
 
 type testFile struct {
 	Name     string
@@ -126,6 +134,41 @@ func setUp() {
 		// Run it in the background
 		go repo.RunRepoServer()
 
+		// Setup Fake S3
+		backend := s3mem.New()
+		faker := gofakes3.New(backend)
+		testServer = httptest.NewServer(faker.Server())
+
+		s3Config := &aws.Config{
+			Credentials:      credentials.NewStaticCredentials("foo", "bar", ""),
+			Endpoint:         aws.String(testServer.URL),
+			Region:           aws.String("us-east-1"),
+			DisableSSL:       aws.Bool(true),
+			S3ForcePathStyle: aws.Bool(true),
+		}
+
+		sess, err := session.NewSession(s3Config)
+		if err != nil {
+			log.Fatalf("failed creating fake aws session: %s", err)
+		}
+
+		dbtBucket := "dbt"
+		toolsBucket := "dbt-tools"
+
+		s3Client := s3.New(sess)
+		cparams := &s3.CreateBucketInput{Bucket: aws.String(dbtBucket)}
+
+		_, err = s3Client.CreateBucket(cparams)
+		if err != nil {
+			log.Fatalf("Failed to create bucket %s: %s", dbtBucket, err)
+		}
+
+		cparams = &s3.CreateBucketInput{Bucket: aws.String(toolsBucket)}
+		_, err = s3Client.CreateBucket(cparams)
+		if err != nil {
+			log.Fatalf("Failed to create bucket %s: %s", toolsBucket, err)
+		}
+
 		// Give things a moment to come up.
 		time.Sleep(time.Second)
 
@@ -150,6 +193,7 @@ func tearDown() {
 		_ = os.Remove(tmpDir)
 	}
 
+	testServer.Close()
 }
 
 func testDbtConfigContents(port int) string {
