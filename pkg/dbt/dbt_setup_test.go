@@ -121,7 +121,6 @@ func setUp() {
 			Address:    "127.0.0.1",
 			Port:       port,
 			ServerRoot: fmt.Sprintf("%s/repo", tmpDir),
-			PubkeyFunc: nil,
 		}
 
 		// Run it in the background
