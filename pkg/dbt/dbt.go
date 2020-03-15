@@ -18,6 +18,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -53,9 +54,10 @@ const VERSION = "3.0.3"
 
 // DBT the dbt object itself
 type DBT struct {
-	Config  Config
-	Verbose bool
-	Logger  *log.Logger
+	Config    Config
+	Verbose   bool
+	Logger    *log.Logger
+	S3Session *session.Session
 }
 
 // Config  configuration of the dbt object
@@ -90,6 +92,24 @@ func NewDbt() (dbt *DBT, err error) {
 		Config:  config,
 		Verbose: false,
 		Logger:  log.New(os.Stderr, "", 0),
+	}
+
+	ok, _ := S3Url(config.Dbt.Repo)
+	if err != nil {
+		err = errors.Wrapf(err, "failed checking to see if repo url is in s3")
+		return dbt, err
+	}
+
+	if ok {
+		if dbt.S3Session == nil {
+			s3Session, err := DefaultSession()
+			if err != nil {
+				err = errors.Wrapf(err, "failed to create s3 session")
+				return dbt, err
+			}
+
+			dbt.S3Session = s3Session
+		}
 	}
 
 	return dbt, err
@@ -197,69 +217,76 @@ func (dbt *DBT) FetchTrustStore(homedir string, verbose bool) (err error) {
 		fmt.Printf("Fetching truststore from %q\n", uri)
 	}
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
+	isS3, s3Meta := S3Url(uri)
 
-	req, err := http.NewRequest("GET", uri, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
-		return err
-	}
+	if isS3 {
+		return dbt.S3FetchTruststore(homedir, s3Meta, verbose)
 
-	username := dbt.Config.Username
-	password := dbt.Config.Password
-
-	// Username func takes precedence over hardcoded username
-	if dbt.Config.UsernameFunc != "" {
-		username, err = GetFunc(dbt.Config.UsernameFunc)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
-			return err
+	} else {
+		client := &http.Client{
+			Timeout: 10 * time.Second,
 		}
-	}
 
-	// PasswordFunc takes precedence over hardcoded password
-	if dbt.Config.PasswordFunc != "" {
-		password, err = GetFunc(dbt.Config.PasswordFunc)
+		req, err := http.NewRequest("GET", uri, nil)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
-			return err
-		}
-	}
-
-	if username != "" && password != "" {
-		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to fetch truststore from %s", uri)
-		return err
-	}
-	if resp != nil {
-		defer resp.Body.Close()
-
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to read truststore contents")
+			err = errors.Wrapf(err, "failed to create request for url: %s", uri)
 			return err
 		}
 
-		keytext := string(bodyBytes)
+		username := dbt.Config.Username
+		password := dbt.Config.Password
 
-		// don't write anything if we have an empty string
-		if keytext != "" {
-			filePath := fmt.Sprintf("%s/%s", homedir, TruststorePath)
-			err = ioutil.WriteFile(filePath, []byte(keytext), 0644)
+		// Username func takes precedence over hardcoded username
+		if dbt.Config.UsernameFunc != "" {
+			username, err = GetFunc(dbt.Config.UsernameFunc)
 			if err != nil {
-				err = errors.Wrapf(err, "failed to write trust file")
+				err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
 				return err
 			}
 		}
-	}
 
-	return err
+		// PasswordFunc takes precedence over hardcoded password
+		if dbt.Config.PasswordFunc != "" {
+			password, err = GetFunc(dbt.Config.PasswordFunc)
+			if err != nil {
+				err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
+				return err
+			}
+		}
+
+		if username != "" && password != "" {
+			req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to fetch truststore from %s", uri)
+			return err
+		}
+		if resp != nil {
+			defer resp.Body.Close()
+
+			bodyBytes, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				err = errors.Wrapf(err, "failed to read truststore contents")
+				return err
+			}
+
+			keytext := string(bodyBytes)
+
+			// don't write anything if we have an empty string
+			if keytext != "" {
+				filePath := fmt.Sprintf("%s/%s", homedir, TruststorePath)
+				err = ioutil.WriteFile(filePath, []byte(keytext), 0644)
+				if err != nil {
+					err = errors.Wrapf(err, "failed to write trust file")
+					return err
+				}
+			}
+		}
+
+		return err
+	}
 }
 
 // IsCurrent returns whether the currently running version is the latest version, and possibly an error if the version check fails

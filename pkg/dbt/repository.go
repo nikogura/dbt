@@ -61,7 +61,7 @@ func (dbt *DBT) ToolExists(toolName string) (found bool, err error) {
 	isS3, s3Meta := S3Url(uri)
 
 	if isS3 {
-		return S3ToolExists(toolName, s3Meta)
+		return dbt.S3ToolExists(toolName, s3Meta)
 
 	} else {
 		client := &http.Client{}
@@ -132,7 +132,7 @@ func (dbt *DBT) ToolVersionExists(tool string, version string) (ok bool, err err
 	isS3, s3Meta := S3Url(uri)
 
 	if isS3 {
-		return S3ToolVersionExists(tool, version, s3Meta)
+		return dbt.S3ToolVersionExists(tool, version, s3Meta)
 
 	} else {
 		client := &http.Client{}
@@ -200,7 +200,7 @@ func (dbt *DBT) FetchToolVersions(toolName string) (versions []string, err error
 	isS3, s3Meta := S3Url(uri)
 
 	if isS3 {
-		return S3FetchToolVersions(uri, s3Meta)
+		return dbt.S3FetchToolVersions(uri, s3Meta)
 
 	} else {
 		client := &http.Client{}
@@ -307,7 +307,7 @@ func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 	isS3, s3Meta := S3Url(fileUrl)
 
 	if isS3 {
-		return S3FetchFile(fileUrl, s3Meta, out)
+		return dbt.S3FetchFile(fileUrl, s3Meta, out)
 
 	} else {
 		client := &http.Client{
@@ -447,7 +447,7 @@ func (dbt *DBT) VerifyFileVersion(fileUrl string, filePath string) (success bool
 	isS3, s3Meta := S3Url(fileUrl)
 
 	if isS3 {
-		return S3VerifyFileVersion(fileUrl, filePath, s3Meta)
+		return dbt.S3VerifyFileVersion(fileUrl, filePath, s3Meta)
 
 	} else {
 		client := &http.Client{}
@@ -675,19 +675,13 @@ func S3Url(url string) (ok bool, meta S3Meta) {
 	return ok, meta
 }
 
-func S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err error) {
-	sess, err := DefaultSession()
-	if err != nil {
-		err = errors.Wrap(err, "Failed to create AWS session")
-		return err
-	}
-
+func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err error) {
 	headOptions := &s3.HeadObjectInput{
 		Bucket: aws.String(meta.Bucket),
 		Key:    aws.String(meta.Key),
 	}
 
-	headSvc := s3.New(sess)
+	headSvc := s3.New(dbt.S3Session)
 
 	fileMeta, err := headSvc.HeadObject(headOptions)
 	if err != nil {
@@ -700,7 +694,7 @@ func S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err error) {
 	bar.Output = os.Stderr
 	bar.Start()
 
-	downloader := s3manager.NewDownloader(sess)
+	downloader := s3manager.NewDownloader(dbt.S3Session)
 	downloadOptions := &s3.GetObjectInput{
 		Bucket: aws.String(meta.Bucket),
 		Key:    aws.String(meta.Key),
@@ -726,20 +720,24 @@ func S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err error) {
 
 }
 
-func S3ToolExists(toolName string, meta S3Meta) (found bool, err error) {
+func (dbt *DBT) S3ToolExists(toolName string, meta S3Meta) (found bool, err error) {
 	return found, err
 }
 
-func S3ToolVersionExists(tool string, version string, meta S3Meta) (ok bool, err error) {
+func (dbt *DBT) S3ToolVersionExists(tool string, version string, meta S3Meta) (ok bool, err error) {
 	return ok, err
 }
 
-func S3FetchToolVersions(uri string, meta S3Meta) (versions []string, err error) {
+func (dbt *DBT) S3FetchToolVersions(uri string, meta S3Meta) (versions []string, err error) {
 	return versions, err
 }
 
-func S3VerifyFileVersion(fileUrl string, filePath string, meta S3Meta) (success bool, err error) {
+func (dbt *DBT) S3VerifyFileVersion(fileUrl string, filePath string, meta S3Meta) (success bool, err error) {
 	return success, err
+}
+
+func (dbt *DBT) S3FetchTruststore(homedir string, meta S3Meta, verbose bool) (err error) {
+	return err
 }
 
 // TODO Version detection failing in s3.

@@ -16,16 +16,34 @@ package dbt
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 	"testing"
 )
 
-func TestRunRepoServer(t *testing.T) {
+//func TestS3List(t *testing.T) {
+//	svc := s3.New(s3Session)
+//	input := &s3.ListObjectsInput{
+//		Bucket:      aws.String("dbt"),
+//		MaxKeys:     aws.Int64(100),
+//	}
+//
+//	log.Printf("----- Listing s3 Objects -----")
+//
+//	result, err := svc.ListObjects(input)
+//	if err != nil {
+//		t.Errorf("Error listing s3 objects")
+//	}
+//	spew.Dump(result)
+//}
+
+func TestRepoGet(t *testing.T) {
 	for _, f := range testFilesB {
 		t.Run(f.Name, func(t *testing.T) {
 			url := fmt.Sprintf("%s%s", testHost, f.UrlPath)
@@ -36,180 +54,316 @@ func TestRunRepoServer(t *testing.T) {
 			}
 
 			assert.True(t, resp.StatusCode < 300, "Non success error code fetching %s (%d)", url, resp.StatusCode)
+
+			// fetch via s3
+			key := strings.TrimLeft(f.UrlPath, fmt.Sprintf("%s/", f.Repo))
+			headOptions := &s3.HeadObjectInput{
+				Bucket: aws.String(f.Repo),
+				Key:    aws.String(key),
+			}
+
+			headSvc := s3.New(s3Session)
+
+			_, err = headSvc.HeadObject(headOptions)
+			if err != nil {
+				t.Errorf("failed to get metadata for %s: %s", f.Name, err)
+			}
 		})
 	}
 }
 
 func TestGenerateDbtDir(t *testing.T) {
-	dbtDirPath := fmt.Sprintf("%s/%s", tmpDir, DbtDir)
-
-	if _, err := os.Stat(dbtDirPath); os.IsNotExist(err) {
-		t.Errorf("dbt dir %s did not create as expected", dbtDirPath)
+	var inputs = []struct {
+		name string
+		path string
+	}{
+		{
+			"reposerver",
+			homeDirRepoServer,
+		},
+		{
+			"s3",
+			homeDirS3,
+		},
 	}
 
-	trustPath := fmt.Sprintf("%s/%s", tmpDir, TrustDir)
+	for _, tc := range inputs {
+		t.Run(tc.name, func(t *testing.T) {
+			dbtDirPath := fmt.Sprintf("%s/%s", tc.path, DbtDir)
 
-	if _, err := os.Stat(trustPath); os.IsNotExist(err) {
-		t.Errorf("trust dir %s did not create as expected", trustPath)
+			if _, err := os.Stat(dbtDirPath); os.IsNotExist(err) {
+				t.Errorf("dbt dir %s did not create as expected", dbtDirPath)
+			}
+
+			trustPath := fmt.Sprintf("%s/%s", tc.path, TrustDir)
+
+			if _, err := os.Stat(trustPath); os.IsNotExist(err) {
+				t.Errorf("trust dir %s did not create as expected", trustPath)
+			}
+
+			toolPath := fmt.Sprintf("%s/%s", tc.path, ToolDir)
+			if _, err := os.Stat(toolPath); os.IsNotExist(err) {
+				t.Errorf("tool dir %s did not create as expected", toolPath)
+			}
+
+			configPath := fmt.Sprintf("%s/%s", tc.path, ConfigDir)
+			if _, err := os.Stat(configPath); os.IsNotExist(err) {
+				t.Errorf("config dir %s did not create as expected", configPath)
+			}
+
+		})
 	}
-
-	toolPath := fmt.Sprintf("%s/%s", tmpDir, ToolDir)
-	if _, err := os.Stat(toolPath); os.IsNotExist(err) {
-		t.Errorf("tool dir %s did not create as expected", toolPath)
-	}
-
-	configPath := fmt.Sprintf("%s/%s", tmpDir, ConfigDir)
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		t.Errorf("config dir %s did not create as expected", configPath)
-	}
-
 }
 
 func TestLoadDbtConfig(t *testing.T) {
-	configPath := fmt.Sprintf("%s/%s", tmpDir, ConfigDir)
-	fileName := fmt.Sprintf("%s/dbt.json", configPath)
-
-	err := ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
-	if err != nil {
-		t.Errorf("Error writing config file to %s: %s", fileName, err)
+	var inputs = []struct {
+		name string
+		path string
+	}{
+		{
+			"reposerver",
+			homeDirRepoServer,
+		},
+		{
+			"s3",
+			homeDirS3,
+		},
 	}
 
-	expected := dbtConfig
-	actual, err := LoadDbtConfig(tmpDir, true)
-	if err != nil {
-		t.Errorf("Error loading config file: %s", err)
+	for _, tc := range inputs {
+
+		t.Run(tc.name, func(t *testing.T) {
+			configPath := fmt.Sprintf("%s/%s", tc.path, ConfigDir)
+			fileName := fmt.Sprintf("%s/dbt.json", configPath)
+
+			err := ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
+			if err != nil {
+				t.Errorf("Error writing config file to %s: %s", fileName, err)
+			}
+
+			expected := dbtConfig
+			actual, err := LoadDbtConfig(tc.path, true)
+			if err != nil {
+				t.Errorf("Error loading config file: %s", err)
+			}
+
+			assert.Equal(t, expected, actual, "Parsed config meets expectations")
+		})
 	}
-
-	assert.Equal(t, expected, actual, "Parsed config meets expectations")
-
 }
 
 func TestFetchTrustStore(t *testing.T) {
-	dbt := &DBT{
-		Config:  dbtConfig,
-		Verbose: true,
+	inputs := []struct {
+		name    string
+		obj     *DBT
+		homedir string
+	}{
+		{
+			"reposerver",
+
+			&DBT{
+				Config:  dbtConfig,
+				Verbose: true,
+			},
+			homeDirRepoServer,
+		},
+		{
+			"s3",
+			&DBT{
+				Config:    s3DbtConfig,
+				Verbose:   true,
+				S3Session: s3Session,
+			},
+			homeDirS3,
+		},
 	}
 
-	err := dbt.FetchTrustStore(tmpDir, true)
-	if err != nil {
-		t.Errorf("Error fetching trust store: %s", err)
+	for _, tc := range inputs {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.obj.FetchTrustStore(tc.homedir, true)
+			if err != nil {
+				t.Errorf("Error fetching trust store: %s", err)
+			}
+
+			expected := trustfileContents
+			trustPath := fmt.Sprintf("%s/%s", tc.homedir, TruststorePath)
+
+			if _, err := os.Stat(trustPath); os.IsNotExist(err) {
+				t.Errorf("File not written")
+			}
+
+			actualBytes, err := ioutil.ReadFile(trustPath)
+			if err != nil {
+				t.Errorf("Error reading trust store: %s", err)
+			}
+
+			actual := string(actualBytes)
+
+			assert.Equal(t, expected, actual, "Read truststore contents matches expectations.")
+
+		})
 	}
-
-	expected := trustfileContents
-	trustPath := fmt.Sprintf("%s/%s", tmpDir, TruststorePath)
-
-	if _, err := os.Stat(trustPath); os.IsNotExist(err) {
-		t.Errorf("File not written")
-	}
-
-	actualBytes, err := ioutil.ReadFile(trustPath)
-	if err != nil {
-		t.Errorf("Error reading trust store: %s", err)
-	}
-
-	actual := string(actualBytes)
-
-	assert.Equal(t, expected, actual, "Read truststore contents matches expectations.")
 }
 
 func TestDbtIsCurrent(t *testing.T) {
-	dbt := &DBT{
-		Config:  dbtConfig,
-		Verbose: true,
+	inputs := []struct {
+		name    string
+		obj     *DBT
+		homedir string
+	}{
+		{
+			"reposerver",
+
+			&DBT{
+				Config:  dbtConfig,
+				Verbose: true,
+			},
+			homeDirRepoServer,
+		},
+		{
+			"s3",
+			&DBT{
+				Config:    s3DbtConfig,
+				Verbose:   true,
+				S3Session: s3Session,
+			},
+			homeDirS3,
+		},
 	}
 
-	targetDir := fmt.Sprintf("%s/%s", tmpDir, ToolDir)
-	fileUrl := fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, oldVersion, runtime.GOOS)
-	fileName := fmt.Sprintf("%s/dbt", targetDir)
+	for _, tc := range inputs {
+		t.Run(tc.name, func(t *testing.T) {
+			targetDir := fmt.Sprintf("%s/%s", tc.homedir, ToolDir)
+			fileUrl := fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, oldVersion, runtime.GOOS)
+			fileName := fmt.Sprintf("%s/dbt", targetDir)
 
-	err := dbt.FetchFile(fileUrl, fileName)
-	if err != nil {
-		t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
+			err := tc.obj.FetchFile(fileUrl, fileName)
+			if err != nil {
+				t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
+			}
+
+			ok, err := tc.obj.IsCurrent(fileName)
+			if err != nil {
+				t.Errorf("error checking to see if download file is current: %s\n", err)
+			}
+
+			assert.False(t, ok, "Old version should not show up as current.")
+
+			fileUrl = fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, VERSION, runtime.GOOS)
+			fileName = fmt.Sprintf("%s/dbt", targetDir)
+
+			err = tc.obj.FetchFile(fileUrl, fileName)
+			if err != nil {
+				t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
+			}
+
+			ok, err = tc.obj.IsCurrent(fileName)
+			if err != nil {
+				t.Errorf("error checking to see if download file is current: %s\n", err)
+			}
+
+			assert.True(t, ok, "Current version shows current.")
+		})
 	}
-
-	ok, err := dbt.IsCurrent(fileName)
-	if err != nil {
-		t.Errorf("error checking to see if download file is current: %s\n", err)
-	}
-
-	assert.False(t, ok, "Old version should not show up as current.")
-
-	fileUrl = fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, VERSION, runtime.GOOS)
-	fileName = fmt.Sprintf("%s/dbt", targetDir)
-
-	err = dbt.FetchFile(fileUrl, fileName)
-	if err != nil {
-		t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
-	}
-
-	ok, err = dbt.IsCurrent(fileName)
-	if err != nil {
-		t.Errorf("error checking to see if download file is current: %s\n", err)
-	}
-
-	assert.True(t, ok, "Current version shows current.")
 }
 
 func TestDbtUpgradeInPlace(t *testing.T) {
-	dbt := &DBT{
-		Config:  dbtConfig,
-		Verbose: true,
+	inputs := []struct {
+		name    string
+		obj     *DBT
+		homedir string
+	}{
+		{
+			"reposerver",
+
+			&DBT{
+				Config:  dbtConfig,
+				Verbose: true,
+			},
+			homeDirRepoServer,
+		},
+		{
+			"s3",
+			&DBT{
+				Config:    s3DbtConfig,
+				Verbose:   true,
+				S3Session: s3Session,
+			},
+			homeDirS3,
+		},
 	}
 
-	targetDir := fmt.Sprintf("%s/%s", tmpDir, ToolDir)
-	fileUrl := fmt.Sprintf("%s/%s/%s/amd64/dbt", testDbtUrl(port), oldVersion, runtime.GOOS)
-	fileName := fmt.Sprintf("%s/dbt", targetDir)
+	for _, tc := range inputs {
+		t.Run(tc.name, func(t *testing.T) {
+			targetDir := fmt.Sprintf("%s/%s", tc.homedir, ToolDir)
+			fileUrl := fmt.Sprintf("%s/%s/%s/amd64/dbt", testDbtUrl(port), oldVersion, runtime.GOOS)
+			fileName := fmt.Sprintf("%s/dbt", targetDir)
 
-	err := dbt.FetchFile(fileUrl, fileName)
-	if err != nil {
-		t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
+			err := tc.obj.FetchFile(fileUrl, fileName)
+			if err != nil {
+				t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
+			}
+
+			ok, err := tc.obj.IsCurrent(fileName)
+			if err != nil {
+				t.Errorf("error checking to see if download file is current: %s\n", err)
+			}
+
+			assert.False(t, ok, "Old version should not show up as current.")
+
+			err = tc.obj.UpgradeInPlace(fileName)
+			if err != nil {
+				t.Errorf("Error upgrading in place: %s", err)
+			}
+
+			ok, err = tc.obj.IsCurrent(fileName)
+			if err != nil {
+				t.Errorf("error checking to see if download file is current: %s\n", err)
+			}
+
+			assert.True(t, ok, "Current version shows current.")
+		})
 	}
-
-	ok, err := dbt.IsCurrent(fileName)
-	if err != nil {
-		t.Errorf("error checking to see if download file is current: %s\n", err)
-	}
-
-	assert.False(t, ok, "Old version should not show up as current.")
-
-	err = dbt.UpgradeInPlace(fileName)
-	if err != nil {
-		t.Errorf("Error upgrading in place: %s", err)
-	}
-
-	ok, err = dbt.IsCurrent(fileName)
-	if err != nil {
-		t.Errorf("error checking to see if download file is current: %s\n", err)
-	}
-
-	assert.True(t, ok, "Current version shows current.")
 }
 
 func TestNewDbt(t *testing.T) {
-	homedir, err := GetHomeDir()
-	if err != nil {
-		t.Errorf("Error getting homedir: %s", err)
+	var inputs = []struct {
+		name    string
+		homedir string
+	}{
+		{
+			"reposerver",
+			homeDirRepoServer,
+		},
+		{
+			"s3",
+			homeDirS3,
+		},
 	}
 
-	configPath := fmt.Sprintf("%s/%s", homedir, ConfigDir)
-	fileName := fmt.Sprintf("%s/dbt.json", configPath)
+	for _, tc := range inputs {
+		t.Run(tc.name, func(t *testing.T) {
+			configPath := fmt.Sprintf("%s/%s", tc.homedir, ConfigDir)
+			fileName := fmt.Sprintf("%s/dbt.json", configPath)
 
-	if _, err := os.Stat(fileName); os.IsNotExist(err) {
-		fmt.Printf("Writing test dbt config to %s", fileName)
-		err = GenerateDbtDir("", true)
-		if err != nil {
-			t.Errorf("Error generating dbt dir: %s", err)
-		}
+			if _, err := os.Stat(fileName); os.IsNotExist(err) {
+				fmt.Printf("Writing test dbt config to %s", fileName)
+				err = GenerateDbtDir("", true)
+				if err != nil {
+					t.Errorf("Error generating dbt dir: %s", err)
+				}
 
-		err = ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
-		if err != nil {
-			t.Errorf("Error writing config file to %s: %s", fileName, err)
-		}
-	}
+				err = ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
+				if err != nil {
+					t.Errorf("Error writing config file to %s: %s", fileName, err)
+				}
+			}
 
-	_, err = NewDbt()
-	if err != nil {
-		t.Errorf("Error creating DBT object: %s", err)
+			_, err := NewDbt()
+			if err != nil {
+				t.Errorf("Error creating DBT object: %s", err)
+			}
+		})
 	}
 }
 
@@ -221,29 +375,51 @@ func TestGetHomeDir(t *testing.T) {
 }
 
 func ExampleRunTool() {
-	dbt := &DBT{
-		Config:  dbtConfig,
-		Verbose: true,
-		Logger:  log.New(os.Stderr, "", 0),
+	inputs := []struct {
+		name    string
+		obj     *DBT
+		homedir string
+	}{
+		{
+			"reposerver",
+
+			&DBT{
+				Config:  dbtConfig,
+				Verbose: true,
+			},
+			homeDirRepoServer,
+		},
+		{
+			"s3",
+			&DBT{
+				Config:    s3DbtConfig,
+				Verbose:   true,
+				S3Session: s3Session,
+			},
+			homeDirS3,
+		},
 	}
 
-	dbt.RunTool("", []string{"catalog", "help"}, tmpDir, false)
-	// Output: Downloading binary tool "catalog" version 3.0.3.
-	//
-	//Tool for showing available DBT tools.
+	for _, tc := range inputs {
+		tc.obj.RunTool("", []string{"catalog", "help"}, tc.homedir, false)
+		// Output: Downloading binary tool "catalog" version 3.0.3.
+		//
+		//Tool for showing available DBT tools.
 
-	//DBT tools are made available in a trusted repository.  This tool show's what's available there.
-	//
-	//	Usage:
-	//  catalog [command]
-	//
-	//Available Commands:
-	//  help        Help about any command
-	//  list        ListCatalog available tools.
-	//
-	//Flags:
-	//  -h, --help       help for catalog
-	//  -v, --versions   Show all version information for tools.
-	//
-	//	Use "catalog [command] --help" for more information about a command.
+		//DBT tools are made available in a trusted repository.  This tool show's what's available there.
+		//
+		//	Usage:
+		//  catalog [command]
+		//
+		//Available Commands:
+		//  help        Help about any command
+		//  list        ListCatalog available tools.
+		//
+		//Flags:
+		//  -h, --help       help for catalog
+		//  -v, --versions   Show all version information for tools.
+		//
+		//	Use "catalog [command] --help" for more information about a command.
+
+	}
 }

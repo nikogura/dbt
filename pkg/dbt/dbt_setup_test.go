@@ -15,6 +15,7 @@
 package dbt
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -39,6 +40,7 @@ var tmpDir string
 var sourceDirA string
 var sourceDirB string
 var dbtConfig Config
+var s3DbtConfig Config
 var port int
 var repo DBTRepoServer
 var testHost string
@@ -49,12 +51,19 @@ var trustFile string
 var setup bool
 var oldVersion = "3.0.2"
 var testServer *httptest.Server
+var s3Config *aws.Config
+var s3Session *session.Session
+var s3Backend *s3mem.Backend
+var faker *gofakes3.GoFakeS3
+var homeDirRepoServer string
+var homeDirS3 string
 
 type testFile struct {
 	Name     string
 	FilePath string
 	UrlPath  string
 	TestUrl  string
+	Repo     string
 }
 
 var testFilesA map[string]*testFile
@@ -80,9 +89,13 @@ func setUp() {
 	NOPROGRESS = true
 
 	tmpDir = dir
+	homeDirRepoServer = fmt.Sprintf("%s/homedirReposerver", tmpDir)
+	homeDirS3 = fmt.Sprintf("%s/homeDirS3", tmpDir)
 	sourceDirA = fmt.Sprintf("%s/sourceA", tmpDir)
 	sourceDirB = fmt.Sprintf("%s/sourceB", tmpDir)
 	fmt.Printf("Temp Dir: %s\n", tmpDir)
+	fmt.Printf("Homedir Reposerver: %s\n", homeDirRepoServer)
+	fmt.Printf("Homedir S3: %s\n", homeDirS3)
 	fmt.Printf("Source A Dir: %s\n", sourceDirA)
 	fmt.Printf("Source B Dir: %s\n", sourceDirB)
 
@@ -106,6 +119,7 @@ func setUp() {
 	testFilesB = createTestFilesB(toolRoot, VERSION, dbtRoot)
 	fmt.Printf("--- Created %d Test Files ---\n", len(testFilesB))
 
+	// Dbt config for the built in repo server
 	dbtConfig = Config{
 		Dbt: DbtConfig{
 			Repo:       fmt.Sprintf("http://127.0.0.1:%d/dbt", port),
@@ -118,36 +132,32 @@ func setUp() {
 		//Password: "",
 	}
 
+	// Dbt config for using s3 as a repo
+	s3DbtConfig = Config{
+		Dbt: DbtConfig{
+			Repo:       "https://dbt.s3.us-east-1.amazonaws.com",
+			TrustStore: "https://dbt.s3.us-east-1.amazonaws.com/truststore",
+		},
+		Tools: ToolsConfig{
+			Repo: "https://dbt-tools.s3.us-east-1.amazonaws.com",
+		},
+	}
+
 	if !setup {
-		err = buildTestRepo()
-		if err != nil {
-			log.Fatalf("Error building test repo: %s", err)
-		}
-
-		// Set up the repo server
-		repo = DBTRepoServer{
-			Address:    "127.0.0.1",
-			Port:       port,
-			ServerRoot: fmt.Sprintf("%s/repo", tmpDir),
-		}
-
-		// Run it in the background
-		go repo.RunRepoServer()
-
 		// Setup Fake S3
-		backend := s3mem.New()
-		faker := gofakes3.New(backend)
+		s3Backend = s3mem.New()
+		faker = gofakes3.New(s3Backend)
 		testServer = httptest.NewServer(faker.Server())
 
-		s3Config := &aws.Config{
+		// S3 config
+		s3Config = &aws.Config{
 			Credentials:      credentials.NewStaticCredentials("foo", "bar", ""),
 			Endpoint:         aws.String(testServer.URL),
 			Region:           aws.String("us-east-1"),
 			DisableSSL:       aws.Bool(true),
 			S3ForcePathStyle: aws.Bool(true),
 		}
-
-		sess, err := session.NewSession(s3Config)
+		s3Session, err = session.NewSession(s3Config)
 		if err != nil {
 			log.Fatalf("failed creating fake aws session: %s", err)
 		}
@@ -155,7 +165,7 @@ func setUp() {
 		dbtBucket := "dbt"
 		toolsBucket := "dbt-tools"
 
-		s3Client := s3.New(sess)
+		s3Client := s3.New(s3Session)
 		cparams := &s3.CreateBucketInput{Bucket: aws.String(dbtBucket)}
 
 		_, err = s3Client.CreateBucket(cparams)
@@ -169,6 +179,22 @@ func setUp() {
 			log.Fatalf("Failed to create bucket %s: %s", toolsBucket, err)
 		}
 
+		// actually build the test repo
+		err = buildTestRepo()
+		if err != nil {
+			log.Fatalf("Error building test repo: %s", err)
+		}
+
+		// Set up the repo server
+		repo = DBTRepoServer{
+			Address:    "127.0.0.1",
+			Port:       port,
+			ServerRoot: fmt.Sprintf("%s/repo", tmpDir),
+		}
+
+		// Run test server in the background
+		go repo.RunRepoServer()
+
 		// Give things a moment to come up.
 		time.Sleep(time.Second)
 
@@ -178,10 +204,21 @@ func setUp() {
 		log.Printf("Sleeping for 1 second for the test artifact server to start up.")
 		time.Sleep(time.Second * 1)
 
-		err = GenerateDbtDir(tmpDir, true)
-		if err != nil {
-			log.Printf("Error generating dbt dir: %s", err)
-			os.Exit(1)
+		for _, dir := range []string{
+			homeDirRepoServer,
+			homeDirS3,
+		} {
+			err = os.MkdirAll(dir, 0755)
+			if err != nil {
+				log.Printf("Error generating fake home dir: %s", err)
+				os.Exit(1)
+			}
+
+			err = GenerateDbtDir(dir, true)
+			if err != nil {
+				log.Printf("Error generating dbt dir: %s", err)
+				os.Exit(1)
+			}
 		}
 
 		setup = true
@@ -223,101 +260,121 @@ func createTestFilesA(toolRoot string, version string, dbtRoot string) (testFile
 			Name:     "boilerplate-description.txt",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/description.txt", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/description.txt", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "boilerplate-description.txt.asc",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/description.txt.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/description.txt.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "boilerplate_darwin_amd64",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/darwin/amd64/boilerplate", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "boilerplate_darwin_amd64.asc",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/darwin/amd64/boilerplate.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "boilerplate_linux_amd64",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/linux/amd64/boilerplate", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "boilerplate_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog-description.txt",
 			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog-description.txt.asc",
 			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog_darwin_amd64",
 			FilePath: fmt.Sprintf("%s/catalog/%s/darwin/amd64/catalog", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/darwin/amd64/catalog", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog_darwin_amd64.asc",
 			FilePath: fmt.Sprintf("%s/catalog/%s/darwin/amd64/catalog.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/darwin/amd64/catalog.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog_linux_amd64",
 			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "dbt_darwin_amd64",
 			FilePath: fmt.Sprintf("%s/%s/darwin/amd64/dbt", dbtRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt/%s/darwin/amd64/dbt", version),
+			Repo:     "dbt",
 		},
 		{
 			Name:     "dbt_darwin_amd64.asc",
 			FilePath: fmt.Sprintf("%s/%s/darwin/amd64/dbt.asc", dbtRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt/%s/darwin/amd64/dbt.asc", version),
+			Repo:     "dbt",
 		},
 		{
 			Name:     "dbt_linux_amd64",
 			FilePath: fmt.Sprintf("%s/%s/linux/amd64/dbt", dbtRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt", version),
+			Repo:     "dbt",
 		},
 		{
 			Name:     "dbt_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/%s/linux/amd64/dbt.asc", dbtRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt.asc", version),
+			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt.sh",
 			FilePath: fmt.Sprintf("%s/install_dbt.sh", dbtRoot),
 			UrlPath:  "/dbt/install_dbt.sh",
+			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt.sh.asc",
 			FilePath: fmt.Sprintf("%s/install_dbt.sh.asc", dbtRoot),
 			UrlPath:  "/dbt/install_dbt.sh.asc",
+			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt_mac_keychain.sh",
 			FilePath: fmt.Sprintf("%s/install_dbt_mac_keychain.sh", dbtRoot),
 			UrlPath:  "/dbt/install_dbt.sh",
+			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt_mac_keychain.sh.asc",
 			FilePath: fmt.Sprintf("%s/install_dbt_mac_keychain.sh.asc", dbtRoot),
 			UrlPath:  "/dbt/install_dbt.sh.asc",
+			Repo:     "dbt",
 		},
 	}
 
@@ -336,131 +393,157 @@ func createTestFilesB(toolRoot string, version string, dbtRoot string) (testFile
 			Name:     "boilerplate-description.txt",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/description.txt", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/description.txt", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "boilerplate-description.txt.asc",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/description.txt.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/description.txt.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "boilerplate_darwin_amd64",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/darwin/amd64/boilerplate", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "boilerplate_darwin_amd64.asc",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/darwin/amd64/boilerplate.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "boilerplate_linux_amd64",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/linux/amd64/boilerplate", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "boilerplate_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog-description.txt",
 			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog-description.txt.asc",
 			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog_darwin_amd64",
 			FilePath: fmt.Sprintf("%s/catalog/%s/darwin/amd64/catalog", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/darwin/amd64/catalog", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog_darwin_amd64.asc",
 			FilePath: fmt.Sprintf("%s/catalog/%s/darwin/amd64/catalog.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/darwin/amd64/catalog.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog_linux_amd64",
 			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "reposerver-description.txt",
 			FilePath: fmt.Sprintf("%s/reposerver/%s/description.txt", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/description.txt", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "reposerver-description.txt.asc",
 			FilePath: fmt.Sprintf("%s/reposerver/%s/description.txt.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/description.txt.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "reposerver_darwin_amd64",
 			FilePath: fmt.Sprintf("%s/reposerver/%s/darwin/amd64/reposerver", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/darwin/amd64/reposerver", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "reposerver_darwin_amd64.asc",
 			FilePath: fmt.Sprintf("%s/reposerver/%s/darwin/amd64/reposerver.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/darwin/amd64/reposerver.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "reposerver_linux_amd64",
 			FilePath: fmt.Sprintf("%s/reposerver/%s/linux/amd64/reposerver", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/linux/amd64/reposerver", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "reposerver_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/reposerver/%s/linux/amd64/reposerver.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/darwin/amd64/reposerver.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "dbt_darwin_amd64",
 			FilePath: fmt.Sprintf("%s/%s/darwin/amd64/dbt", dbtRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt/%s/darwin/amd64/dbt", version),
+			Repo:     "dbt",
 		},
 		{
 			Name:     "dbt_darwin_amd64.asc",
 			FilePath: fmt.Sprintf("%s/%s/darwin/amd64/dbt.asc", dbtRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt/%s/darwin/amd64/dbt.asc", version),
+			Repo:     "dbt",
 		},
 		{
 			Name:     "dbt_linux_amd64",
 			FilePath: fmt.Sprintf("%s/%s/linux/amd64/dbt", dbtRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt", version),
+			Repo:     "dbt",
 		},
 		{
 			Name:     "dbt_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/%s/linux/amd64/dbt.asc", dbtRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt.asc", version),
+			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt.sh",
 			FilePath: fmt.Sprintf("%s/install_dbt.sh", dbtRoot),
 			UrlPath:  "/dbt/install_dbt.sh",
+			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt.sh.asc",
 			FilePath: fmt.Sprintf("%s/install_dbt.sh.asc", dbtRoot),
 			UrlPath:  "/dbt/install_dbt.sh.asc",
+			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt_mac_keychain.sh",
 			FilePath: fmt.Sprintf("%s/install_dbt_mac_keychain.sh", dbtRoot),
 			UrlPath:  "/dbt/install_dbt.sh",
+			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt_mac_keychain.sh.asc",
 			FilePath: fmt.Sprintf("%s/install_dbt_mac_keychain.sh.asc", dbtRoot),
 			UrlPath:  "/dbt/install_dbt.sh.asc",
+			Repo:     "dbt",
 		},
 	}
 
@@ -578,6 +661,8 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 
 	fmt.Printf("--- Moving %d Test Files into repository ---\n", len(testFilesB))
 
+	s3Client := s3.New(s3Session)
+
 	// Write the files into place
 	for _, f := range testfiles {
 		fmt.Printf("Processing %s\n", f.Name)
@@ -590,21 +675,50 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 			}
 		}
 
+		// read the file we compiled
 		input, err := ioutil.ReadFile(src)
 		if err != nil {
 			log.Fatalf("Failed to read file %s: %s", src, err)
 		}
 
+		key := strings.TrimLeft(f.UrlPath, fmt.Sprintf("/%s/", f.Repo))
+
+		// upload the file to the fake s3 endpoint
+		_, err = s3Client.PutObject(&s3.PutObjectInput{
+			Bucket: aws.String(f.Repo),
+			Key:    aws.String(key),
+			Body:   bytes.NewReader(input),
+		})
+		if err != nil {
+			log.Fatalf("Failed to put %s into fake s3: %s", key, err)
+		}
+
+		// verify it got into the fake s3
+		headOptions := &s3.HeadObjectInput{
+			Bucket: aws.String(f.Repo),
+			Key:    aws.String(key),
+		}
+
+		headSvc := s3.New(s3Session)
+
+		_, err = headSvc.HeadObject(headOptions)
+		if err != nil {
+			log.Fatalf("failed to get metadata for %s: %s", f.Name, err)
+		}
+
+		// write the file into place in the test repo
 		err = ioutil.WriteFile(f.FilePath, input, 0644)
 		if err != nil {
 			log.Fatalf("Failed to write file %s: %s", f.FilePath, err)
 		}
 
+		// clean up after ourselves
 		err = os.Remove(src)
 		if err != nil {
 			log.Fatalf("Failed to remove file %s: %s", src, err)
 		}
 
+		// checksum the file
 		checksum, err := FileSha256(f.FilePath)
 		if err != nil {
 			log.Fatalf("Failed to checksum file %s: %s", f.FilePath, err)
@@ -612,9 +726,31 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 
 		checksumFile := fmt.Sprintf("%s.sha256", f.FilePath)
 
+		// write the file's checksum into the test repo
 		err = ioutil.WriteFile(checksumFile, []byte(checksum), 0644)
 		if err != nil {
 			log.Fatalf("Failed to write %s: %s", checksumFile, err)
+		}
+
+		// upload the checksum to the fake s3 endpoint
+		_, err = s3Client.PutObject(&s3.PutObjectInput{
+			Bucket: aws.String(f.Repo),
+			Key:    aws.String(fmt.Sprintf("%s.sha256", key)),
+			Body:   bytes.NewReader([]byte(checksum)),
+		})
+		if err != nil {
+			log.Fatalf("Failed to put %s into fake s3: %s", key, err)
+		}
+
+		// verify it got into the fake s3
+		headOptions = &s3.HeadObjectInput{
+			Bucket: aws.String(f.Repo),
+			Key:    aws.String(key),
+		}
+
+		_, err = headSvc.HeadObject(headOptions)
+		if err != nil {
+			log.Fatalf("failed to get metadata for %s: %s", f.Name, err)
 		}
 	}
 }

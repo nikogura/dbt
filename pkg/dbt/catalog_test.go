@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
-	"log"
 	"testing"
 )
 
@@ -26,7 +25,7 @@ func TestFetchTools(t *testing.T) {
 	}
 
 	expected := []Tool{
-		Tool{
+		{
 			Name:          "boilerplate",
 			FormattedName: "",
 			Version:       "",
@@ -50,20 +49,46 @@ func TestFetchTools(t *testing.T) {
 }
 
 func TestListCatalog(t *testing.T) {
-	configPath := fmt.Sprintf("%s/%s", tmpDir, ConfigDir)
-	fileName := fmt.Sprintf("%s/dbt.json", configPath)
+	inputs := []struct {
+		name    string
+		obj     *DBT
+		homedir string
+	}{
+		{
+			"reposerver",
 
-	err := ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
-	if err != nil {
-		log.Printf("Error writing config file to %s: %s", fileName, err)
-		t.Fail()
+			&DBT{
+				Config:  dbtConfig,
+				Verbose: true,
+			},
+			homeDirRepoServer,
+		},
+		{
+			"s3",
+			&DBT{
+				Config:  s3DbtConfig,
+				Verbose: true,
+			},
+			homeDirS3,
+		},
 	}
 
-	err = ListCatalog(true, tmpDir)
-	if err != nil {
-		fmt.Printf("Error listing tools: %s\n", err)
-		t.Fail()
-	}
+	for _, tc := range inputs {
+		t.Run(tc.name, func(t *testing.T) {
+			configPath := fmt.Sprintf("%s/%s", tc.homedir, ConfigDir)
+			fileName := fmt.Sprintf("%s/dbt.json", configPath)
 
-	assert.Nil(t, err, "ListCatalog produced errors.")
+			err := ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
+			if err != nil {
+				t.Errorf("Error writing config file to %s: %s", fileName, err)
+			}
+
+			err = ListCatalog(true, tc.homedir)
+			if err != nil {
+				t.Errorf("Error listing tools: %s\n", err)
+			}
+
+			assert.Nil(t, err, "ListCatalog produced errors.")
+		})
+	}
 }
