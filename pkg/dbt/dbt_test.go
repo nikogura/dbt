@@ -18,8 +18,10 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"runtime"
@@ -27,21 +29,21 @@ import (
 	"testing"
 )
 
-//func TestS3List(t *testing.T) {
-//	svc := s3.New(s3Session)
-//	input := &s3.ListObjectsInput{
-//		Bucket:      aws.String("dbt"),
-//		MaxKeys:     aws.Int64(100),
-//	}
-//
-//	log.Printf("----- Listing s3 Objects -----")
-//
-//	result, err := svc.ListObjects(input)
-//	if err != nil {
-//		t.Errorf("Error listing s3 objects")
-//	}
-//	spew.Dump(result)
-//}
+func TestS3List(t *testing.T) {
+	svc := s3.New(s3Session)
+	input := &s3.ListObjectsInput{
+		Bucket:  aws.String("dbt-tools"),
+		MaxKeys: aws.Int64(100),
+	}
+
+	log.Printf("----- Listing s3 Objects -----")
+
+	result, err := svc.ListObjects(input)
+	if err != nil {
+		t.Errorf("Error listing s3 objects")
+	}
+	spew.Dump(result)
+}
 
 func TestRepoGet(t *testing.T) {
 	for _, f := range testFilesB {

@@ -53,30 +53,24 @@ func TestToolExists(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			exists, err := tc.obj.ToolExists("boilerplate")
 			if err != nil {
-				fmt.Printf("Failed to check repo for %q", "boilerplate")
-				t.Fail()
+				t.Errorf("Failed to check repo for %q: %s\n", "boilerplate", err)
 			}
 			if !exists {
-				fmt.Println(fmt.Sprintf("Tool %q does not exist in repo %s", "dbt", tc.obj.Config.Dbt.Repo))
-				t.Fail()
+				t.Errorf("Tool %q does not exist in repo %s\n", "boilerplate", tc.obj.Config.Tools.Repo)
 			}
 
 			fakeToolName := "bar"
 
 			exists, err = tc.obj.ToolExists(fakeToolName)
 			if err != nil {
-				fmt.Printf("Failed to check artifactory for %q", fakeToolName)
-				t.Fail()
+				t.Errorf("Failed to check repo for %q\n", fakeToolName)
 			}
 
 			if exists {
-				fmt.Println("Nonexistant job shows existing in repo.")
-				t.Fail()
+				t.Errorf("Nonexistant job shows existing in repo.\n")
 			}
-
 		})
 	}
-
 }
 
 func TestToolVersionExists(t *testing.T) {
@@ -384,6 +378,47 @@ func TestS3Url(t *testing.T) {
 			assert.True(t, tc.bucket == meta.Bucket, fmt.Sprintf("Bucket %q doesn't look right", meta.Bucket))
 			assert.True(t, tc.region == meta.Region, fmt.Sprintf("Region %q doesn't look right.", meta.Region))
 			assert.True(t, tc.key == meta.Key, fmt.Sprintf("Key %q doesn't look right.", meta.Key))
+		})
+	}
+}
+
+func TestDirsForPath(t *testing.T) {
+	inputs := []struct {
+		name   string
+		input  string
+		output []string
+	}{
+		{
+			"s3 reposerver url",
+			"https://foo.com/dbt-tools/catalog/1.2.3/darwin/amd64/catalog",
+			[]string{
+				"dbt-tools",
+				"dbt-tools/catalog",
+				"dbt-tools/catalog/1.2.3",
+				"dbt-tools/catalog/1.2.3/darwin",
+				"dbt-tools/catalog/1.2.3/darwin/amd64",
+			},
+		},
+		{
+			"s3 catalog url",
+			"https://dbt-tools.s3.us-east-1.amazonaws.com/catalog/1.2.3/darwin/amd64/catalog",
+			[]string{
+				"catalog",
+				"catalog/1.2.3",
+				"catalog/1.2.3/darwin",
+				"catalog/1.2.3/darwin/amd64",
+			},
+		},
+	}
+
+	for _, tc := range inputs {
+		t.Run(tc.name, func(t *testing.T) {
+			dirs, err := DirsForURL(tc.input)
+			if err != nil {
+				t.Error(err)
+			}
+
+			assert.Equal(t, tc.output, dirs, "Parsed directories meet expectations")
 		})
 	}
 }

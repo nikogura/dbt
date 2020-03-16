@@ -31,7 +31,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -638,6 +640,34 @@ func DefaultSession() (awssession *session.Session, err error) {
 	return awssession, err
 }
 
+// DirsForURL given a URL, return a list of path elements suitable for creating directories/ folders
+func DirsForURL(uri string) (dirs []string, err error) {
+	dirs = make([]string, 0)
+
+	u, err := url.Parse(uri)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to parse %s", uri)
+		return dirs, err
+	}
+
+	dir := path.Dir(u.Path)
+	dir = strings.TrimPrefix(dir, "/")
+	parts := strings.Split(dir, "/")
+
+	for len(parts) > 0 {
+		dirs = append(dirs, strings.Join(parts, "/"))
+		parts = parts[:len(parts)-1]
+	}
+
+	// Reverse the order, as this will be much easier to use the data to do path creation
+	for i := len(dirs)/2 - 1; i >= 0; i-- {
+		opp := len(dirs) - 1 - i
+		dirs[i], dirs[opp] = dirs[opp], dirs[i]
+	}
+
+	return dirs, err
+}
+
 // S3Meta a struct for holding metadata for S3 Objects.  There's probably already a struct that holds this, but this is all I need.
 type S3Meta struct {
 	Bucket string
@@ -721,6 +751,23 @@ func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err 
 }
 
 func (dbt *DBT) S3ToolExists(toolName string, meta S3Meta) (found bool, err error) {
+	headOptions := &s3.HeadObjectInput{
+		Bucket: aws.String(meta.Bucket),
+		Key:    aws.String(meta.Key),
+	}
+
+	log.Printf("Looking for %s in %s", meta.Key, meta.Bucket)
+
+	headSvc := s3.New(dbt.S3Session)
+
+	// not found is an error, as opposed to a sucessful request that has a 404 code
+	_, fetchErr := headSvc.HeadObject(headOptions)
+	if fetchErr != nil {
+		return found, err
+	}
+
+	found = true
+
 	return found, err
 }
 

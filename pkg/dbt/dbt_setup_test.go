@@ -681,7 +681,7 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 			log.Fatalf("Failed to read file %s: %s", src, err)
 		}
 
-		key := strings.TrimLeft(f.UrlPath, fmt.Sprintf("/%s/", f.Repo))
+		key := strings.TrimPrefix(f.UrlPath, fmt.Sprintf("/%s/", f.Repo))
 
 		// upload the file to the fake s3 endpoint
 		_, err = s3Client.PutObject(&s3.PutObjectInput{
@@ -704,6 +704,37 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 		_, err = headSvc.HeadObject(headOptions)
 		if err != nil {
 			log.Fatalf("failed to get metadata for %s: %s", f.Name, err)
+		}
+
+		// make the directory paths in s3
+		dirs, err := DirsForURL(key)
+		if err != nil {
+			log.Fatalf("failed to parse dirs for %s", key)
+		}
+
+		// create the 'folders' (0 byte objects) in s3
+		for _, d := range dirs {
+			if d != "." {
+				path := fmt.Sprintf("%s/", d)
+				// check to see if it doesn't already exist
+				headOptions = &s3.HeadObjectInput{
+					Bucket: aws.String(f.Repo),
+					Key:    aws.String(path),
+				}
+
+				_, err = headSvc.HeadObject(headOptions)
+				// if there's an error, it doesn't exist
+				if err != nil {
+					// so create it
+					_, err = s3Client.PutObject(&s3.PutObjectInput{
+						Bucket: aws.String(f.Repo),
+						Key:    aws.String(path),
+					})
+					if err != nil {
+						log.Fatalf("Failed to put %s into fake s3: %s", key, err)
+					}
+				}
+			}
 		}
 
 		// write the file into place in the test repo
