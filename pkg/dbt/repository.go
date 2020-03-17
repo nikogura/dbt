@@ -134,7 +134,7 @@ func (dbt *DBT) ToolVersionExists(tool string, version string) (ok bool, err err
 	isS3, s3Meta := S3Url(uri)
 
 	if isS3 {
-		return dbt.S3ToolVersionExists(tool, version, s3Meta)
+		return dbt.S3ToolVersionExists(s3Meta)
 
 	} else {
 		client := &http.Client{}
@@ -705,6 +705,7 @@ func S3Url(url string) (ok bool, meta S3Meta) {
 	return ok, meta
 }
 
+// S3FetchFile fetches a file out of S3 instead of using a normal HTTP GET
 func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err error) {
 	headOptions := &s3.HeadObjectInput{
 		Bucket: aws.String(meta.Bucket),
@@ -750,6 +751,7 @@ func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err 
 
 }
 
+// S3ToolExists detects whether a tool exists in S3 by looking at the top level folder for the tool
 func (dbt *DBT) S3ToolExists(toolName string, meta S3Meta) (found bool, err error) {
 	headOptions := &s3.HeadObjectInput{
 		Bucket: aws.String(meta.Bucket),
@@ -760,7 +762,7 @@ func (dbt *DBT) S3ToolExists(toolName string, meta S3Meta) (found bool, err erro
 
 	headSvc := s3.New(dbt.S3Session)
 
-	// not found is an error, as opposed to a sucessful request that has a 404 code
+	// not found is an error, as opposed to a successful request that has a 404 code
 	_, fetchErr := headSvc.HeadObject(headOptions)
 	if fetchErr != nil {
 		return found, err
@@ -771,20 +773,81 @@ func (dbt *DBT) S3ToolExists(toolName string, meta S3Meta) (found bool, err erro
 	return found, err
 }
 
-func (dbt *DBT) S3ToolVersionExists(tool string, version string, meta S3Meta) (ok bool, err error) {
+// S3FetchTruststore fetches the truststore out of S3 writing it into the dbt dir on the local disk
+func (dbt *DBT) S3FetchTruststore(homedir string, meta S3Meta, verbose bool) (err error) {
+	downloader := s3manager.NewDownloader(dbt.S3Session)
+	filePath := fmt.Sprintf("%s/%s", homedir, TruststorePath)
+	file, err := os.Create(filePath)
+	if err != nil {
+		err = errors.Wrapf(err, "Failed opening truststore file %s", filePath)
+		return err
+	}
+	_, err = downloader.Download(file, &s3.GetObjectInput{
+		Bucket: aws.String(meta.Bucket),
+		Key:    aws.String(meta.Key),
+	})
+
+	if err != nil {
+		err = errors.Wrapf(err, "failed to download truststore from %s", meta.Url)
+	}
+
+	return err
+}
+
+func (dbt *DBT) S3ToolVersionExists(meta S3Meta) (ok bool, err error) {
+	headOptions := &s3.HeadObjectInput{
+		Bucket: aws.String(meta.Bucket),
+		Key:    aws.String(meta.Key),
+	}
+
+	log.Printf("Looking for %q in %s", meta.Key, meta.Bucket)
+
+	headSvc := s3.New(dbt.S3Session)
+
+	// not found is an error, as opposed to a successful request that has a 404 code
+	_, fetchErr := headSvc.HeadObject(headOptions)
+	if fetchErr != nil {
+		return ok, err
+	}
+
+	ok = true
+
 	return ok, err
+}
+
+func (dbt *DBT) S3VerifyFileVersion(fileUrl string, filePath string, meta S3Meta) (success bool, err error) {
+	// get checksum file from s3
+	buff := &aws.WriteAtBuffer{}
+	downloader := s3manager.NewDownloader(dbt.S3Session)
+	_, err = downloader.Download(buff, &s3.GetObjectInput{
+		Bucket: aws.String(meta.Bucket),
+		Key:    aws.String(meta.Key),
+	})
+
+	if err != nil {
+		err = errors.Wrapf(err, "failed to download checksum for %s", meta.Url)
+		return success, err
+	}
+
+	// compare it to what's on the disk
+	expected := string(buff.Bytes())
+	actual, err := FileSha256(filePath)
+
+	if err != nil {
+		success = false
+		return success, err
+	}
+
+	if actual == expected {
+		success = true
+		return success, err
+	}
+
+	return success, err
 }
 
 func (dbt *DBT) S3FetchToolVersions(uri string, meta S3Meta) (versions []string, err error) {
 	return versions, err
-}
-
-func (dbt *DBT) S3VerifyFileVersion(fileUrl string, filePath string, meta S3Meta) (success bool, err error) {
-	return success, err
-}
-
-func (dbt *DBT) S3FetchTruststore(homedir string, meta S3Meta, verbose bool) (err error) {
-	return err
 }
 
 // TODO Version detection failing in s3.

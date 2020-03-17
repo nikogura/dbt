@@ -608,6 +608,18 @@ Expire-Date: 0
 		log.Fatalf("Error writing truststore file %s: %s", trustFile, err)
 	}
 
+	s3Client := s3.New(s3Session)
+
+	// upload the file to the fake s3 endpoint
+	_, err = s3Client.PutObject(&s3.PutObjectInput{
+		Bucket: aws.String("dbt"),
+		Key:    aws.String("truststore"),
+		Body:   bytes.NewReader(out),
+	})
+	if err != nil {
+		log.Fatalf("Failed to put truststore into fake s3: %s", err)
+	}
+
 	log.Printf("Done creating keyring and test keys")
 
 }

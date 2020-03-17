@@ -58,7 +58,8 @@ func TestRepoGet(t *testing.T) {
 			assert.True(t, resp.StatusCode < 300, "Non success error code fetching %s (%d)", url, resp.StatusCode)
 
 			// fetch via s3
-			key := strings.TrimLeft(f.UrlPath, fmt.Sprintf("%s/", f.Repo))
+			key := strings.TrimPrefix(f.UrlPath, fmt.Sprintf("/%s/", f.Repo))
+			log.Printf("Fetching %s from s3", key)
 			headOptions := &s3.HeadObjectInput{
 				Bucket: aws.String(f.Repo),
 				Key:    aws.String(key),
@@ -212,6 +213,8 @@ func TestDbtIsCurrent(t *testing.T) {
 		name    string
 		obj     *DBT
 		homedir string
+		oldUrl  string
+		newUrl  string
 	}{
 		{
 			"reposerver",
@@ -221,6 +224,8 @@ func TestDbtIsCurrent(t *testing.T) {
 				Verbose: true,
 			},
 			homeDirRepoServer,
+			fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, oldVersion, runtime.GOOS),
+			fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, VERSION, runtime.GOOS),
 		},
 		{
 			"s3",
@@ -230,13 +235,15 @@ func TestDbtIsCurrent(t *testing.T) {
 				S3Session: s3Session,
 			},
 			homeDirS3,
+			fmt.Sprintf("https://dbt.s3.us-east-1.amazonaws.com/%s/%s/amd64/dbt", oldVersion, runtime.GOOS),
+			fmt.Sprintf("https://dbt.s3.us-east-1.amazonaws.com/%s/%s/amd64/dbt", VERSION, runtime.GOOS),
 		},
 	}
 
 	for _, tc := range inputs {
 		t.Run(tc.name, func(t *testing.T) {
 			targetDir := fmt.Sprintf("%s/%s", tc.homedir, ToolDir)
-			fileUrl := fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, oldVersion, runtime.GOOS)
+			fileUrl := tc.oldUrl
 			fileName := fmt.Sprintf("%s/dbt", targetDir)
 
 			err := tc.obj.FetchFile(fileUrl, fileName)
@@ -251,7 +258,7 @@ func TestDbtIsCurrent(t *testing.T) {
 
 			assert.False(t, ok, "Old version should not show up as current.")
 
-			fileUrl = fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, VERSION, runtime.GOOS)
+			fileUrl = tc.newUrl
 			fileName = fmt.Sprintf("%s/dbt", targetDir)
 
 			err = tc.obj.FetchFile(fileUrl, fileName)
