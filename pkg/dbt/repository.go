@@ -171,9 +171,9 @@ func (dbt *DBT) ToolVersionExists(tool string, version string) (ok bool, err err
 		}
 
 		resp, err := client.Do(req)
-
 		if err != nil {
-			fmt.Println(fmt.Sprintf("Error looking for tool %q version %q in repo %q: %s", tool, version, uri, err))
+			err = errors.Wrapf(err, "Error looking for tool %q version %q in repo %q", tool, version, uri)
+			return ok, err
 		}
 
 		if resp.StatusCode != 200 {
@@ -202,7 +202,7 @@ func (dbt *DBT) FetchToolVersions(toolName string) (versions []string, err error
 	isS3, s3Meta := S3Url(uri)
 
 	if isS3 {
-		return dbt.S3FetchToolVersions(uri, s3Meta)
+		return dbt.S3FetchToolVersions(s3Meta)
 
 	} else {
 		client := &http.Client{}
@@ -240,7 +240,7 @@ func (dbt *DBT) FetchToolVersions(toolName string) (versions []string, err error
 
 		resp, err := client.Do(req)
 		if err != nil {
-			fmt.Println(fmt.Sprintf("Error looking for versions of tool %q in repo %q: %s", toolName, uri, err))
+			err = errors.Wrapf(err, "Error looking for versions of tool %q in repo %q", toolName, uri)
 			return versions, err
 		}
 
@@ -446,10 +446,10 @@ func (dbt *DBT) VerifyFileVersion(fileUrl string, filePath string) (success bool
 	uri := fmt.Sprintf("%s.sha256", fileUrl)
 
 	// Check to see if this is an S3 URL
-	isS3, s3Meta := S3Url(fileUrl)
+	isS3, s3Meta := S3Url(uri)
 
 	if isS3 {
-		return dbt.S3VerifyFileVersion(fileUrl, filePath, s3Meta)
+		return dbt.S3VerifyFileVersion(filePath, s3Meta)
 
 	} else {
 		client := &http.Client{}
@@ -487,7 +487,8 @@ func (dbt *DBT) VerifyFileVersion(fileUrl string, filePath string) (success bool
 
 		resp, err := client.Do(req)
 		if err != nil {
-			fmt.Println(fmt.Sprintf("Error fetching checksum from %q: %s", uri, err))
+			err = errors.Wrapf(err, "Error fetching checksum from %q", uri)
+			return success, err
 		}
 
 		if resp != nil {
@@ -616,7 +617,7 @@ func (dbt *DBT) FindLatestVersion(toolName string) (latest string, err error) {
 		return latest, err
 	}
 
-	fmt.Printf("tool not in repo\n")
+	err = errors.New("tool not in repo")
 
 	return latest, err
 }
@@ -681,7 +682,6 @@ func S3Url(url string) (ok bool, meta S3Meta) {
 	// Check to see if it's an s3 URL.
 	s3Url := regexp.MustCompile(`https?://(.*)\.s3\.(.*)\.amazonaws.com/(.*)`)
 
-	fmt.Printf("testing %s\n", url)
 	matches := s3Url.FindAllStringSubmatch(url, -1)
 
 	if len(matches) == 0 {
@@ -720,32 +720,42 @@ func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err 
 		return err
 	}
 
-	// create and start progress bar
-	bar := pb.New(int(*fileMeta.ContentLength)).SetUnits(pb.U_BYTES)
-	bar.Output = os.Stderr
-	bar.Start()
-
 	downloader := s3manager.NewDownloader(dbt.S3Session)
 	downloadOptions := &s3.GetObjectInput{
 		Bucket: aws.String(meta.Bucket),
 		Key:    aws.String(meta.Key),
 	}
 
-	buf := &aws.WriteAtBuffer{}
+	if !NOPROGRESS {
+		// create and start progress bar
+		bar := pb.New(int(*fileMeta.ContentLength)).SetUnits(pb.U_BYTES)
+		bar.Output = os.Stderr
+		bar.Start()
 
-	_, err = downloader.Download(buf, downloadOptions)
-	if err != nil {
-		err = errors.Wrapf(err, "unable to download file from %s", fileUrl)
+		buf := &aws.WriteAtBuffer{}
+
+		_, err = downloader.Download(buf, downloadOptions)
+		if err != nil {
+			err = errors.Wrapf(err, "unable to download file from %s", fileUrl)
+			return err
+		}
+
+		// create proxy reader
+		reader := bar.NewProxyReader(bytes.NewBuffer(buf.Bytes()))
+
+		// and copy from pb reader
+		_, _ = io.Copy(outFile, reader)
+
+		_, err = io.Copy(outFile, bytes.NewReader(buf.Bytes()))
+
 		return err
 	}
 
-	// create proxy reader
-	reader := bar.NewProxyReader(bytes.NewBuffer(buf.Bytes()))
-
-	// and copy from pb reader
-	_, _ = io.Copy(outFile, reader)
-
-	_, err = io.Copy(outFile, bytes.NewReader(buf.Bytes()))
+	_, err = downloader.Download(outFile, downloadOptions)
+	if err != nil {
+		err = errors.Wrapf(err, "download failed")
+		return err
+	}
 
 	return err
 
@@ -753,22 +763,22 @@ func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err 
 
 // S3ToolExists detects whether a tool exists in S3 by looking at the top level folder for the tool
 func (dbt *DBT) S3ToolExists(toolName string, meta S3Meta) (found bool, err error) {
-	headOptions := &s3.HeadObjectInput{
-		Bucket: aws.String(meta.Bucket),
-		Key:    aws.String(meta.Key),
+	svc := s3.New(dbt.S3Session)
+	options := &s3.ListObjectsInput{
+		Bucket:    aws.String(meta.Bucket),
+		Prefix:    aws.String(meta.Key),
+		Delimiter: aws.String("/"),
 	}
 
-	log.Printf("Looking for %s in %s", meta.Key, meta.Bucket)
-
-	headSvc := s3.New(dbt.S3Session)
-
-	// not found is an error, as opposed to a successful request that has a 404 code
-	_, fetchErr := headSvc.HeadObject(headOptions)
-	if fetchErr != nil {
+	resp, err := svc.ListObjects(options)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to list objects at %s", meta.Key)
 		return found, err
 	}
 
-	found = true
+	if len(resp.Contents) > 0 {
+		found = true
+	}
 
 	return found, err
 }
@@ -794,6 +804,7 @@ func (dbt *DBT) S3FetchTruststore(homedir string, meta S3Meta, verbose bool) (er
 	return err
 }
 
+// S3ToolVersionExists returns true if the tool version exists
 func (dbt *DBT) S3ToolVersionExists(meta S3Meta) (ok bool, err error) {
 	headOptions := &s3.HeadObjectInput{
 		Bucket: aws.String(meta.Bucket),
@@ -815,7 +826,8 @@ func (dbt *DBT) S3ToolVersionExists(meta S3Meta) (ok bool, err error) {
 	return ok, err
 }
 
-func (dbt *DBT) S3VerifyFileVersion(fileUrl string, filePath string, meta S3Meta) (success bool, err error) {
+// S3VerifyFileVersion verifies the version of a file on the filesystem matches the sha256 hash stored in the s3 bucket for that file
+func (dbt *DBT) S3VerifyFileVersion(filePath string, meta S3Meta) (success bool, err error) {
 	// get checksum file from s3
 	buff := &aws.WriteAtBuffer{}
 	downloader := s3manager.NewDownloader(dbt.S3Session)
@@ -846,19 +858,33 @@ func (dbt *DBT) S3VerifyFileVersion(fileUrl string, filePath string, meta S3Meta
 	return success, err
 }
 
-func (dbt *DBT) S3FetchToolVersions(uri string, meta S3Meta) (versions []string, err error) {
+// S3FetchToolVersions fetches available versions for a tool from S3
+func (dbt *DBT) S3FetchToolVersions(meta S3Meta) (versions []string, err error) {
+	versions = make([]string, 0)
+	svc := s3.New(dbt.S3Session)
+
+	options := &s3.ListObjectsInput{
+		Bucket:    aws.String(meta.Bucket),
+		Prefix:    aws.String(meta.Key),
+		Delimiter: aws.String("/"),
+	}
+
+	resp, err := svc.ListObjects(options)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to list objects at %s", meta.Key)
+		return versions, err
+	}
+
+	semver := regexp.MustCompile(`\d+\.\d+\.\d+`)
+
+	for _, k := range resp.Contents {
+		parts := strings.Split(*k.Key, "/")
+		if len(parts) == 2 { // normal tool
+			versions = append(versions, parts[1])
+		} else if semver.MatchString(*k.Key) { // dbt itself
+			versions = append(versions, *k.Key)
+		}
+	}
+
 	return versions, err
 }
-
-// TODO Version detection failing in s3.
-/*
-	$ dbt catalog help
-	tool not in repo
-	Newer version of dbt available:
-	2020/03/09 20:56:09 Downloading and verifying new version of dbt.
-	tool not in repo
-	testing https://<bucket>.s3.<region>.amazonaws.com/dbt//darwin/amd64/dbt
-	2020/03/09 20:56:16 Error: upgrade in place failed: failed to fetch new dbt binary: failed to get metadata for https://<bucket>.<region>.amazonaws.com/dbt//darwin/amd64/dbt: NotFound: Not Found
-	status code: 404, request id: 08DE1C11D990BB6A
-	host id: 0Rfg6OfmxCG9bYlBrwRb/pDCvsz95Du1FuG/2nBQevQeZVJ9FV5omk2MYl7twrJ1983JVDgS5yM=
-*/

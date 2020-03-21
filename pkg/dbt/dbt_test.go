@@ -281,6 +281,8 @@ func TestDbtUpgradeInPlace(t *testing.T) {
 		name    string
 		obj     *DBT
 		homedir string
+		oldUrl  string
+		newUrl  string
 	}{
 		{
 			"reposerver",
@@ -290,6 +292,8 @@ func TestDbtUpgradeInPlace(t *testing.T) {
 				Verbose: true,
 			},
 			homeDirRepoServer,
+			fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, oldVersion, runtime.GOOS),
+			fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, VERSION, runtime.GOOS),
 		},
 		{
 			"s3",
@@ -299,13 +303,15 @@ func TestDbtUpgradeInPlace(t *testing.T) {
 				S3Session: s3Session,
 			},
 			homeDirS3,
+			fmt.Sprintf("https://dbt.s3.us-east-1.amazonaws.com/%s/%s/amd64/dbt", oldVersion, runtime.GOOS),
+			fmt.Sprintf("https://dbt.s3.us-east-1.amazonaws.com/%s/%s/amd64/dbt", VERSION, runtime.GOOS),
 		},
 	}
 
 	for _, tc := range inputs {
 		t.Run(tc.name, func(t *testing.T) {
 			targetDir := fmt.Sprintf("%s/%s", tc.homedir, ToolDir)
-			fileUrl := fmt.Sprintf("%s/%s/%s/amd64/dbt", testDbtUrl(port), oldVersion, runtime.GOOS)
+			fileUrl := tc.oldUrl
 			fileName := fmt.Sprintf("%s/dbt", targetDir)
 
 			err := tc.obj.FetchFile(fileUrl, fileName)
