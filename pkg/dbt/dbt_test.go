@@ -370,7 +370,7 @@ func TestNewDbt(t *testing.T) {
 				}
 			}
 
-			_, err := NewDbt()
+			_, err := NewDbt(tc.homedir)
 			if err != nil {
 				t.Errorf("Error creating DBT object: %s", err)
 			}

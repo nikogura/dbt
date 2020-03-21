@@ -65,7 +65,7 @@ func Run(cmd *cobra.Command, args []string) {
 		os.Exit(0)
 	}
 
-	dbtObj, err := dbt.NewDbt()
+	dbtObj, err := dbt.NewDbt("")
 	if err != nil {
 		log.Fatalf("Error creating DBT object: %s", err)
 	}

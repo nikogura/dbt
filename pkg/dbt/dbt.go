@@ -82,8 +82,8 @@ type ToolsConfig struct {
 }
 
 // NewDbt  creates a new dbt object
-func NewDbt() (dbt *DBT, err error) {
-	config, err := LoadDbtConfig("", false)
+func NewDbt(homedir string) (dbt *DBT, err error) {
+	config, err := LoadDbtConfig(homedir, false)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to load config file")
 	}
