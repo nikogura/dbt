@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"log"
@@ -36,13 +35,10 @@ func TestS3List(t *testing.T) {
 		MaxKeys: aws.Int64(100),
 	}
 
-	log.Printf("----- Listing s3 Objects -----")
-
-	result, err := svc.ListObjects(input)
+	_, err := svc.ListObjects(input)
 	if err != nil {
 		t.Errorf("Error listing s3 objects")
 	}
-	spew.Dump(result)
 }
 
 func TestRepoGet(t *testing.T) {
@@ -363,7 +359,7 @@ func TestNewDbt(t *testing.T) {
 
 			if _, err := os.Stat(fileName); os.IsNotExist(err) {
 				fmt.Printf("Writing test dbt config to %s", fileName)
-				err = GenerateDbtDir("", true)
+				err = GenerateDbtDir(tc.homedir, true)
 				if err != nil {
 					t.Errorf("Error generating dbt dir: %s", err)
 				}
