@@ -16,7 +16,6 @@ package dbt
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/base64"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
@@ -720,18 +719,18 @@ func S3Url(url string) (ok bool, meta S3Meta) {
 
 // S3FetchFile fetches a file out of S3 instead of using a normal HTTP GET
 func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err error) {
-	headOptions := &s3.HeadObjectInput{
-		Bucket: aws.String(meta.Bucket),
-		Key:    aws.String(meta.Key),
-	}
+	//headOptions := &s3.HeadObjectInput{
+	//	Bucket: aws.String(meta.Bucket),
+	//	Key:    aws.String(meta.Key),
+	//}
+	//
+	//headSvc := s3.New(dbt.S3Session)
 
-	headSvc := s3.New(dbt.S3Session)
-
-	fileMeta, err := headSvc.HeadObject(headOptions)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to get metadata for %s", fileUrl)
-		return err
-	}
+	//fileMeta, err := headSvc.HeadObject(headOptions)
+	//if err != nil {
+	//	err = errors.Wrapf(err, "failed to get metadata for %s", fileUrl)
+	//	return err
+	//}
 
 	downloader := s3manager.NewDownloader(dbt.S3Session)
 	downloadOptions := &s3.GetObjectInput{
@@ -739,36 +738,38 @@ func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err 
 		Key:    aws.String(meta.Key),
 	}
 
-	if !NOPROGRESS {
-		// create and start progress bar
-		bar := pb.New(int(*fileMeta.ContentLength)).SetUnits(pb.U_BYTES)
-		bar.Output = os.Stderr
-		bar.Start()
+	//if !NOPROGRESS {
+	//	// create and start progress bar
+	//	bar := pb.New(int(*fileMeta.ContentLength)).SetUnits(pb.U_BYTES)
+	//	bar.Output = os.Stderr
+	//	bar.Start()
+	//
+	//	buf := &aws.WriteAtBuffer{}
+	//
+	//	_, err = downloader.Download(buf, downloadOptions)
+	//	if err != nil {
+	//		err = errors.Wrapf(err, "unable to download file from %s", fileUrl)
+	//		return err
+	//	}
+	//
+	//	// create proxy reader
+	//	reader := bar.NewProxyReader(bytes.NewBuffer(buf.Bytes()))
+	//
+	//	// and copy from pb reader
+	//	_, _ = io.Copy(outFile, reader)
+	//
+	//	_, err = io.Copy(outFile, bytes.NewReader(buf.Bytes()))
+	//
+	//	return err
+	//}
 
-		buf := &aws.WriteAtBuffer{}
-
-		_, err = downloader.Download(buf, downloadOptions)
-		if err != nil {
-			err = errors.Wrapf(err, "unable to download file from %s", fileUrl)
-			return err
-		}
-
-		// create proxy reader
-		reader := bar.NewProxyReader(bytes.NewBuffer(buf.Bytes()))
-
-		// and copy from pb reader
-		_, _ = io.Copy(outFile, reader)
-
-		_, err = io.Copy(outFile, bytes.NewReader(buf.Bytes()))
-
-		return err
-	}
-
-	_, err = downloader.Download(outFile, downloadOptions)
+	b, err := downloader.Download(outFile, downloadOptions)
 	if err != nil {
 		err = errors.Wrapf(err, "download failed")
 		return err
 	}
+
+	dbt.VerboseOutput("Downloaded %v bytes", b)
 
 	return err
 
@@ -860,7 +861,7 @@ func (dbt *DBT) S3VerifyFileVersion(filePath string, meta S3Meta) (success bool,
 	expected := string(buff.Bytes())
 	actual, err := FileSha256(filePath)
 
-	dbt.VerboseOutput("Verifying checksums of %q and %q", filePath, meta.Url)
+	dbt.VerboseOutput("Verifying checksum of %q against content of %q", filePath, meta.Url)
 	dbt.VerboseOutput("  Expected: %s", expected)
 	dbt.VerboseOutput("  Actual:   %s", actual)
 
