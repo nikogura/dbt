@@ -69,58 +69,57 @@ func (dbt *DBT) ToolExists(toolName string) (found bool, err error) {
 
 	if isS3 {
 		return dbt.S3ToolExists(toolName, s3Meta)
+	}
 
-	} else {
-		client := &http.Client{}
+	client := &http.Client{}
 
-		req, err := http.NewRequest("GET", uri, nil)
+	req, err := http.NewRequest("GET", uri, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+		return found, err
+	}
+
+	username := dbt.Config.Username
+	password := dbt.Config.Password
+
+	// Username func takes precedence over hardcoded username
+	if dbt.Config.UsernameFunc != "" {
+		username, err = GetFunc(dbt.Config.UsernameFunc)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
 			return found, err
 		}
-
-		username := dbt.Config.Username
-		password := dbt.Config.Password
-
-		// Username func takes precedence over hardcoded username
-		if dbt.Config.UsernameFunc != "" {
-			username, err = GetFunc(dbt.Config.UsernameFunc)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
-				return found, err
-			}
-		}
-
-		// PasswordFunc takes precedence over hardcoded password
-		if dbt.Config.PasswordFunc != "" {
-			password, err = GetFunc(dbt.Config.PasswordFunc)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
-				return found, err
-			}
-		}
-
-		if username != "" && password != "" {
-			req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
-		}
-
-		resp, err := client.Do(req)
-
-		if err != nil {
-			err = errors.Wrap(err, fmt.Sprintf("Failed to find tool in repo %q: %s", repoUrl, err))
-			return false, err
-		}
-
-		if resp != nil {
-			if resp.StatusCode != 200 {
-				return false, err
-			}
-		} else {
-			return false, err
-		}
-
-		return true, err
 	}
+
+	// PasswordFunc takes precedence over hardcoded password
+	if dbt.Config.PasswordFunc != "" {
+		password, err = GetFunc(dbt.Config.PasswordFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
+			return found, err
+		}
+	}
+
+	if username != "" && password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+	}
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		err = errors.Wrap(err, fmt.Sprintf("Failed to find tool in repo %q: %s", repoUrl, err))
+		return false, err
+	}
+
+	if resp != nil {
+		if resp.StatusCode != 200 {
+			return false, err
+		}
+	} else {
+		return false, err
+	}
+
+	return true, err
 }
 
 // ToolVersionExists returns true if the specified version of a tool is in the repo
@@ -140,55 +139,54 @@ func (dbt *DBT) ToolVersionExists(tool string, version string) (ok bool, err err
 
 	if isS3 {
 		return dbt.S3ToolVersionExists(s3Meta)
+	}
 
-	} else {
-		client := &http.Client{}
+	client := &http.Client{}
 
-		req, err := http.NewRequest("GET", uri, nil)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to create request for url: %s", uri)
-			return ok, err
-		}
-
-		username := dbt.Config.Username
-		password := dbt.Config.Password
-
-		// Username func takes precedence over hardcoded username
-		if dbt.Config.UsernameFunc != "" {
-			username, err = GetFunc(dbt.Config.UsernameFunc)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
-				return ok, err
-			}
-		}
-
-		// PasswordFunc takes precedence over hardcoded password
-		if dbt.Config.PasswordFunc != "" {
-			password, err = GetFunc(dbt.Config.PasswordFunc)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
-				return ok, err
-			}
-		}
-
-		if username != "" && password != "" {
-			req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			err = errors.Wrapf(err, "Error looking for tool %q version %q in repo %q", tool, version, uri)
-			return ok, err
-		}
-
-		if resp.StatusCode != 200 {
-			return ok, err
-		}
-
-		ok = true
-
+	req, err := http.NewRequest("GET", uri, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
 		return ok, err
 	}
+
+	username := dbt.Config.Username
+	password := dbt.Config.Password
+
+	// Username func takes precedence over hardcoded username
+	if dbt.Config.UsernameFunc != "" {
+		username, err = GetFunc(dbt.Config.UsernameFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
+			return ok, err
+		}
+	}
+
+	// PasswordFunc takes precedence over hardcoded password
+	if dbt.Config.PasswordFunc != "" {
+		password, err = GetFunc(dbt.Config.PasswordFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
+			return ok, err
+		}
+	}
+
+	if username != "" && password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		err = errors.Wrapf(err, "Error looking for tool %q version %q in repo %q", tool, version, uri)
+		return ok, err
+	}
+
+	if resp.StatusCode != 200 {
+		return ok, err
+	}
+
+	ok = true
+
+	return ok, err
 }
 
 // FetchToolVersions Given the name of a tool, returns the available versions, and possibly an error if things didn't go well.  If tool name is "", fetches versions of dbt itself.
@@ -208,56 +206,55 @@ func (dbt *DBT) FetchToolVersions(toolName string) (versions []string, err error
 
 	if isS3 {
 		return dbt.S3FetchToolVersions(s3Meta)
+	}
 
-	} else {
-		client := &http.Client{}
+	client := &http.Client{}
 
-		req, err := http.NewRequest("GET", uri, nil)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to create request for url: %s", uri)
-			return versions, err
-		}
-
-		username := dbt.Config.Username
-		password := dbt.Config.Password
-
-		// Username func takes precedence over hardcoded username
-		if dbt.Config.UsernameFunc != "" {
-			username, err = GetFunc(dbt.Config.UsernameFunc)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
-				return versions, err
-			}
-		}
-
-		// PasswordFunc takes precedence over hardcoded password
-		if dbt.Config.PasswordFunc != "" {
-			password, err = GetFunc(dbt.Config.PasswordFunc)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
-				return versions, err
-			}
-		}
-
-		if username != "" && password != "" {
-			req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			err = errors.Wrapf(err, "Error looking for versions of tool %q in repo %q", toolName, uri)
-			return versions, err
-		}
-
-		if resp != nil {
-			versions = dbt.ParseVersionResponse(resp)
-
-			defer resp.Body.Close()
-
-		}
-
+	req, err := http.NewRequest("GET", uri, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
 		return versions, err
 	}
+
+	username := dbt.Config.Username
+	password := dbt.Config.Password
+
+	// Username func takes precedence over hardcoded username
+	if dbt.Config.UsernameFunc != "" {
+		username, err = GetFunc(dbt.Config.UsernameFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
+			return versions, err
+		}
+	}
+
+	// PasswordFunc takes precedence over hardcoded password
+	if dbt.Config.PasswordFunc != "" {
+		password, err = GetFunc(dbt.Config.PasswordFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
+			return versions, err
+		}
+	}
+
+	if username != "" && password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		err = errors.Wrapf(err, "Error looking for versions of tool %q in repo %q", toolName, uri)
+		return versions, err
+	}
+
+	if resp != nil {
+		versions = dbt.ParseVersionResponse(resp)
+
+		defer resp.Body.Close()
+
+	}
+
+	return versions, err
 }
 
 // ParseVersionResponse does an http get of an url and returns a list of semantic version links found at that place
@@ -315,118 +312,117 @@ func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 
 	if isS3 {
 		return dbt.S3FetchFile(fileUrl, s3Meta, out)
+	}
 
-	} else {
-		client := &http.Client{
-			Timeout: 300 * time.Second,
-		}
+	client := &http.Client{
+		Timeout: 300 * time.Second,
+	}
 
-		req, err := http.NewRequest("HEAD", fileUrl, nil)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to create request for url: %s", fileUrl)
-			return err
-		}
-
-		username := dbt.Config.Username
-		password := dbt.Config.Password
-
-		// Username func takes precedence over hardcoded username
-		if dbt.Config.UsernameFunc != "" {
-			username, err = GetFunc(dbt.Config.UsernameFunc)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
-				return err
-			}
-		}
-
-		// PasswordFunc takes precedence over hardcoded password
-		if dbt.Config.PasswordFunc != "" {
-			password, err = GetFunc(dbt.Config.PasswordFunc)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
-				return err
-			}
-		}
-
-		if username != "" && password != "" {
-			req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
-		}
-
-		var bar *pb.ProgressBar
-
-		if !NOPROGRESS {
-			headResp, err := client.Do(req)
-			defer headResp.Body.Close()
-
-			if err != nil {
-				err = errors.Wrapf(err, "error making request to %s", fileUrl)
-				return err
-			}
-
-			if headResp.StatusCode > 399 {
-				err = errors.New(fmt.Sprintf("unable to request headers for %s: %d %s", fileUrl, headResp.StatusCode, headResp.Status))
-				return err
-			}
-
-			sizeHeader := headResp.Header.Get("Content-Length")
-			if sizeHeader == "" {
-				sizeHeader = "0"
-			}
-
-			size, err := strconv.Atoi(sizeHeader)
-			if err != nil {
-				err = errors.Wrap(err, "unable to convert Content-Length header to integer")
-				return err
-			}
-
-			// create and start progress bar
-			bar = pb.New(size).SetUnits(pb.U_BYTES)
-			bar.Output = os.Stderr
-			bar.Start()
-
-		}
-
-		req, err = http.NewRequest("GET", fileUrl, nil)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to create request for url: %s", fileUrl)
-			return err
-		}
-
-		if username != "" && password != "" {
-			req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
-		}
-
-		resp, err := client.Do(req)
-		if err != nil {
-			err = errors.Wrap(err, fmt.Sprintf("Error fetching file from %q", fileUrl))
-			return err
-		}
-
-		if resp.StatusCode > 399 {
-			err = errors.New(fmt.Sprintf("unable to make request to %s: %d %s", fileUrl, resp.StatusCode, resp.Status))
-			return err
-		}
-
-		if resp != nil {
-			defer resp.Body.Close()
-
-			if bar != nil {
-				// create proxy reader
-				reader := bar.NewProxyReader(resp.Body)
-
-				// and copy from pb reader
-				_, _ = io.Copy(out, reader)
-			}
-
-			_, err = io.Copy(out, resp.Body)
-
-			if err != nil {
-				return err
-			}
-		}
-
+	req, err := http.NewRequest("HEAD", fileUrl, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to create request for url: %s", fileUrl)
 		return err
 	}
+
+	username := dbt.Config.Username
+	password := dbt.Config.Password
+
+	// Username func takes precedence over hardcoded username
+	if dbt.Config.UsernameFunc != "" {
+		username, err = GetFunc(dbt.Config.UsernameFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
+			return err
+		}
+	}
+
+	// PasswordFunc takes precedence over hardcoded password
+	if dbt.Config.PasswordFunc != "" {
+		password, err = GetFunc(dbt.Config.PasswordFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
+			return err
+		}
+	}
+
+	if username != "" && password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+	}
+
+	var bar *pb.ProgressBar
+
+	if !NOPROGRESS {
+		headResp, err := client.Do(req)
+		defer headResp.Body.Close()
+
+		if err != nil {
+			err = errors.Wrapf(err, "error making request to %s", fileUrl)
+			return err
+		}
+
+		if headResp.StatusCode > 399 {
+			err = errors.New(fmt.Sprintf("unable to request headers for %s: %d %s", fileUrl, headResp.StatusCode, headResp.Status))
+			return err
+		}
+
+		sizeHeader := headResp.Header.Get("Content-Length")
+		if sizeHeader == "" {
+			sizeHeader = "0"
+		}
+
+		size, err := strconv.Atoi(sizeHeader)
+		if err != nil {
+			err = errors.Wrap(err, "unable to convert Content-Length header to integer")
+			return err
+		}
+
+		// create and start progress bar
+		bar = pb.New(size).SetUnits(pb.U_BYTES)
+		bar.Output = os.Stderr
+		bar.Start()
+
+	}
+
+	req, err = http.NewRequest("GET", fileUrl, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to create request for url: %s", fileUrl)
+		return err
+	}
+
+	if username != "" && password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		err = errors.Wrap(err, fmt.Sprintf("Error fetching file from %q", fileUrl))
+		return err
+	}
+
+	if resp.StatusCode > 399 {
+		err = errors.New(fmt.Sprintf("unable to make request to %s: %d %s", fileUrl, resp.StatusCode, resp.Status))
+		return err
+	}
+
+	if resp != nil {
+		defer resp.Body.Close()
+
+		if bar != nil {
+			// create proxy reader
+			reader := bar.NewProxyReader(resp.Body)
+
+			// and copy from pb reader
+			_, _ = io.Copy(out, reader)
+		}
+
+		_, err = io.Copy(out, resp.Body)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
 }
 
 // VerifyFileChecksum Verifies the sha256 checksum of a given file against an expected value
@@ -455,76 +451,75 @@ func (dbt *DBT) VerifyFileVersion(fileUrl string, filePath string) (success bool
 
 	if isS3 {
 		return dbt.S3VerifyFileVersion(filePath, s3Meta)
+	}
 
-	} else {
-		client := &http.Client{}
+	client := &http.Client{}
 
-		req, err := http.NewRequest("GET", uri, nil)
+	req, err := http.NewRequest("GET", uri, nil)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+		return success, err
+	}
+
+	username := dbt.Config.Username
+	password := dbt.Config.Password
+
+	// Username func takes precedence over hardcoded username
+	if dbt.Config.UsernameFunc != "" {
+		username, err = GetFunc(dbt.Config.UsernameFunc)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
 			return success, err
 		}
+	}
 
-		username := dbt.Config.Username
-		password := dbt.Config.Password
-
-		// Username func takes precedence over hardcoded username
-		if dbt.Config.UsernameFunc != "" {
-			username, err = GetFunc(dbt.Config.UsernameFunc)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
-				return success, err
-			}
-		}
-
-		// PasswordFunc takes precedence over hardcoded password
-		if dbt.Config.PasswordFunc != "" {
-			password, err = GetFunc(dbt.Config.PasswordFunc)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
-				return success, err
-			}
-		}
-
-		if username != "" && password != "" {
-			req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
-		}
-
-		resp, err := client.Do(req)
+	// PasswordFunc takes precedence over hardcoded password
+	if dbt.Config.PasswordFunc != "" {
+		password, err = GetFunc(dbt.Config.PasswordFunc)
 		if err != nil {
-			err = errors.Wrapf(err, "Error fetching checksum from %q", uri)
+			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
 			return success, err
 		}
+	}
 
-		if resp != nil {
-			defer resp.Body.Close()
+	if username != "" && password != "" {
+		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+	}
 
-			checksumBytes, err := ioutil.ReadAll(resp.Body)
+	resp, err := client.Do(req)
+	if err != nil {
+		err = errors.Wrapf(err, "Error fetching checksum from %q", uri)
+		return success, err
+	}
 
-			if err != nil {
-				success = false
-				return success, err
-			}
+	if resp != nil {
+		defer resp.Body.Close()
 
-			expected := string(checksumBytes)
-			actual, err := FileSha256(filePath)
+		checksumBytes, err := ioutil.ReadAll(resp.Body)
 
-			if err != nil {
-				success = false
-				return success, err
-			}
-
-			if actual == expected {
-				success = true
-				return success, err
-			}
-
+		if err != nil {
 			success = false
 			return success, err
 		}
 
+		expected := string(checksumBytes)
+		actual, err := FileSha256(filePath)
+
+		if err != nil {
+			success = false
+			return success, err
+		}
+
+		if actual == expected {
+			success = true
+			return success, err
+		}
+
+		success = false
 		return success, err
 	}
+
+	return success, err
 }
 
 // VerifyFileSignature verifies the signature on the given file
@@ -638,7 +633,7 @@ func DefaultSession() (awssession *session.Session, err error) {
 		log.Fatalf("Failed to create aws session")
 	}
 
-	// For some reason this doesn't get picked up automatically, but we'll set it if it's present in the enviornment.
+	// For some reason this doesn't get picked up automatically, but we'll set it if it's present in the environment.
 	if os.Getenv(AWS_REGION_ENV_VAR) != "" {
 		awssession.Config.Region = aws.String(os.Getenv(AWS_REGION_ENV_VAR))
 	}

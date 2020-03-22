@@ -546,7 +546,6 @@ func (dbt *DBT) runExec(homedir string, args []string) (err error) {
 	env := os.Environ()
 
 	if testExec {
-		env = append(env, "GO_WANT_HELPER_PROCESS=1")
 		cs := []string{"-test.run=TestHelperProcess", "--", localPath}
 		cs = append(cs, args...)
 		cmd := exec.Command(os.Args[0], cs...)
