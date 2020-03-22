@@ -1,4 +1,4 @@
-package boilerplate
+package dbt
 
 import (
 	"fmt"
@@ -10,43 +10,13 @@ import (
 	"testing"
 )
 
-var tmpDir string
-
-func TestMain(m *testing.M) {
-	setUp()
-
-	code := m.Run()
-
-	tearDown()
-
-	os.Exit(code)
-}
-
-func setUp() {
-	dir, err := ioutil.TempDir("", "boilerplate")
-	if err != nil {
-		fmt.Printf("Error creating temp dir %q: %s\n", tmpDir, err)
-		os.Exit(1)
-	}
-
-	tmpDir = dir
-	fmt.Printf("Temp dir: %s\n", tmpDir)
-
-}
-
-func tearDown() {
-	if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
-		_ = os.Remove(tmpDir)
-	}
-
-}
-
 func TestWriteCreateTool(t *testing.T) {
 	// create workspace
-	goPath, err := gomason.CreateGoPath(tmpDir)
+	lang, _ := gomason.GetByName("golang")
+	goPath, err := lang.CreateWorkDir(tmpDir)
 	if err != nil {
-		log.Printf("Error creating GOPATH in %s: %s\n", tmpDir, err)
-		t.Fail()
+		log.Printf("Error creating gopath in %q: %s", tmpDir, err)
+		t.FailNow()
 	}
 
 	fmt.Printf("Created gopath: %s\n", goPath)

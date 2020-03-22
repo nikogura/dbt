@@ -24,186 +24,401 @@ import (
 )
 
 func TestToolExists(t *testing.T) {
-	dbtObj := &DBT{
-		Config:  dbtConfig,
-		Verbose: false,
-		Logger:  log.New(os.Stderr, "", 0),
+	inputs := []struct {
+		name    string
+		obj     *DBT
+		homedir string
+	}{
+		{
+			"reposerver",
+
+			&DBT{
+				Config:  dbtConfig,
+				Verbose: true,
+			},
+			homeDirRepoServer,
+		},
+		{
+			"s3",
+			&DBT{
+				Config:    s3DbtConfig,
+				Verbose:   true,
+				S3Session: s3Session,
+			},
+			homeDirS3,
+		},
 	}
 
-	exists, err := dbtObj.ToolExists("foo")
-	if err != nil {
-		fmt.Printf("Failed to check repo for %q", "foo")
-		t.Fail()
-	}
-	if !exists {
-		fmt.Println(fmt.Sprintf("Tool %q does not exist in repo %s", "dbt", dbtObj.Config.Dbt.Repo))
-		t.Fail()
-	}
+	for _, tc := range inputs {
+		t.Run(tc.name, func(t *testing.T) {
+			exists, err := tc.obj.ToolExists("boilerplate")
+			if err != nil {
+				t.Errorf("Failed to check repo for %q: %s\n", "boilerplate", err)
+			}
+			if !exists {
+				t.Errorf("Tool %q does not exist in repo %s\n", "boilerplate", tc.obj.Config.Tools.Repo)
+			}
 
-	fakeToolName := "bar"
+			fakeToolName := "bar"
 
-	exists, err = dbtObj.ToolExists(fakeToolName)
-	if err != nil {
-		fmt.Printf("Failed to check artifactory for %q", fakeToolName)
-		t.Fail()
-	}
+			exists, err = tc.obj.ToolExists(fakeToolName)
+			if err != nil {
+				t.Errorf("Failed to check repo for %q\n", fakeToolName)
+			}
 
-	if exists {
-		fmt.Println("Nonexistant job shows existing in repo.")
-		t.Fail()
+			if exists {
+				t.Errorf("Nonexistant job shows existing in repo.\n")
+			}
+		})
 	}
 }
 
 func TestToolVersionExists(t *testing.T) {
-	dbtObj := &DBT{
-		Config:  dbtConfig,
-		Verbose: false,
-		Logger:  log.New(os.Stderr, "", 0),
+	inputs := []struct {
+		name    string
+		obj     *DBT
+		homedir string
+	}{
+		{
+			"reposerver",
+
+			&DBT{
+				Config:  dbtConfig,
+				Verbose: true,
+			},
+			homeDirRepoServer,
+		},
+		{
+			"s3",
+			&DBT{
+				Config:    s3DbtConfig,
+				Verbose:   true,
+				S3Session: s3Session,
+			},
+			homeDirS3,
+		},
 	}
 
-	ok, err := dbtObj.ToolVersionExists("foo", "1.2.3")
-	if err != nil {
-		log.Printf("Error checking if version exists: %s", err)
-		t.Fail()
-	}
+	for _, tc := range inputs {
+		t.Run(tc.name, func(t *testing.T) {
+			toolName := "boilerplate"
 
-	if !ok {
-		fmt.Println(fmt.Sprintf("Tool %q version %q does not exist in repo %s", "foo", "1.2.3", dbtObj.Config.Tools.Repo))
-		t.Fail()
-	}
+			ok, err := tc.obj.ToolVersionExists(toolName, VERSION)
+			if err != nil {
+				log.Printf("Error checking if version exists: %s", err)
+				t.Fail()
+			}
 
-	ok, _ = dbtObj.ToolVersionExists("foo", "0.0.0")
+			if !ok {
+				fmt.Println(fmt.Sprintf("Tool %q version %q does not exist in repo %s", toolName, VERSION, tc.obj.Config.Tools.Repo))
+				t.Fail()
+			}
 
-	if ok {
-		fmt.Println(fmt.Sprintf("Nonexistant tool version %q shows existing in repo.", "0.0.0"))
-		t.Fail()
+			ok, _ = tc.obj.ToolVersionExists("foo", "0.0.0")
+
+			if ok {
+				fmt.Println(fmt.Sprintf("Nonexistant tool version %q shows existing in repo.", "0.0.0"))
+				t.Fail()
+			}
+
+		})
 	}
 }
 
 func TestFetchToolVersions(t *testing.T) {
-	dbtObj := &DBT{
-		Config:  dbtConfig,
-		Verbose: false,
-		Logger:  log.New(os.Stderr, "", 0),
+	inputs := []struct {
+		name    string
+		obj     *DBT
+		homedir string
+	}{
+		{
+			"reposerver",
+
+			&DBT{
+				Config:  dbtConfig,
+				Verbose: true,
+			},
+			homeDirRepoServer,
+		},
+		{
+			"s3",
+			&DBT{
+				Config:    s3DbtConfig,
+				Verbose:   true,
+				S3Session: s3Session,
+			},
+			homeDirS3,
+		},
 	}
 
-	versions, err := dbtObj.FetchToolVersions("foo")
-	if err != nil {
-		fmt.Println(fmt.Sprintf("Error searching for versions of tool %q in repo %q", "foo", dbtObj.Config.Tools.Repo))
-	}
+	for _, tc := range inputs {
+		t.Run(tc.name, func(t *testing.T) {
+			toolName := "boilerplate"
 
-	assert.True(t, len(versions) == 2, "List of versions has 2 elements.")
+			versions, err := tc.obj.FetchToolVersions(toolName)
+			if err != nil {
+				fmt.Println(fmt.Sprintf("Error searching for versions of tool %q in repo %q", toolName, tc.obj.Config.Tools.Repo))
+			}
+
+			assert.True(t, len(versions) == 2, "ListCatalog of versions should have 2 elements.")
+
+		})
+	}
 }
 
 func TestFetchFile(t *testing.T) {
-	targetDir := fmt.Sprintf("%s/%s", tmpDir, ToolDir)
-	fileUrl := fmt.Sprintf("%s/foo/1.2.2/linux/amd64/foo", testToolUrl(port))
-	fileName := fmt.Sprintf("%s/foo", targetDir)
 
-	dbtObj := &DBT{
-		Config:  dbtConfig,
-		Verbose: false,
-		Logger:  log.New(os.Stderr, "", 0),
+	inputs := []struct {
+		name    string
+		obj     *DBT
+		homedir string
+	}{
+		{
+			"reposerver",
+
+			&DBT{
+				Config:  dbtConfig,
+				Verbose: true,
+			},
+			homeDirRepoServer,
+		},
+		{
+			"s3",
+			&DBT{
+				Config:    s3DbtConfig,
+				Verbose:   true,
+				S3Session: s3Session,
+			},
+			homeDirS3,
+		},
 	}
 
-	err := dbtObj.FetchFile(fileUrl, fileName)
-	if err != nil {
-		fmt.Printf("Error fetching file %q: %s\n", fileUrl, err)
-		t.Fail()
+	for _, tc := range inputs {
+		t.Run(tc.name, func(t *testing.T) {
+			toolName := "catalog_darwin_amd64"
+			testFile := testFilesA[toolName]
+			fileUrl := testFile.TestUrl
+			fileName := fmt.Sprintf("%s/fetchfile", tc.homedir)
+			checksumUrl := fmt.Sprintf("%s.sha256", fileUrl)
+			checksumFile := fmt.Sprintf("%s.sha256", fileName)
+
+			t.Logf("downloading %s", fileUrl)
+			err := tc.obj.FetchFile(fileUrl, fileName)
+			if err != nil {
+				t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
+			}
+
+			t.Logf("downloading %s", checksumUrl)
+			err = tc.obj.FetchFile(checksumUrl, checksumFile)
+			if err != nil {
+				t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
+			}
+			//
+			checksumBytes, err := ioutil.ReadFile(checksumFile)
+			if err != nil {
+				t.Errorf("Error reading checksumfile %s.sha256: %s\n", toolName, err)
+			}
+
+			success, err := tc.obj.VerifyFileChecksum(fileName, string(checksumBytes))
+			if err != nil {
+				t.Errorf(fmt.Sprintf("Error checksumming test file: %s", err))
+			}
+
+			assert.True(t, success, "Checksum of downloaded file matches expectations.")
+
+			t.Logf("Verifying version of %s", fileUrl)
+			success, err = tc.obj.VerifyFileVersion(fileUrl, fileName)
+			if err != nil {
+				t.Errorf("Failed to verify version: %s", err)
+			}
+
+			assert.True(t, success, "Verified version of downloaded file.")
+
+			failure, err := tc.obj.VerifyFileVersion(fmt.Sprintf("%s/dbt/1.2.3/linux/amd64/dbt", testToolUrl(port)), fileName)
+			if err != nil {
+				t.Errorf("Verified non-existent version: %s", err)
+			}
+
+			assert.False(t, failure, "Verified a false version does not match.")
+
+			// download trust store
+			trustStoreUrl := fmt.Sprintf("%s/truststore", testDbtUrl(port))
+			trustStoreFile := fmt.Sprintf("%s/%s", tc.homedir, TruststorePath)
+
+			t.Logf("Fetching truststore from %s", trustStoreUrl)
+			err = tc.obj.FetchFile(trustStoreUrl, trustStoreFile)
+			if err != nil {
+				t.Errorf("Error fetching truststore %q: %s\n", fileUrl, err)
+			}
+
+			if _, err = os.Stat(trustStoreFile); os.IsNotExist(err) {
+				t.Errorf("Failed to download truststore")
+			}
+
+			trustBytes, err := ioutil.ReadFile(trustStoreFile)
+			if err != nil {
+				t.Errorf("Failed to read downloaded truststore: %s\n", err)
+			}
+
+			assert.False(t, string(trustBytes) == "", "Downloaded Truststore is not empty")
+
+			// download signature
+			sigUrl := fmt.Sprintf("%s.asc", fileUrl)
+			sigFile := fmt.Sprintf("%s.asc", fileName)
+
+			t.Logf("Downloading %s", sigUrl)
+			err = tc.obj.FetchFile(sigUrl, sigFile)
+			if err != nil {
+				t.Errorf("Error fetching signature %q: %s\n", sigUrl, err)
+			}
+
+			if _, err = os.Stat(sigFile); os.IsNotExist(err) {
+				t.Errorf("Failed to download signature")
+			}
+
+			sigBytes, err := ioutil.ReadFile(sigFile)
+			if err != nil {
+				t.Errorf("Failed to read downloaded signature: %s\n", err)
+			}
+
+			assert.False(t, string(sigBytes) == "", "Downloaded Signature is not empty")
+
+			// verify signature
+			t.Logf("verifying signature of %s", fileName)
+			success, err = tc.obj.VerifyFileSignature(tc.homedir, fileName)
+			if err != nil {
+				t.Errorf("Error verifying signature: %s", err)
+			}
+
+			assert.True(t, success, "Signature of downloaded file verified.")
+			t.Logf("Signature Verified")
+
+		})
 	}
-
-	success, err := dbtObj.VerifyFileChecksum(fileName, dbtVersionASha256())
-	if err != nil {
-		fmt.Println(fmt.Sprintf("Error checksumming test file: %s", err))
-		t.Fail()
-	}
-
-	assert.True(t, success, "Checksum of downloaded file matches expectations.")
-
-	success, err = dbtObj.VerifyFileVersion(fileUrl, fileName)
-	if err != nil {
-		fmt.Printf("Failed to verify version: %s", err)
-		t.Fail()
-	}
-
-	assert.True(t, success, "Verified version of downloaded file.")
-
-	failure, err := dbtObj.VerifyFileVersion(fmt.Sprintf("%s/dbt/1.2.3/linux/amd64/dbt", testToolUrl(port)), fileName)
-	if err != nil {
-		fmt.Printf("Verified non-existent version: %s", err)
-		t.Fail()
-	}
-
-	assert.False(t, failure, "Verified a false version does not match.")
-
-	// download trust store
-	trustStoreUrl := fmt.Sprintf("%s/truststore", testDbtUrl(port))
-	trustStoreFile := fmt.Sprintf("%s/%s", tmpDir, TruststorePath)
-
-	err = dbtObj.FetchFile(trustStoreUrl, trustStoreFile)
-	if err != nil {
-		fmt.Printf("Error fetching truststore %q: %s\n", fileUrl, err)
-		t.Fail()
-	}
-
-	if _, err = os.Stat(trustStoreFile); os.IsNotExist(err) {
-		fmt.Printf("Failed to download truststore")
-		t.Fail()
-	}
-
-	trustBytes, err := ioutil.ReadFile(trustStoreFile)
-	if err != nil {
-		fmt.Printf("Failed to read downloaded truststore: %s\n", err)
-		t.Fail()
-	}
-
-	assert.False(t, string(trustBytes) == "", "Downloaded Truststore is not empty")
-
-	// download signature
-	sigUrl := fmt.Sprintf("%s.asc", fileUrl)
-	sigFile := fmt.Sprintf("%s.asc", fileName)
-
-	err = dbtObj.FetchFile(sigUrl, sigFile)
-	if err != nil {
-		fmt.Printf("Error fetching signature %q: %s\n", sigUrl, err)
-		t.Fail()
-	}
-
-	if _, err = os.Stat(sigFile); os.IsNotExist(err) {
-		fmt.Printf("Failed to download signature")
-		t.Fail()
-	}
-
-	sigBytes, err := ioutil.ReadFile(sigFile)
-	if err != nil {
-		fmt.Printf("Failed to read downloaded signature: %s\n", err)
-		t.Fail()
-	}
-
-	assert.False(t, string(sigBytes) == "", "Downloaded Signature is not empty")
-
-	// verify signature
-	success, err = dbtObj.VerifyFileSignature(tmpDir, fileName)
-	if err != nil {
-		fmt.Printf("Error verifying signature: %s", err)
-		t.Fail()
-	}
-
-	assert.True(t, success, "Signature of downloaded file verified.")
 }
 
 func TestFindLatestVersion(t *testing.T) {
-	dbtObj := &DBT{
-		Config:  dbtConfig,
-		Verbose: true,
+	inputs := []struct {
+		name    string
+		obj     *DBT
+		homedir string
+	}{
+		{
+			"reposerver",
+
+			&DBT{
+				Config:  dbtConfig,
+				Verbose: true,
+			},
+			homeDirRepoServer,
+		},
+		{
+			"s3",
+			&DBT{
+				Config:    s3DbtConfig,
+				Verbose:   true,
+				S3Session: s3Session,
+			},
+			homeDirS3,
+		},
 	}
 
-	latest, err := dbtObj.FindLatestVersion("foo")
+	for _, tc := range inputs {
+		t.Run(tc.name, func(t *testing.T) {
+			toolName := "catalog"
+
+			latest, err := tc.obj.FindLatestVersion(toolName)
+			if err != nil {
+				t.Errorf("Error finding latest version: %s", err)
+			}
+
+			assert.Equal(t, VERSION, latest, "Latest version meets expectations.")
+
+		})
+	}
+}
+
+func TestDefaultSession(t *testing.T) {
+	_, err := DefaultSession()
 	if err != nil {
-		fmt.Printf("Error finding latest version: %s", err)
-		t.Fail()
+		t.Errorf("Failed to get an AWS Session")
+	}
+}
+
+func TestS3Url(t *testing.T) {
+	inputs := []struct {
+		url    string
+		result bool
+		bucket string
+		region string
+		key    string
+	}{
+		{
+			"https://www.nikogura.com",
+			false,
+			"",
+			"",
+			"",
+		},
+		{
+			"https://dbt-tools.s3.us-east-1.amazonaws.com/catalog/1.2.3/darwin/amd64/catalog",
+			true,
+			"dbt-tools",
+			"us-east-1",
+			"catalog/1.2.3/darwin/amd64/catalog",
+		},
 	}
 
-	assert.Equal(t, "1.2.3", latest, "Latest version meets expectations.")
+	for _, tc := range inputs {
+		t.Run(tc.url, func(t *testing.T) {
+			fmt.Printf("Testing %s\n", tc.url)
+			ok, meta := S3Url(tc.url)
 
+			assert.True(t, ok == tc.result, fmt.Sprintf("%s does not meet expectations", tc.url))
+			assert.True(t, tc.bucket == meta.Bucket, fmt.Sprintf("Bucket %q doesn't look right", meta.Bucket))
+			assert.True(t, tc.region == meta.Region, fmt.Sprintf("Region %q doesn't look right.", meta.Region))
+			assert.True(t, tc.key == meta.Key, fmt.Sprintf("Key %q doesn't look right.", meta.Key))
+		})
+	}
+}
+
+func TestDirsForPath(t *testing.T) {
+	inputs := []struct {
+		name   string
+		input  string
+		output []string
+	}{
+		{
+			"s3 reposerver url",
+			"https://foo.com/dbt-tools/catalog/1.2.3/darwin/amd64/catalog",
+			[]string{
+				"dbt-tools",
+				"dbt-tools/catalog",
+				"dbt-tools/catalog/1.2.3",
+				"dbt-tools/catalog/1.2.3/darwin",
+				"dbt-tools/catalog/1.2.3/darwin/amd64",
+			},
+		},
+		{
+			"s3 catalog url",
+			"https://dbt-tools.s3.us-east-1.amazonaws.com/catalog/1.2.3/darwin/amd64/catalog",
+			[]string{
+				"catalog",
+				"catalog/1.2.3",
+				"catalog/1.2.3/darwin",
+				"catalog/1.2.3/darwin/amd64",
+			},
+		},
+	}
+
+	for _, tc := range inputs {
+		t.Run(tc.name, func(t *testing.T) {
+			dirs, err := DirsForURL(tc.input)
+			if err != nil {
+				t.Error(err)
+			}
+
+			assert.Equal(t, tc.output, dirs, "Parsed directories meet expectations")
+		})
+	}
 }

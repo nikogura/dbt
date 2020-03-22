@@ -15,7 +15,7 @@
 package cmd
 
 import (
-	"github.com/nikogura/dbt/pkg/boilerplate"
+	"github.com/nikogura/dbt/pkg/dbt"
 	"github.com/spf13/cobra"
 	"log"
 )
@@ -33,32 +33,32 @@ Then it will generate a basic, working tool for you that will compile and publis
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		commandName, err := boilerplate.PromptForToolName()
+		commandName, err := dbt.PromptForToolName()
 		if err != nil {
 			log.Fatalf("Error getting tool name: %s", err)
 		}
 
-		packageName, err := boilerplate.PromptForToolPackage()
+		packageName, err := dbt.PromptForToolPackage()
 		if err != nil {
 			log.Fatalf("Error getting tool package: %s", err)
 		}
 
-		packageDescription, err := boilerplate.PromptForToolDescription()
+		packageDescription, err := dbt.PromptForToolDescription()
 		if err != nil {
 			log.Fatalf("Error getting tool description: %s", err)
 		}
 
-		author, err := boilerplate.PromptForToolAuthor()
+		author, err := dbt.PromptForToolAuthor()
 		if err != nil {
 			log.Fatalf("Eror getting tool author: %s", err)
 		}
 
-		repository, err := boilerplate.PromptForToolRepo()
+		repository, err := dbt.PromptForToolRepo()
 		if err != nil {
 			log.Fatalf("Eror getting tool repository: %s", err)
 		}
 
-		err = boilerplate.WriteConfigFiles(commandName, packageName, packageDescription, author, repository)
+		err = dbt.WriteConfigFiles(commandName, packageName, packageDescription, author, repository)
 		if err != nil {
 			log.Fatalf("Error generating boilerplate files: %s", err)
 		}

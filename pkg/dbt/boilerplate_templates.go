@@ -1,38 +1,40 @@
-package boilerplate
+package dbt
 
-import (
-	"fmt"
-	"github.com/pkg/errors"
-	"strings"
-	"time"
-)
+// GitignoreContents the contents of the .gitignore file
+func GitignoreContents() string {
+	return `# Created by .ignore support plugin (hsz.mobi)
+### Go template
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
 
-func testToolName() string {
-	return "testtool"
+# Test binary, build with 'go test -c'
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
+.glide/
+
+# IntelliJ
+/out/
+
+.idea/
+*.iml
+`
 }
 
-func testPackageName() string {
-	return "github.com/nikogura/testtool"
-}
-
-func testDescription() string {
-	return "Blah blah blah."
-}
-
-func testAuthor() ToolAuthor {
-	return ToolAuthor{
-		Name:  "Test Author",
-		Email: "testauthor@foo.com",
-	}
-}
-
-func metadataContentsExample() string {
+// MetadataContents contents of an initial metadata.json file
+func MetadataContents() string {
 	return `{
-  "name": "testtool",
+  "name": "{{.ToolName}}",
   "version": "0.1.0",
-  "package": "github.com/nikogura/testtool",
-  "description": "Blah blah blah.",
-  "repository": "http://localhost:8081/artifactory/dbt-tools",
+  "package": "{{.PackageName}}",
+  "description": "{{.PackageDescription}}",
+  "repository": "{{.Repository}}",
   "building": {
     "targets": [
       {
@@ -64,13 +66,13 @@ func metadataContentsExample() string {
         "checksums": false
       },
       {
-        "src": "testtool_darwin_amd64",
+        "src": "{{.ToolName}}_darwin_amd64",
         "dst": "__REPOSITORY__/__TOOLNAME__/__VERSION__/darwin/amd64/__TOOLNAME__",
         "sig": true,
         "checksums": false
       },
       {
-        "src": "testtool_linux_amd64",
+        "src": "{{.ToolName}}_linux_amd64",
         "dst": "__REPOSITORY__/__TOOLNAME__/__VERSION__/linux/amd64/__TOOLNAME__",
         "sig": true,
         "checksums": false
@@ -82,8 +84,15 @@ func metadataContentsExample() string {
 }`
 }
 
-func goModuleExample() string {
-	return `module github.com/nikogura/testtool
+// PreCommitHookContents a git pre-commit hook
+func PreCommitHookContents() string {
+	return `#!/usr/bin/env bash
+/usr/local/go/bin/gofmt -w ./`
+}
+
+// GoModuleContents requirements for a basic tool
+func GoModuleContents() string {
+	return `module {{.PackageName}}
 
 require (
 	github.com/davecgh/go-spew v0.0.0-20171005155431-ecdeabc65495
@@ -109,9 +118,10 @@ require (
 `
 }
 
-func mainGoContentsExample() string {
+// MainGoContents cobra main.go file
+func MainGoContents() string {
 	return `
-// Copyright © 2020 Test Author <testauthor@foo.com>
+// Copyright © {{.CopyrightYear}} {{.Author.Name}} <{{.Author.Email}}>
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -126,15 +136,16 @@ func mainGoContentsExample() string {
 
 package main
 
-import "github.com/nikogura/testtool/cmd"
+import "{{.PackageName}}/cmd"
 
 func main() {
 	cmd.Execute()
 }`
 }
 
-func rootGoContentsExample() string {
-	return `// Copyright © 2020 Test Author <testauthor@foo.com>
+// RootGoContents root.go cobra file
+func RootGoContents() string {
+	return `// Copyright © {{.CopyrightYear}} {{.Author.Name}} <{{.Author.Email}}>
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -152,7 +163,7 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"github.com/nikogura/testtool/pkg/testtool"
+	"{{.PackageName}}/pkg/{{.ToolName}}"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -162,14 +173,14 @@ var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "testtool",
-	Short: "Blah blah blah.",
+	Use:   "{{.ToolName}}",
+	Short: "{{.PackageDescription}}",
 	// Note:  Change the following line to backticks for long multiline descriptions.
-	Long: "Blah blah blah.",
+	Long: "{{.PackageDescription}}",
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-		testtool.Run()
+		{{.ToolName}}.Run()
 	},
 }
 
@@ -223,7 +234,8 @@ func initConfig() {
 `
 }
 
-func licenseContentsExample() string {
+// LicenseContents Apache license
+func LicenseContents() string {
 	return `Apache License
 	Version 2.0, January 2004
 http://www.apache.org/licenses/
@@ -412,7 +424,7 @@ APPENDIX: How to apply the Apache License to your work.
 	same "printed page" as the copyright notice for easier
 	identification within third-party archives.
 
-	Copyright 2020 Test Author
+	Copyright {{.CopyrightYear}} {{.Author.Name}}
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -427,8 +439,9 @@ APPENDIX: How to apply the Apache License to your work.
 	limitations under the License.`
 }
 
-func emptyGoFileContentsExample() string {
-	return `package testtool
+// EmptyGoFileContents an empty go file in the tool package
+func EmptyGoFileContents() string {
+	return `package {{.ToolName}}
 
 import (
 	"fmt"
@@ -439,93 +452,12 @@ func Run() {
 }`
 }
 
-func testToolRepo() string {
-	return "http://localhost:8081/artifactory/dbt-tools"
+// DescriptionTemplateContents description template
+func DescriptionTemplateContents() string {
+	return "{{.Description}}"
 }
 
-func testFilesForTool(location string, toolName string, packageName string, packageDescription string, author ToolAuthor, repository string) (files []ToolFile, err error) {
-	files = make([]ToolFile, 0)
-	timestamp := time.Now()
-
-	info := ToolInfo{packageName, toolName, packageDescription, author, timestamp.Year(), repository}
-
-	// .gitignore
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/.gitignore", location), Content: GitignoreContents(), Mode: 0644})
-
-	// pre-commit hook
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/pre-commit-hook.sh", location), Content: PreCommitHookContents(), Mode: 0755})
-
-	// Description Template
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/description.tmpl", location), Content: DescriptionTemplateContents(), Mode: 0644})
-
-	// metadata.json
-	fileName := "metadata.json"
-	content, err := fillTemplate(fileName, metadataContentsExample(), info)
-	content = strings.Replace(content, "__VERSION__", "{{.Version}}", -1)
-	content = strings.Replace(content, "__REPOSITORY__", "{{.Repository}}", -1)
-	content = strings.Replace(content, "__TOOLNAME__", "{{.Name}}", -1)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
-		return files, err
-	}
-
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/metadata.json", location), Content: content, Mode: 0644})
-
-	// Apache License
-	fileName = "LICENSE"
-	content, err = fillTemplate(fileName, licenseContentsExample(), info)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
-		return files, err
-	}
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/LICENSE", location), Content: content, Mode: 0644})
-
-	// go.mod
-	fileName = "go.mod"
-	content, err = fillTemplate(fileName, goModuleExample(), info)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
-		return files, err
-	}
-
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/go.mod", location), Content: content, Mode: 0644})
-
-	// main.go
-	fileName = "main.go"
-	content, err = fillTemplate(fileName, mainGoContentsExample(), info)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
-		return files, err
-	}
-
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/main.go", location), Content: content, Mode: 0644})
-
-	// root.go
-	fileName = "root.go"
-	content, err = fillTemplate(fileName, rootGoContentsExample(), info)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
-		return files, err
-	}
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/cmd/root.go", location), Content: content, Mode: 0644})
-
-	// empty.go
-	fileName = "emptygofile"
-	content, err = fillTemplate(fileName, emptyGoFileContentsExample(), info)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
-		return files, err
-	}
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/pkg/%s/%s.go", location, toolName, toolName), Content: content, Mode: 0644})
-
-	// README.md
-	fileName = "README.md"
-	content, err = fillTemplate(fileName, ReadMeContents(), info)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
-		return files, err
-	}
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/%s/%s", location, toolName, fileName), Content: content, Mode: 0644})
-
-	return files, err
+// ReadMeContents a boilerplate readme stub
+func ReadMeContents() string {
+	return "# {{.ToolName}}\n\n{{.PackageDescription}}\n"
 }

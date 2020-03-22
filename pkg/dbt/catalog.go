@@ -1,9 +1,8 @@
-package catalog
+package dbt
 
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/nikogura/dbt/pkg/dbt"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 	"io/ioutil"
@@ -14,19 +13,19 @@ import (
 	"time"
 )
 
-// List shows you what tools are available in your trusted repo.  Repo is figured out from the config in ~/.dbt/conf/dbt.json
-func List(showVersions bool, homedir string) (err error) {
+// ListCatalog shows you what tools are available in your trusted repo.  Repo is figured out from the config in ~/.dbt/conf/dbt.json
+func ListCatalog(showVersions bool, homedir string) (err error) {
 	fmt.Printf("Fetching information from the repository...\n")
 
 	if homedir == "" {
-		homedir, err = dbt.GetHomeDir()
+		homedir, err = GetHomeDir()
 		if err != nil {
 			err = errors.Wrap(err, "failed to derive user home dir")
 			return err
 		}
 	}
 
-	config, err := dbt.LoadDbtConfig(homedir, false)
+	config, err := LoadDbtConfig(homedir, false)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to load config from %s/.dbt/conf/dbt.json", homedir)
 		return err
@@ -58,7 +57,7 @@ func List(showVersions bool, homedir string) (err error) {
 	fmt.Printf("\tCommand Name\t\tLatest Version\t\tDescription\n\n")
 	fmt.Printf("\n\n")
 
-	dbtObj := &dbt.DBT{
+	dbtObj := &DBT{
 		Config:  config,
 		Verbose: false,
 		Logger:  log.New(os.Stderr, "", 0),
@@ -104,7 +103,7 @@ func List(showVersions bool, homedir string) (err error) {
 }
 
 // FetchDescription fetches the tool description from the repository.
-func FetchDescription(config dbt.Config, tool string, version string) (description string, err error) {
+func FetchDescription(config Config, tool string, version string) (description string, err error) {
 	uri := fmt.Sprintf("%s/%s/%s/description.txt", config.Tools.Repo, tool, version)
 
 	client := &http.Client{
@@ -122,7 +121,7 @@ func FetchDescription(config dbt.Config, tool string, version string) (descripti
 
 	// Username func takes precedence over hardcoded username
 	if config.UsernameFunc != "" {
-		username, err = dbt.GetFunc(config.UsernameFunc)
+		username, err = GetFunc(config.UsernameFunc)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to get username from shell function %q", config.UsernameFunc)
 			return description, err
@@ -131,7 +130,7 @@ func FetchDescription(config dbt.Config, tool string, version string) (descripti
 
 	// PasswordFunc takes precedence over hardcoded password
 	if config.PasswordFunc != "" {
-		password, err = dbt.GetFunc(config.PasswordFunc)
+		password, err = GetFunc(config.PasswordFunc)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to get password from shell function %q", config.PasswordFunc)
 			return description, err
@@ -165,7 +164,7 @@ func FetchDescription(config dbt.Config, tool string, version string) (descripti
 }
 
 // FetchTools returns a list of tool names found in the trusted repo
-func FetchTools(config dbt.Config) (tools []Tool, err error) {
+func FetchTools(config Config) (tools []Tool, err error) {
 	// strip off a trailing slash if there is one
 	rawUrl := config.Tools.Repo
 	munged := strings.TrimRight(rawUrl, "/")
@@ -187,7 +186,7 @@ func FetchTools(config dbt.Config) (tools []Tool, err error) {
 
 	// Username func takes precedence over hardcoded username
 	if config.UsernameFunc != "" {
-		username, err = dbt.GetFunc(config.UsernameFunc)
+		username, err = GetFunc(config.UsernameFunc)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to get username from shell function %q", config.UsernameFunc)
 			return tools, err
@@ -196,7 +195,7 @@ func FetchTools(config dbt.Config) (tools []Tool, err error) {
 
 	// PasswordFunc takes precedence over hardcoded password
 	if config.PasswordFunc != "" {
-		password, err = dbt.GetFunc(config.PasswordFunc)
+		password, err = GetFunc(config.PasswordFunc)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to get password from shell function %q", config.PasswordFunc)
 			return tools, err

@@ -1,0 +1,7 @@
+[user]
+  email = tester@foo.com
+  username = tester
+  passwordfunc = echo 'letmein'
+
+[signing]
+  program = gpg

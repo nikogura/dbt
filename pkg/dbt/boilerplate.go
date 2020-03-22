@@ -1,4 +1,4 @@
-package boilerplate
+package dbt
 
 import (
 	"bufio"

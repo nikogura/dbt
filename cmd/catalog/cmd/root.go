@@ -33,6 +33,7 @@ DBT tools are made available in a trusted repository.  This tool show's what's a
 `,
 }
 
+// Execute - execute the command
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)

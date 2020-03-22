@@ -8,11 +8,15 @@
 
 [![Go Doc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/nikogura/dbt/pkg/dbt)
 
-[![Coverage Status](https://coveralls.io/repos/github/nikogura/dbt/badge.svg?branch=master&version=1.0.5)](https://coveralls.io/github/nikogura/dbt?branch=master)
+[![Coverage Status](https://codecov.io/gh/nikogura/dbt/branch/master/graph/badge.svg)](https://codecov.io/gh/nikogura/dbt)
 
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)  
 
 A framework for running self-updating, signed binary tools from a central, trusted repository.
+
+What kind of tools you say?  Anything that can be compiled into a stand-alone binary.
+
+Tools are always up to date (unless you specify an older version), as is `dbt` itself.  How?  _magic_. 
 
 # Overview
 
@@ -124,13 +128,19 @@ There are, however, some common tasks that any user of DBT might want at their f
 
 * *Catalog*  A tool for showing what tools are in your repository.
 
-* *Boilerplate*  A tool for generating tool boilerplate.  You could do it by hand, but why?  
+* *Boilerplate*  A tool for generating tool boilerplate.  You could do it by hand, but why? 
+
+* *Reposerver* A dbt repository server.  It serves up the various dbt tools and components from a file location on disk. 
 
 If for some reason you don't want to use the included tools, just remove them from your `metadata.json` and they won't publish.
 
 # Repository Support
 
-The initial versions of DBT are targeted at the [Artifactory Open Source](https://www.jfrog.com/open-source) repo.  Any sort of WebDAV server that supports authenticated PUT's and GET's should work fine though.
+[Artifactory Open Source](https://www.jfrog.com/open-source) can be used as a dbt repo.  It works well without auth, or with basic authentication. 
+
+The dbt `reposerver` tool is written entirely in golang.  At present, it's expected to run inside of a VPN or other private network, as it doesn't curently have authentiation support.  Stay tuned.
+
+You can additionally utilize Amazon S3 as a repo server.  Authentication to S3 is assumed to be already in place and leverages the expected configs in ~/.aws.  Credential managers work transparently through `credential_process` as detailed in the AWS docs.
 
 # Configuration
 

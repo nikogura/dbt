@@ -39,7 +39,7 @@ Run 'dbt -- catalog list' to see a list of what tools are available in your repo
 
 `,
 	Example: "dbt -- catalog list",
-	Version: "3.0.2",
+	Version: "3.0.3",
 	Run:     Run,
 }
 
@@ -48,6 +48,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&offline, "offline", "o", false, "Offline mode.")
 }
 
+// Execute - execute the command
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -64,7 +65,7 @@ func Run(cmd *cobra.Command, args []string) {
 		os.Exit(0)
 	}
 
-	dbtObj, err := dbt.NewDbt()
+	dbtObj, err := dbt.NewDbt("")
 	if err != nil {
 		log.Fatalf("Error creating DBT object: %s", err)
 	}
