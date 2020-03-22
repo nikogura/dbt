@@ -680,7 +680,7 @@ type S3Meta struct {
 // S3Url returns true, and a metadata struct if the url given appears to be in s3
 func S3Url(url string) (ok bool, meta S3Meta) {
 	// Check to see if it's an s3 URL.
-	s3Url := regexp.MustCompile(`https?://(.*)\.s3\.(.*)\.amazonaws.com/(.*)`)
+	s3Url := regexp.MustCompile(`https?://(.*)\.s3\.(.*)\.amazonaws.com/?(.*)?`)
 
 	matches := s3Url.FindAllStringSubmatch(url, -1)
 
@@ -690,7 +690,17 @@ func S3Url(url string) (ok bool, meta S3Meta) {
 
 	match := matches[0]
 
-	if len(match) == 4 {
+	if len(match) == 3 {
+		meta = S3Meta{
+			Bucket: match[1],
+			Region: match[2],
+			Url:    url,
+		}
+
+		ok = true
+		return ok, meta
+
+	} else if len(match) == 4 {
 		meta = S3Meta{
 			Bucket: match[1],
 			Region: match[2],
@@ -861,12 +871,12 @@ func (dbt *DBT) S3VerifyFileVersion(filePath string, meta S3Meta) (success bool,
 // S3FetchToolVersions fetches available versions for a tool from S3
 func (dbt *DBT) S3FetchToolVersions(meta S3Meta) (versions []string, err error) {
 	versions = make([]string, 0)
+	uniqueVersions := make(map[string]int)
 	svc := s3.New(dbt.S3Session)
 
 	options := &s3.ListObjectsInput{
-		Bucket:    aws.String(meta.Bucket),
-		Prefix:    aws.String(meta.Key),
-		Delimiter: aws.String("/"),
+		Bucket: aws.String(meta.Bucket),
+		Prefix: aws.String(meta.Key),
 	}
 
 	resp, err := svc.ListObjects(options)
@@ -875,15 +885,26 @@ func (dbt *DBT) S3FetchToolVersions(meta S3Meta) (versions []string, err error) 
 		return versions, err
 	}
 
+	dir := regexp.MustCompile(`\d+\.\d+\.\d+/`)
 	semver := regexp.MustCompile(`\d+\.\d+\.\d+`)
 
 	for _, k := range resp.Contents {
-		parts := strings.Split(*k.Key, "/")
-		if len(parts) == 2 { // normal tool
-			versions = append(versions, parts[1])
-		} else if semver.MatchString(*k.Key) { // dbt itself
-			versions = append(versions, *k.Key)
+		if dir.MatchString(*k.Key) {
+			parts := strings.Split(*k.Key, "/")
+			if len(parts) > 0 {
+				if semver.MatchString(parts[0]) {
+					uniqueVersions[parts[0]] = 1
+				} else if len(parts) > 1 {
+					if semver.MatchString(parts[1]) {
+						uniqueVersions[parts[1]] = 1
+					}
+				}
+			}
 		}
+	}
+
+	for k, _ := range uniqueVersions {
+		versions = append(versions, k)
 	}
 
 	return versions, err
