@@ -40,8 +40,13 @@ import (
 	"time"
 )
 
+// AWS_ID_ENV_VAR Default env var for AWS access key
 const AWS_ID_ENV_VAR = "AWS_ACCESS_KEY_ID"
+
+// AWS_SECRET_ENV_VAR Default env var for AWS secret key
 const AWS_SECRET_ENV_VAR = "AWS_SECRET_ACCESS_KEY"
+
+// AWS_REGION_ENV_VAR Default env var for AWS region
 const AWS_REGION_ENV_VAR = "AWS_DEFAULT_REGION"
 
 // NOPROGRESS turns off the progress bar on file fetches.  Primarily used for testing to avoid cluttering up the output and confusing the test harness.

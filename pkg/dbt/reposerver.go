@@ -22,6 +22,7 @@ type DBTRepoServer struct {
 	AuthOpts
 }
 
+// AuthOpts Struct for holding Auth options
 type AuthOpts struct {
 	IdpFile string
 	IdpFunc string
@@ -42,7 +43,7 @@ const AUTH_BASIC_LDAP = "basic-ldap"
 // AUTH_SSH_AGENT_LDAP flag for configuring ssh-agent auth pulling public key from an LDAP directory
 const AUTH_SSH_AGENT_LDAP = "ssh-agent-ldap"
 
-// Run runs the test repository server.
+// RunRepoServer Run runs the test repository server.
 func (d *DBTRepoServer) RunRepoServer() (err error) {
 
 	log.Printf("Running dbt artifact server on %s port %d.  Serving tree at: %s", d.Address, d.Port, d.ServerRoot)

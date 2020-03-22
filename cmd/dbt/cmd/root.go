@@ -56,6 +56,7 @@ func Execute() {
 	}
 }
 
+// Run run dbt itself.
 func Run(cmd *cobra.Command, args []string) {
 	if len(args) == 0 {
 		err := cmd.Help()
