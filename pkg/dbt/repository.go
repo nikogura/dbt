@@ -763,13 +763,11 @@ func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err 
 	//	return err
 	//}
 
-	b, err := downloader.Download(outFile, downloadOptions)
+	_, err = downloader.Download(outFile, downloadOptions)
 	if err != nil {
 		err = errors.Wrapf(err, "download failed")
 		return err
 	}
-
-	dbt.VerboseOutput("Downloaded %v bytes", b)
 
 	return err
 
