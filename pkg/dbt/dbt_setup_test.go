@@ -640,7 +640,7 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 		log.Fatalf("Failed to create ephemeral workDir: %s", err)
 	}
 
-	src := strings.TrimRight(cwd, "/pkg/dbt")
+	src := strings.TrimSuffix(cwd, "/dbt/pkg/dbt")
 	dst := fmt.Sprintf("%s/src/github.com/nikogura", workDir)
 	err = os.MkdirAll(dst, 0755)
 	if err != nil {
