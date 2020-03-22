@@ -46,6 +46,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&serverRoot, "root", "r", "", "Server Root (Local path from which to serve components.")
 }
 
+// Execute  execute the command
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -53,6 +54,7 @@ func Execute() {
 	}
 }
 
+// Run run the reposerver
 func Run(cmd *cobra.Command, args []string) {
 	repo := dbt.DBTRepoServer{}
 	err := repo.RunRepoServer()

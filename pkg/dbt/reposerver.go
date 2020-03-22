@@ -12,7 +12,7 @@ func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 }
 
-// DBTRepoServer
+// DBTRepoServer The reference 'trusted repository' server for dbt.
 type DBTRepoServer struct {
 	Address    string
 	Port       int
@@ -27,10 +27,19 @@ type AuthOpts struct {
 	IdpFunc string
 }
 
+// AUTH_BASIC_HTPASSWD config flag for basic auth
 const AUTH_BASIC_HTPASSWD = "basic-htpasswd"
+
+// AUTH_SSH_AGENT_FILE config setting for file based ssh-agent auth (file mapping principals to public keys similer to .htaccess files)
 const AUTH_SSH_AGENT_FILE = "ssh-agent-file"
+
+// AUTH_SSH_AGENT_FUNC config setting for using a shell function to retrieve the public key for a principal
 const AUTH_SSH_AGENT_FUNC = "ssh-agent-func"
+
+// AUTH_BASIC_LDAP config flag for user/password auth off an LDAP directory server
 const AUTH_BASIC_LDAP = "basic-ldap"
+
+// AUTH_SSH_AGENT_LDAP flag for configuring ssh-agent auth pulling public key from an LDAP directory
 const AUTH_SSH_AGENT_LDAP = "ssh-agent-ldap"
 
 // Run runs the test repository server.
