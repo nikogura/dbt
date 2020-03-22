@@ -719,6 +719,7 @@ func S3Url(url string) (ok bool, meta S3Meta) {
 
 // S3FetchFile fetches a file out of S3 instead of using a normal HTTP GET
 func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err error) {
+	// TODO Progress bar causes files to double, which of course changes the checksums, which throws a wrench into the whole system.  Fix it!
 	//headOptions := &s3.HeadObjectInput{
 	//	Bucket: aws.String(meta.Bucket),
 	//	Key:    aws.String(meta.Key),
