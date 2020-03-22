@@ -321,15 +321,20 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 
 // UpgradeInPlace upgraded dbt in place
 func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
+	dbt.VerboseOutput("Attempting upgrade in place")
 	tmpDir, err := ioutil.TempDir("", "dbt")
 	if err != nil {
 		err = errors.Wrap(err, "failed to create temp dir")
 		return err
 	}
 
+	dbt.VerboseOutput("  Temp Dir: %s", tmpDir)
+
 	defer os.RemoveAll(tmpDir)
 
 	newBinaryFile := fmt.Sprintf("%s/dbt", tmpDir)
+
+	dbt.VerboseOutput("  New binary file: %s", newBinaryFile)
 
 	latest, err := dbt.FindLatestVersion("")
 	if err != nil {
@@ -337,7 +342,11 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 		return err
 	}
 
+	dbt.VerboseOutput("  Latest: %s", latest)
+
 	latestDbtVersionUrl := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, runtime.GOOS, runtime.GOARCH)
+
+	dbt.VerboseOutput("  Fetching from: %s", latestDbtVersionUrl)
 
 	err = dbt.FetchFile(latestDbtVersionUrl, newBinaryFile)
 	if err != nil {
@@ -345,6 +354,7 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 		return err
 	}
 
+	dbt.VerboseOutput("  Verifying %s", newBinaryFile)
 	ok, err := dbt.VerifyFileVersion(latestDbtVersionUrl, newBinaryFile)
 	if err != nil {
 		err = errors.Wrap(err, "failed to verify downloaded binary")
@@ -352,6 +362,7 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 	}
 
 	if ok {
+		dbt.VerboseOutput("  It's good.  Moving it into place.")
 		// This is slightly more painful than it might otherwise be in order to handle modern linux systems where /tmp is tmpfs (can't just rename cross partition).
 		// So instead we read the file, write the file to a temp file, and then rename.
 		newBinaryTempFile := fmt.Sprintf("%s.new", binaryPath)
@@ -362,17 +373,23 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 			return err
 		}
 
+		dbt.VerboseOutput("  Writing to %s", newBinaryTempFile)
+
 		err = ioutil.WriteFile(newBinaryTempFile, b, 0755)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to write new binary temp file %s", newBinaryTempFile)
 			return err
 		}
 
+		dbt.VerboseOutput("  renaming %s to %s", newBinaryTempFile, binaryPath)
+
 		err = os.Rename(newBinaryTempFile, binaryPath)
 		if err != nil {
 			err = errors.Wrap(err, "failed to move new binary into place")
 			return err
 		}
+
+		dbt.VerboseOutput("  Chmodding %s to 0755", binaryPath)
 
 		err = os.Chmod(binaryPath, 0755)
 		if err != nil {
