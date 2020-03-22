@@ -158,7 +158,7 @@ func (d *DBTRepoServer) RunRepoServer() (err error) {
 //		w.WriteHeader(http.StatusUnauthorized)
 //	}
 //
-//	log.Infof("Subject %s successfuly authenticated", subject)
+//	log.Infof("Subject %s successfully authenticated", subject)
 //
 //	d.HandlePut()
 //}
@@ -182,7 +182,7 @@ func (d *DBTRepoServer) RunRepoServer() (err error) {
 //		w.WriteHeader(http.StatusUnauthorized)
 //	}
 //
-//	log.Infof("Subject %s successfuly authenticated", subject)
+//	log.Infof("Subject %s successfully authenticated", subject)
 //
 //	d.HandlePut()
 //}
