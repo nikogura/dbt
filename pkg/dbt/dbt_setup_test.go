@@ -36,6 +36,9 @@ import (
 	"time"
 )
 
+// TestPackageGroup Github group owning this codebase.  Used to compile itself as part of it's test suite.  If you're not me, you'll want to change this in your fork.
+const TestPackageGroup = "nikogura"
+
 var tmpDir string
 var sourceDirA string
 var sourceDirB string
@@ -641,7 +644,7 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 	}
 
 	src := strings.TrimSuffix(cwd, "/dbt/pkg/dbt")
-	dst := fmt.Sprintf("%s/src/github.com/nikogura", workDir)
+	dst := fmt.Sprintf("%s/src/github.com/%s", workDir, TestPackageGroup)
 	err = os.MkdirAll(dst, 0755)
 	if err != nil {
 		log.Fatalf("Failed creating directory %s: %s", dst, err)
