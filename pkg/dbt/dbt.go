@@ -506,6 +506,8 @@ func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 	localPath := fmt.Sprintf("%s/%s/%s", homedir, ToolDir, toolName)
 	localChecksumPath := fmt.Sprintf("%s/%s/%s.sha256", homedir, ToolDir, toolName)
 
+	dbt.VerboseOutput("Verifying %q", localPath)
+
 	checksumBytes, err := ioutil.ReadFile(localChecksumPath)
 	if err != nil {
 		err = errors.Wrap(err, "error reading local checksum file")

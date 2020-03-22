@@ -433,6 +433,9 @@ func (dbt *DBT) VerifyFileChecksum(filePath string, expected string) (success bo
 		return success, err
 	}
 
+	dbt.VerboseOutput("  Expected: %s", expected)
+	dbt.VerboseOutput("  Actual:   %s", checksum)
+
 	if checksum == expected {
 		success = true
 		return success, err
@@ -859,7 +862,7 @@ func (dbt *DBT) S3VerifyFileVersion(filePath string, meta S3Meta) (success bool,
 
 	dbt.VerboseOutput("Verifying checksums of %q and %q", filePath, meta.Url)
 	dbt.VerboseOutput("  Expected: %s", expected)
-	dbt.VerboseOutput("  Actual: %s", actual)
+	dbt.VerboseOutput("  Actual:   %s", actual)
 
 	if err != nil {
 		success = false
