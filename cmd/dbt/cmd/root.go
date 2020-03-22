@@ -26,6 +26,7 @@ import (
 
 var toolVersion string
 var offline bool
+var verbose bool
 
 var rootCmd = &cobra.Command{
 	Use:   "dbt",
@@ -46,6 +47,7 @@ Run 'dbt -- catalog list' to see a list of what tools are available in your repo
 func init() {
 	rootCmd.Flags().StringVarP(&toolVersion, "toolversion", "v", "", "Version of tool to run.")
 	rootCmd.Flags().BoolVarP(&offline, "offline", "o", false, "Offline mode.")
+	rootCmd.Flags().BoolVarP(&verbose, "verbose", "V", false, "Verbose output")
 }
 
 // Execute - execute the command
@@ -71,6 +73,8 @@ func Run(cmd *cobra.Command, args []string) {
 		log.Fatalf("Error creating DBT object: %s", err)
 	}
 
+	dbtObj.SetVerbose(verbose)
+
 	homedir, err := dbt.GetHomeDir()
 	if err != nil {
 		log.Fatalf("Failed to discover user homedir: %s\n", err)
@@ -84,7 +88,7 @@ func Run(cmd *cobra.Command, args []string) {
 	// if we're not explicitly offline, try to upgrade in place
 	if !offline {
 		// first fetch the current truststore
-		err = dbtObj.FetchTrustStore(homedir, false)
+		err = dbtObj.FetchTrustStore(homedir)
 		if err != nil {
 			log.Fatalf("Failed to fetch remote truststore: %s.\n\nIf you want to try in 'offline' mode, retry your command again with: dbt -o ...", err)
 		}

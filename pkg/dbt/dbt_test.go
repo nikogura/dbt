@@ -179,7 +179,7 @@ func TestFetchTrustStore(t *testing.T) {
 
 	for _, tc := range inputs {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.obj.FetchTrustStore(tc.homedir, true)
+			err := tc.obj.FetchTrustStore(tc.homedir)
 			if err != nil {
 				t.Errorf("Error fetching trust store: %s", err)
 			}

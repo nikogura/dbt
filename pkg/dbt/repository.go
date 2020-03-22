@@ -794,9 +794,11 @@ func (dbt *DBT) S3ToolExists(toolName string, meta S3Meta) (found bool, err erro
 }
 
 // S3FetchTruststore fetches the truststore out of S3 writing it into the dbt dir on the local disk
-func (dbt *DBT) S3FetchTruststore(homedir string, meta S3Meta, verbose bool) (err error) {
+func (dbt *DBT) S3FetchTruststore(homedir string, meta S3Meta) (err error) {
 	downloader := s3manager.NewDownloader(dbt.S3Session)
 	filePath := fmt.Sprintf("%s/%s", homedir, TruststorePath)
+	dbt.VerboseOutput("Writing truststore to %s", filePath)
+
 	file, err := os.Create(filePath)
 	if err != nil {
 		err = errors.Wrapf(err, "Failed opening truststore file %s", filePath)
@@ -854,6 +856,10 @@ func (dbt *DBT) S3VerifyFileVersion(filePath string, meta S3Meta) (success bool,
 	// compare it to what's on the disk
 	expected := string(buff.Bytes())
 	actual, err := FileSha256(filePath)
+
+	dbt.VerboseOutput("Verifying checksums of %q and %q", filePath, meta.Url)
+	dbt.VerboseOutput("  Expected: %s", expected)
+	dbt.VerboseOutput("  Actual: %s", actual)
 
 	if err != nil {
 		success = false

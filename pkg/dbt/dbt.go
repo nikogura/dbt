@@ -115,6 +115,11 @@ func NewDbt(homedir string) (dbt *DBT, err error) {
 	return dbt, err
 }
 
+// SetVerbose Sets the verbose option on the dbt object
+func (dbt *DBT) SetVerbose(verbose bool) {
+	dbt.Verbose = verbose
+}
+
 // LoadDbtConfig loads the dbt config from the expected location on the filesystem
 func LoadDbtConfig(homedir string, verbose bool) (config Config, err error) {
 	if homedir == "" {
@@ -210,17 +215,15 @@ func GetHomeDir() (dir string, err error) {
 }
 
 // FetchTrustStore writes the downloaded trusted signing public keys to disk.
-func (dbt *DBT) FetchTrustStore(homedir string, verbose bool) (err error) {
+func (dbt *DBT) FetchTrustStore(homedir string) (err error) {
 	uri := dbt.Config.Dbt.TrustStore
 
-	if verbose {
-		fmt.Printf("Fetching truststore from %q\n", uri)
-	}
+	dbt.VerboseOutput("Fetching truststore from %q\n", uri)
 
 	isS3, s3Meta := S3Url(uri)
 
 	if isS3 {
-		return dbt.S3FetchTruststore(homedir, s3Meta, verbose)
+		return dbt.S3FetchTruststore(homedir, s3Meta)
 	}
 
 	client := &http.Client{
@@ -296,7 +299,11 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 		return ok, err
 	}
 
+	dbt.VerboseOutput("Latest version: %s\n", latest)
+
 	latestDbtVersionUrl := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, runtime.GOOS, runtime.GOARCH)
+
+	dbt.VerboseOutput("Latest version url: %s\n", latestDbtVersionUrl)
 
 	ok, err = dbt.VerifyFileVersion(latestDbtVersionUrl, binaryPath)
 	if err != nil {
@@ -305,6 +312,7 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 	}
 
 	if !ok {
+		dbt.VerboseOutput("File at %s does not match latest", binaryPath)
 		_, _ = fmt.Fprint(os.Stderr, fmt.Sprintf("Newer version of dbt available: %s\n\n", latest))
 	}
 
@@ -567,4 +575,17 @@ func (dbt *DBT) runExec(homedir string, args []string) (err error) {
 	}
 
 	return err
+}
+
+// VerboseOutput Covenience function so I don't have to write 'if verbose {...}' all the time.
+func (dbt *DBT) VerboseOutput(message string, args ...interface{}) {
+	if dbt.Verbose {
+		if len(args) == 0 {
+			fmt.Printf("%s\n", message)
+			return
+		}
+
+		msg := fmt.Sprintf(message, args...)
+		fmt.Printf("%s\n", msg)
+	}
 }
