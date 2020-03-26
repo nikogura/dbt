@@ -169,7 +169,7 @@ func (dbt *DBT) FetchToolDescription(tool string, version string) (description s
 func (dbt *DBT) FetchToolNames() (tools []Tool, err error) {
 	// strip off a trailing slash if there is one
 	rawUrl := dbt.Config.Tools.Repo
-	munged := strings.TrimRight(rawUrl, "/")
+	munged := strings.TrimSuffix(rawUrl, "/")
 	// Then add one cos we definitely need one
 	uri := fmt.Sprintf("%s/", munged)
 
@@ -305,7 +305,6 @@ func (dbt *DBT) S3FetchTools(meta S3Meta) (tools []Tool, err error) {
 	}
 
 	for _, k := range resp.Contents {
-		fmt.Printf("  %s\n", *k.Key)
 		uniqueTools[*k.Key] = 1
 	}
 
