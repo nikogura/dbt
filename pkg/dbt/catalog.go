@@ -164,7 +164,7 @@ func (dbt *DBT) FetchToolNames() (tools []Tool, err error) {
 	isS3, s3Meta := S3Url(uri)
 
 	if isS3 {
-		return dbt.S3FetchTools(s3Meta)
+		return dbt.S3FetchToolNames(s3Meta)
 	}
 
 	dbt.VerboseOutput("Fetching tool names from %s", uri)
@@ -277,7 +277,7 @@ func (dbt *DBT) S3FetchDescription(meta S3Meta) (description string, err error) 
 }
 
 // S3FetchTools fetches the list of available tools from S3
-func (dbt *DBT) S3FetchTools(meta S3Meta) (tools []Tool, err error) {
+func (dbt *DBT) S3FetchToolNames(meta S3Meta) (tools []Tool, err error) {
 	tools = make([]Tool, 0)
 	uniqueTools := make(map[string]int)
 	svc := s3.New(dbt.S3Session)
@@ -297,6 +297,7 @@ func (dbt *DBT) S3FetchTools(meta S3Meta) (tools []Tool, err error) {
 	}
 
 	for _, k := range resp.Contents {
+		dbt.VerboseOutput("  %s", *k.Key)
 		uniqueTools[*k.Key] = 1
 	}
 
