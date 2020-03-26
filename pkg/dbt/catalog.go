@@ -22,6 +22,7 @@ func (dbt *DBT) FetchCatalog(showVersions bool) (err error) {
 	tools, err := dbt.FetchToolNames()
 	if err != nil {
 		err = errors.Wrap(err, "failed to fetch tools from repo")
+		return err
 	}
 
 	// figure out the longest name and set up the fixed with spacing based on it
