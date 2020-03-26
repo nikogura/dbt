@@ -173,8 +173,6 @@ func (dbt *DBT) FetchToolNames() (tools []Tool, err error) {
 	// Then add one cos we definitely need one
 	uri := fmt.Sprintf("%s/", munged)
 
-	fmt.Printf("----- URL: %s -----\n", uri)
-
 	isS3, s3Meta := S3Url(uri)
 
 	if isS3 {
