@@ -6,12 +6,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 	"io/ioutil"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
 )
@@ -281,7 +279,6 @@ func (dbt *DBT) S3FetchDescription(meta S3Meta) (description string, err error) 
 // S3FetchTools fetches the list of available tools from S3
 func (dbt *DBT) S3FetchToolNames(meta S3Meta) (tools []Tool, err error) {
 	tools = make([]Tool, 0)
-	uniqueTools := make(map[string]int)
 	svc := s3.New(dbt.S3Session)
 
 	dbt.VerboseOutput("Fetching tool names from %s", meta.Url)
@@ -299,25 +296,9 @@ func (dbt *DBT) S3FetchToolNames(meta S3Meta) (tools []Tool, err error) {
 		return tools, err
 	}
 
-	dbt.VerboseOutput("fetched with no error")
-	dbt.VerboseOutput("returned %d tools", len(resp.Contents))
-
-	spew.Dump(resp)
-
-	for _, k := range resp.Contents {
-		dbt.VerboseOutput("  %s", *k.Key)
-		uniqueTools[*k.Key] = 1
-	}
-
-	sorted := make([]string, 0)
-
-	for k := range uniqueTools {
-		sorted = append(sorted, k)
-	}
-
-	sort.Strings(sorted)
-
-	for _, name := range sorted {
+	for _, p := range resp.CommonPrefixes {
+		name := *p.Prefix
+		name = strings.TrimSuffix(name, "/")
 		tools = append(tools, Tool{Name: name})
 	}
 
