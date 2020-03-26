@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 	"io/ioutil"
@@ -294,8 +295,14 @@ func (dbt *DBT) S3FetchToolNames(meta S3Meta) (tools []Tool, err error) {
 	resp, err := svc.ListObjects(options)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to list objects at %s", meta.Key)
+		dbt.VerboseOutput("Error: ", err)
 		return tools, err
 	}
+
+	dbt.VerboseOutput("fetched with no error")
+	dbt.VerboseOutput("returned %d tools", len(resp.Contents))
+
+	spew.Dump(resp)
 
 	for _, k := range resp.Contents {
 		dbt.VerboseOutput("  %s", *k.Key)
