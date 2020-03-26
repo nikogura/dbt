@@ -10,6 +10,7 @@ import (
 	"golang.org/x/net/html"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 )
@@ -310,8 +311,16 @@ func (dbt *DBT) S3FetchTools(meta S3Meta) (tools []Tool, err error) {
 		uniqueTools[*k.Key] = 1
 	}
 
+	sorted := make([]string, 0)
+
 	for k := range uniqueTools {
-		tools = append(tools, Tool{Name: k})
+		sorted = append(sorted, k)
+	}
+
+	sort.Strings(sorted)
+
+	for _, name := range sorted {
+		tools = append(tools, Tool{Name: name})
 	}
 
 	return tools, err
