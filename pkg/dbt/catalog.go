@@ -156,17 +156,16 @@ func (dbt *DBT) FetchToolDescription(tool string, version string) (description s
 // FetchToolNames returns a list of tool names found in the trusted repo
 func (dbt *DBT) FetchToolNames() (tools []Tool, err error) {
 	rawUrl := dbt.Config.Tools.Repo
-
-	isS3, s3Meta := S3Url(rawUrl)
-
-	if isS3 {
-		return dbt.S3FetchTools(s3Meta)
-	}
-
 	// strip off a trailing slash if there is one
 	munged := strings.TrimSuffix(rawUrl, "/")
 	// Then add one cos we definitely need one for http gets
 	uri := fmt.Sprintf("%s/", munged)
+
+	isS3, s3Meta := S3Url(uri)
+
+	if isS3 {
+		return dbt.S3FetchTools(s3Meta)
+	}
 
 	dbt.VerboseOutput("Fetching tool names from %s", uri)
 
