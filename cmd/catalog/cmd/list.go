@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"github.com/nikogura/dbt/pkg/dbt"
 	"github.com/spf13/cobra"
+	"log"
 	"os"
 )
 
@@ -29,7 +30,12 @@ var listCmd = &cobra.Command{
 ListCatalog available tools.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		err := dbt.ListCatalog(versions, "")
+		dbtObj, err := dbt.NewDbt("")
+		if err != nil {
+			log.Fatalf("Error creating DBT object: %s", err)
+		}
+
+		err = dbtObj.FetchCatalog(versions, "")
 		if err != nil {
 			fmt.Printf("Error running list: %s\n", err)
 			os.Exit(1)

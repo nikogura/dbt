@@ -3,18 +3,19 @@ package dbt
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 	"io/ioutil"
-	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 )
 
-// ListCatalog shows you what tools are available in your trusted repo.  Repo is figured out from the config in ~/.dbt/conf/dbt.json
-func ListCatalog(showVersions bool, homedir string) (err error) {
+// FetchCatalog shows you what tools are available in your trusted repo.  Repo is figured out from the config in ~/.dbt/conf/dbt.json
+func (dbt *DBT) FetchCatalog(showVersions bool, homedir string) (err error) {
 	fmt.Printf("Fetching information from the repository...\n")
 
 	if homedir == "" {
@@ -31,7 +32,7 @@ func ListCatalog(showVersions bool, homedir string) (err error) {
 		return err
 	}
 
-	tools, err := FetchTools(config)
+	tools, err := dbt.FetchToolNames()
 	if err != nil {
 		err = errors.Wrap(err, "failed to fetch tools from repo")
 	}
@@ -57,20 +58,14 @@ func ListCatalog(showVersions bool, homedir string) (err error) {
 	fmt.Printf("\tCommand Name\t\tLatest Version\t\tDescription\n\n")
 	fmt.Printf("\n\n")
 
-	dbtObj := &DBT{
-		Config:  config,
-		Verbose: false,
-		Logger:  log.New(os.Stderr, "", 0),
-	}
-
 	for _, tool := range tools {
-		version, err := dbtObj.FindLatestVersion(tool.Name)
+		version, err := dbt.FindLatestVersion(tool.Name)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to get latest version of %s from %s", tool.Name, config.Tools.Repo)
 			return err
 		}
 
-		description, err := FetchDescription(config, tool.Name, version)
+		description, err := dbt.FetchToolDescription(tool.Name, version)
 		if err != nil {
 			err = errors.Wrapf(err, "Failed to get description of %s from %s", tool.Name, config.Tools.Repo)
 			return err
@@ -81,7 +76,7 @@ func ListCatalog(showVersions bool, homedir string) (err error) {
 		fmt.Printf("\t%s\t\t%s\t\t\t%s\n", tool.FormattedName, version, description)
 
 		if showVersions {
-			versions, err := dbtObj.FetchToolVersions(tool.Name)
+			versions, err := dbt.FetchToolVersions(tool.Name)
 			if err != nil {
 				err = errors.Wrapf(err, "failed to get versions of %s from %s", tool.Name, config.Tools.Repo)
 				return err
@@ -102,9 +97,15 @@ func ListCatalog(showVersions bool, homedir string) (err error) {
 	return err
 }
 
-// FetchDescription fetches the tool description from the repository.
-func FetchDescription(config Config, tool string, version string) (description string, err error) {
-	uri := fmt.Sprintf("%s/%s/%s/description.txt", config.Tools.Repo, tool, version)
+// FetchToolDescription fetches the tool description from the repository.
+func (dbt *DBT) FetchToolDescription(tool string, version string) (description string, err error) {
+	uri := fmt.Sprintf("%s/%s/%s/description.txt", dbt.Config.Tools.Repo, tool, version)
+
+	isS3, s3Meta := S3Url(uri)
+
+	if isS3 {
+		return dbt.S3FetchDescription(s3Meta)
+	}
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,
@@ -116,23 +117,23 @@ func FetchDescription(config Config, tool string, version string) (description s
 		return description, err
 	}
 
-	username := config.Username
-	password := config.Password
+	username := dbt.Config.Username
+	password := dbt.Config.Password
 
 	// Username func takes precedence over hardcoded username
-	if config.UsernameFunc != "" {
-		username, err = GetFunc(config.UsernameFunc)
+	if dbt.Config.UsernameFunc != "" {
+		username, err = GetFunc(dbt.Config.UsernameFunc)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to get username from shell function %q", config.UsernameFunc)
+			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
 			return description, err
 		}
 	}
 
 	// PasswordFunc takes precedence over hardcoded password
-	if config.PasswordFunc != "" {
-		password, err = GetFunc(config.PasswordFunc)
+	if dbt.Config.PasswordFunc != "" {
+		password, err = GetFunc(dbt.Config.PasswordFunc)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to get password from shell function %q", config.PasswordFunc)
+			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
 			return description, err
 		}
 	}
@@ -163,13 +164,21 @@ func FetchDescription(config Config, tool string, version string) (description s
 	return description, err
 }
 
-// FetchTools returns a list of tool names found in the trusted repo
-func FetchTools(config Config) (tools []Tool, err error) {
+// FetchToolNames returns a list of tool names found in the trusted repo
+func (dbt *DBT) FetchToolNames() (tools []Tool, err error) {
 	// strip off a trailing slash if there is one
-	rawUrl := config.Tools.Repo
+	rawUrl := dbt.Config.Tools.Repo
 	munged := strings.TrimRight(rawUrl, "/")
 	// Then add one cos we definitely need one
 	uri := fmt.Sprintf("%s/", munged)
+
+	fmt.Printf("----- URL: %s -----\n", uri)
+
+	isS3, s3Meta := S3Url(uri)
+
+	if isS3 {
+		return dbt.S3FetchTools(s3Meta)
+	}
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,
@@ -181,23 +190,23 @@ func FetchTools(config Config) (tools []Tool, err error) {
 		return tools, err
 	}
 
-	username := config.Username
-	password := config.Password
+	username := dbt.Config.Username
+	password := dbt.Config.Password
 
 	// Username func takes precedence over hardcoded username
-	if config.UsernameFunc != "" {
-		username, err = GetFunc(config.UsernameFunc)
+	if dbt.Config.UsernameFunc != "" {
+		username, err = GetFunc(dbt.Config.UsernameFunc)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to get username from shell function %q", config.UsernameFunc)
+			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
 			return tools, err
 		}
 	}
 
 	// PasswordFunc takes precedence over hardcoded password
-	if config.PasswordFunc != "" {
-		password, err = GetFunc(config.PasswordFunc)
+	if dbt.Config.PasswordFunc != "" {
+		password, err = GetFunc(dbt.Config.PasswordFunc)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to get password from shell function %q", config.PasswordFunc)
+			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
 			return tools, err
 		}
 	}
@@ -254,4 +263,56 @@ type Tool struct {
 	FormattedName string
 	Version       string
 	Description   string
+}
+
+// S3FetchDescription fetches the tool description from S3
+func (dbt *DBT) S3FetchDescription(meta S3Meta) (description string, err error) {
+	downloader := s3manager.NewDownloader(dbt.S3Session)
+	downloadOptions := &s3.GetObjectInput{
+		Bucket: aws.String(meta.Bucket),
+		Key:    aws.String(meta.Key),
+	}
+
+	buf := &aws.WriteAtBuffer{}
+
+	_, err = downloader.Download(buf, downloadOptions)
+	if err != nil {
+		err = errors.Wrapf(err, "unable to download description from %s", meta.Url)
+		return description, err
+	}
+
+	description = string(buf.Bytes())
+
+	return description, err
+}
+
+// S3FetchTools fetches the list of available tools from S3
+func (dbt *DBT) S3FetchTools(meta S3Meta) (tools []Tool, err error) {
+	tools = make([]Tool, 0)
+
+	uniqueTools := make(map[string]int)
+	svc := s3.New(dbt.S3Session)
+
+	options := &s3.ListObjectsInput{
+		Bucket:    aws.String(meta.Bucket),
+		Prefix:    aws.String(meta.Key),
+		Delimiter: aws.String("/"),
+	}
+
+	resp, err := svc.ListObjects(options)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to list objects at %s", meta.Key)
+		return tools, err
+	}
+
+	for _, k := range resp.Contents {
+		fmt.Printf("  %s\n", *k.Key)
+		uniqueTools[*k.Key] = 1
+	}
+
+	for k := range uniqueTools {
+		tools = append(tools, Tool{Name: k})
+	}
+
+	return tools, err
 }

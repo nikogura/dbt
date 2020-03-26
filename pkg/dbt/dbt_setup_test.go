@@ -207,21 +207,39 @@ func setUp() {
 		log.Printf("Sleeping for 1 second for the test artifact server to start up.")
 		time.Sleep(time.Second * 1)
 
-		for _, dir := range []string{
-			homeDirRepoServer,
-			homeDirS3,
-		} {
-			err = os.MkdirAll(dir, 0755)
+		configs := []struct {
+			homedir string
+			config  string
+		}{
+			{
+				homeDirRepoServer,
+				testDbtConfigContents(port),
+			},
+			{
+				homeDirS3,
+				testDbtConfigS3Contents(),
+			},
+		}
+
+		for _, c := range configs {
+			err = os.MkdirAll(c.homedir, 0755)
 			if err != nil {
-				log.Printf("Error generating fake home dir: %s", err)
-				os.Exit(1)
+				log.Fatalf("Error generating fake home dir: %s", err)
 			}
 
-			err = GenerateDbtDir(dir, true)
+			err = GenerateDbtDir(c.homedir, true)
 			if err != nil {
-				log.Printf("Error generating dbt dir: %s", err)
-				os.Exit(1)
+				log.Fatalf("Error generating dbt dir: %s", err)
 			}
+
+			configPath := fmt.Sprintf("%s/%s", c.homedir, ConfigDir)
+			fileName := fmt.Sprintf("%s/dbt.json", configPath)
+
+			err := ioutil.WriteFile(fileName, []byte(c.config), 0644)
+			if err != nil {
+				log.Fatalf("Error writing config file to %s: %s", fileName, err)
+			}
+
 		}
 
 		setup = true
@@ -246,6 +264,18 @@ func testDbtConfigContents(port int) string {
     "repository": "http://127.0.0.1:%d/dbt-tools"
   }
 }`, port, port, port)
+}
+
+func testDbtConfigS3Contents() string {
+	return `{
+  "dbt": {
+    "repository": "https://dbt.s3.us-east-1.amazonaws.com",
+    "truststore": "https://dbt.s3.us-east-1.amazonaws.com/truststore"
+  },
+  "tools": {
+    "repository": "https://dbt-tools.s3.us-east-1.amazonaws.com"
+  }
+}`
 }
 
 func testDbtUrl(port int) string {

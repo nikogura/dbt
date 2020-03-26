@@ -116,31 +116,29 @@ func TestGenerateDbtDir(t *testing.T) {
 
 func TestLoadDbtConfig(t *testing.T) {
 	var inputs = []struct {
-		name string
-		path string
+		name     string
+		path     string
+		contents string
+		expected Config
 	}{
 		{
 			"reposerver",
 			homeDirRepoServer,
+			testDbtConfigContents(port),
+			dbtConfig,
 		},
 		{
 			"s3",
 			homeDirS3,
+			testDbtConfigS3Contents(),
+			s3DbtConfig,
 		},
 	}
 
 	for _, tc := range inputs {
 
 		t.Run(tc.name, func(t *testing.T) {
-			configPath := fmt.Sprintf("%s/%s", tc.path, ConfigDir)
-			fileName := fmt.Sprintf("%s/dbt.json", configPath)
-
-			err := ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
-			if err != nil {
-				t.Errorf("Error writing config file to %s: %s", fileName, err)
-			}
-
-			expected := dbtConfig
+			expected := tc.expected
 			actual, err := LoadDbtConfig(tc.path, true)
 			if err != nil {
 				t.Errorf("Error loading config file: %s", err)
