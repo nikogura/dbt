@@ -295,7 +295,7 @@ func (dbt *DBT) S3FetchToolNames(meta S3Meta) (tools []Tool, err error) {
 	resp, err := svc.ListObjects(options)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to list objects at %s", meta.Key)
-		dbt.VerboseOutput("Error: ", err)
+		dbt.VerboseOutput("Error: %s", err)
 		return tools, err
 	}
 
