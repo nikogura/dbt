@@ -16,22 +16,8 @@ import (
 )
 
 // FetchCatalog shows you what tools are available in your trusted repo.  Repo is figured out from the config in ~/.dbt/conf/dbt.json
-func (dbt *DBT) FetchCatalog(showVersions bool, homedir string) (err error) {
+func (dbt *DBT) FetchCatalog(showVersions bool) (err error) {
 	fmt.Printf("Fetching information from the repository...\n")
-
-	if homedir == "" {
-		homedir, err = GetHomeDir()
-		if err != nil {
-			err = errors.Wrap(err, "failed to derive user home dir")
-			return err
-		}
-	}
-
-	config, err := LoadDbtConfig(homedir, false)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to load config from %s/.dbt/conf/dbt.json", homedir)
-		return err
-	}
 
 	tools, err := dbt.FetchToolNames()
 	if err != nil {
@@ -62,13 +48,13 @@ func (dbt *DBT) FetchCatalog(showVersions bool, homedir string) (err error) {
 	for _, tool := range tools {
 		version, err := dbt.FindLatestVersion(tool.Name)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to get latest version of %s from %s", tool.Name, config.Tools.Repo)
+			err = errors.Wrapf(err, "failed to get latest version of %s from %s", tool.Name, dbt.Config.Tools.Repo)
 			return err
 		}
 
 		description, err := dbt.FetchToolDescription(tool.Name, version)
 		if err != nil {
-			err = errors.Wrapf(err, "Failed to get description of %s from %s", tool.Name, config.Tools.Repo)
+			err = errors.Wrapf(err, "Failed to get description of %s from %s", tool.Name, dbt.Config.Tools.Repo)
 			return err
 		}
 
@@ -79,7 +65,7 @@ func (dbt *DBT) FetchCatalog(showVersions bool, homedir string) (err error) {
 		if showVersions {
 			versions, err := dbt.FetchToolVersions(tool.Name)
 			if err != nil {
-				err = errors.Wrapf(err, "failed to get versions of %s from %s", tool.Name, config.Tools.Repo)
+				err = errors.Wrapf(err, "failed to get versions of %s from %s", tool.Name, dbt.Config.Tools.Repo)
 				return err
 			}
 
@@ -111,6 +97,8 @@ func (dbt *DBT) FetchToolDescription(tool string, version string) (description s
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
+
+	dbt.VerboseOutput("Fetching tool description from  from %s", uri)
 
 	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
@@ -167,17 +155,20 @@ func (dbt *DBT) FetchToolDescription(tool string, version string) (description s
 
 // FetchToolNames returns a list of tool names found in the trusted repo
 func (dbt *DBT) FetchToolNames() (tools []Tool, err error) {
-	// strip off a trailing slash if there is one
 	rawUrl := dbt.Config.Tools.Repo
-	munged := strings.TrimSuffix(rawUrl, "/")
-	// Then add one cos we definitely need one
-	uri := fmt.Sprintf("%s/", munged)
 
-	isS3, s3Meta := S3Url(uri)
+	isS3, s3Meta := S3Url(rawUrl)
 
 	if isS3 {
 		return dbt.S3FetchTools(s3Meta)
 	}
+
+	// strip off a trailing slash if there is one
+	munged := strings.TrimSuffix(rawUrl, "/")
+	// Then add one cos we definitely need one for http gets
+	uri := fmt.Sprintf("%s/", munged)
+
+	dbt.VerboseOutput("Fetching tool names from %s", uri)
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,
@@ -266,6 +257,7 @@ type Tool struct {
 
 // S3FetchDescription fetches the tool description from S3
 func (dbt *DBT) S3FetchDescription(meta S3Meta) (description string, err error) {
+	dbt.VerboseOutput("Fetching tool description from  from %s", meta.Url)
 	downloader := s3manager.NewDownloader(dbt.S3Session)
 	downloadOptions := &s3.GetObjectInput{
 		Bucket: aws.String(meta.Bucket),
@@ -288,9 +280,10 @@ func (dbt *DBT) S3FetchDescription(meta S3Meta) (description string, err error) 
 // S3FetchTools fetches the list of available tools from S3
 func (dbt *DBT) S3FetchTools(meta S3Meta) (tools []Tool, err error) {
 	tools = make([]Tool, 0)
-
 	uniqueTools := make(map[string]int)
 	svc := s3.New(dbt.S3Session)
+
+	dbt.VerboseOutput("Fetching tool names from %s", meta.Url)
 
 	options := &s3.ListObjectsInput{
 		Bucket:    aws.String(meta.Bucket),

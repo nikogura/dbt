@@ -35,7 +35,9 @@ ListCatalog available tools.
 			log.Fatalf("Error creating DBT object: %s", err)
 		}
 
-		err = dbtObj.FetchCatalog(versions, "")
+		dbtObj.SetVerbose(verbose)
+
+		err = dbtObj.FetchCatalog(versions)
 		if err != nil {
 			fmt.Printf("Error running list: %s\n", err)
 			os.Exit(1)

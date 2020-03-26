@@ -127,7 +127,7 @@ func TestListCatalog(t *testing.T) {
 	for _, tc := range inputs {
 		t.Run(tc.name, func(t *testing.T) {
 
-			err := tc.obj.FetchCatalog(true, tc.homedir)
+			err := tc.obj.FetchCatalog(true)
 			if err != nil {
 				t.Errorf("Error listing tools: %s\n", err)
 			}

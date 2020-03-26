@@ -21,6 +21,7 @@ import (
 )
 
 var versions bool
+var verbose bool
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
@@ -43,4 +44,5 @@ func Execute() {
 
 func init() {
 	RootCmd.PersistentFlags().BoolVarP(&versions, "versions", "v", false, "Show all version information for tools.")
+	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "V", false, "Verbose output")
 }
