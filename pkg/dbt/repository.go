@@ -16,6 +16,7 @@ package dbt
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
@@ -67,7 +68,7 @@ func (dbt *DBT) ToolExists(toolName string) (found bool, err error) {
 	isS3, s3Meta := S3Url(uri)
 
 	if isS3 {
-		return dbt.S3ToolExists(toolName, s3Meta)
+		return dbt.S3ToolExists(s3Meta)
 	}
 
 	client := &http.Client{}
@@ -719,19 +720,18 @@ func S3Url(url string) (ok bool, meta S3Meta) {
 
 // S3FetchFile fetches a file out of S3 instead of using a normal HTTP GET
 func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err error) {
-	// TODO Progress bar causes files to double, which of course changes the checksums, which throws a wrench into the whole system.  Fix it!
-	//headOptions := &s3.HeadObjectInput{
-	//	Bucket: aws.String(meta.Bucket),
-	//	Key:    aws.String(meta.Key),
-	//}
-	//
-	//headSvc := s3.New(dbt.S3Session)
+	headOptions := &s3.HeadObjectInput{
+		Bucket: aws.String(meta.Bucket),
+		Key:    aws.String(meta.Key),
+	}
 
-	//fileMeta, err := headSvc.HeadObject(headOptions)
-	//if err != nil {
-	//	err = errors.Wrapf(err, "failed to get metadata for %s", fileUrl)
-	//	return err
-	//}
+	headSvc := s3.New(dbt.S3Session)
+
+	fileMeta, err := headSvc.HeadObject(headOptions)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to get metadata for %s", fileUrl)
+		return err
+	}
 
 	downloader := s3manager.NewDownloader(dbt.S3Session)
 	downloadOptions := &s3.GetObjectInput{
@@ -739,30 +739,28 @@ func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err 
 		Key:    aws.String(meta.Key),
 	}
 
-	//if !NOPROGRESS {
-	//	// create and start progress bar
-	//	bar := pb.New(int(*fileMeta.ContentLength)).SetUnits(pb.U_BYTES)
-	//	bar.Output = os.Stderr
-	//	bar.Start()
-	//
-	//	buf := &aws.WriteAtBuffer{}
-	//
-	//	_, err = downloader.Download(buf, downloadOptions)
-	//	if err != nil {
-	//		err = errors.Wrapf(err, "unable to download file from %s", fileUrl)
-	//		return err
-	//	}
-	//
-	//	// create proxy reader
-	//	reader := bar.NewProxyReader(bytes.NewBuffer(buf.Bytes()))
-	//
-	//	// and copy from pb reader
-	//	_, _ = io.Copy(outFile, reader)
-	//
-	//	_, err = io.Copy(outFile, bytes.NewReader(buf.Bytes()))
-	//
-	//	return err
-	//}
+	if !NOPROGRESS {
+		// create and start progress bar
+		bar := pb.New(int(*fileMeta.ContentLength)).SetUnits(pb.U_BYTES)
+		bar.Output = os.Stderr
+		bar.Start()
+
+		buf := &aws.WriteAtBuffer{}
+
+		_, err = downloader.Download(buf, downloadOptions)
+		if err != nil {
+			err = errors.Wrapf(err, "unable to download file from %s", fileUrl)
+			return err
+		}
+
+		// create proxy reader
+		reader := bar.NewProxyReader(bytes.NewBuffer(buf.Bytes()))
+
+		// and copy from pb reader
+		_, _ = io.Copy(outFile, reader)
+
+		return err
+	}
 
 	_, err = downloader.Download(outFile, downloadOptions)
 	if err != nil {
@@ -771,11 +769,10 @@ func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err 
 	}
 
 	return err
-
 }
 
 // S3ToolExists detects whether a tool exists in S3 by looking at the top level folder for the tool
-func (dbt *DBT) S3ToolExists(toolName string, meta S3Meta) (found bool, err error) {
+func (dbt *DBT) S3ToolExists(meta S3Meta) (found bool, err error) {
 	svc := s3.New(dbt.S3Session)
 	options := &s3.ListObjectsInput{
 		Bucket:    aws.String(meta.Bucket),
