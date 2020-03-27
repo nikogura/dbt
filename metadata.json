@@ -3,6 +3,7 @@
   "package": "github.com/nikogura/dbt",
   "description": "Dynamic Binary Toolkit - A framework for running self-updating signed binaries from a central, trusted repository.",
   "repository": "http://localhost:8081/artifactory/dbt",
+  "tool-repository": "http://localhost:8081/artifactory/dbt-tools",
   "building": {
     "targets": [
       {

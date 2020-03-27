@@ -16,7 +16,7 @@ CONFIG=$(cat <<EOF
     "truststore": "{{.Repository}}/truststore"
   },
   "tools": {
-    "repository": "{{.Repository}}-tools"
+    "repository": "{{.ToolRepository}}"
   }
 }
 EOF
@@ -52,7 +52,7 @@ TMPDIR=$(mktemp -d)
 
 DOWNLOAD_PATH="$TMPDIR/$FILE"
 
-s3re="https://([A-Za-z-]*\.s3\..*\.amazonaws\.com)"
+s3re="https://([A-Za-z-]+)\.s3\..*\.amazonaws\.com"
 
 if [[ $REPO =~ $s3re ]]; then
   BUCKET=${BASH_REMATCH[1]}
