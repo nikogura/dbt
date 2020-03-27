@@ -1,3 +1,5 @@
+set -e
+
 # URL for your trusted repository
 REPO="{{.Repository}}"
 
@@ -50,7 +52,17 @@ TMPDIR=$(mktemp -d)
 
 DOWNLOAD_PATH="$TMPDIR/$FILE"
 
-curl -sX GET $URL -o $DOWNLOAD_PATH
+s3re="https://([A-Za-z-]*\.s3\..*\.amazonaws\.com)"
+
+if [[ $REPO =~ $s3re ]]; then
+  BUCKET=${BASH_REMATCH[1]}
+  S3URL="s3://${BUCKET}/$VERSION/$OS/$ARCH/$FILE"
+  echo "Downloading dbt from ${S3URL}"
+  aws s3 cp $S3URL $DOWNLOAD_PATH
+else
+  echo "Downloading dbt from ${URL}"
+  curl -sX GET $URL -o $DOWNLOAD_PATH
+fi
 
 if [ $? != 0 ]; then
   echo "Failed to download binary.  Installation aborted."
