@@ -90,7 +90,7 @@ DBT, as you see it here is set up for *my* test repo.  You'll need to make some 
 
 1. Fork the repo.
 
-2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` and `package` lines.  
+2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` `tool-repository`, and `package` lines.  
 
 3. You'll also need to change the package name in go.mod, cmd/dbt/main.go, cmd/boilerplate/main.go, cmd/catalog/main.go cmd/reposerver/main.go and TestPackageGroup in pkg/dbt/dbt_setup_test.go.  Basically you'll need to wire it up so that your fork is referencing itself, not my public repo.  Basic golang stuff.  Don't forget to check your changes into your fork.  (Sorry.  When I work out a good way to make that easier, I will implement it.)
 
@@ -138,9 +138,11 @@ If for some reason you don't want to use the included tools, just remove them fr
 
 [Artifactory Open Source](https://www.jfrog.com/open-source) can be used as a dbt repo.  It works well without auth, or with basic authentication. 
 
-The dbt `reposerver` tool is written entirely in golang.  At present, it's expected to run inside of a VPN or other private network, as it doesn't curently have authentiation support.  Stay tuned.
+The dbt `reposerver` tool is written entirely in golang.  At present, it's expected to run inside of a VPN or other private network, as it doesn't currently have authentication support.  Stay tuned for authentication support.
 
 You can additionally utilize Amazon S3 as a repo server.  Authentication to S3 is assumed to be already in place and leverages the expected configs in ~/.aws.  Credential managers work transparently through `credential_process` as detailed in the AWS docs.
+
+*N.B.* For S3 usage, only Virtual Host based S3 urls are supported.  Why?  Because AWS is deprecating the path-style access to buckets. https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/ 
 
 # Configuration
 
