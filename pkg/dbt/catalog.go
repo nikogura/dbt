@@ -276,7 +276,7 @@ func (dbt *DBT) S3FetchDescription(meta S3Meta) (description string, err error) 
 	return description, err
 }
 
-// S3FetchTools fetches the list of available tools from S3
+// S3FetchToolNames fetches the list of available tools from S3
 func (dbt *DBT) S3FetchToolNames(meta S3Meta) (tools []Tool, err error) {
 	tools = make([]Tool, 0)
 	svc := s3.New(dbt.S3Session)
