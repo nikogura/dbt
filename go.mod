@@ -9,7 +9,7 @@ require (
 	github.com/johannesboyne/gofakes3 v0.0.0-20200218152459-de0855a40bc1
 	github.com/mattn/go-runewidth v0.0.3 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/nikogura/gomason v0.0.0-20200112201141-917e5211f34f
+	github.com/nikogura/gomason v0.0.0-20200327164818-b96f2ebf16f4
 	github.com/orion-labs/jwt-ssh-agent-go v0.0.0-20200108200620-50a51684897c
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/pkg/errors v0.9.1
