@@ -45,27 +45,26 @@ It's all up to you.  DBT is a framework, and frameworks are all about *enablemen
 ```mermaid
 sequenceDiagram
     participant DBT
-    participant Catalog
+    participant Tool
     participant Repository
-    DBT-->>Repository: Get truststore
-    Repository-->DBT: Return truststore
+    DBT-->>Repository: Get truststore from Repository (public keys of trusted tool authors
     DBT-->>Repository: What's latest version of dbt, and what's it's sha256 checksum?
     loop Self Integrity Check
         DBT->>DBT: Calculate my own checksum
         DBT->>DBT: Compare against checksum from Repo
         DBT->>DBT: Verify signature of self
     end
-    Note over DBT,Repository: If validation fails, download latest version, lather, rinse, repeat
-    DBT-->>Repository: Is there a tool called 'catalog'?
-    DBT-->>Repository: What's the latest version of 'catalog', and what's it's sha256 checksum?
+    Note over DBT,Repository: If validation fails, download latest version<br>execute it with the original arguments, lather, rinse, repeat
+    DBT-->>Repository: Is there a tool called <tool name>?
+    DBT-->>Repository: What's the latest version of <tool name>, and what's it's sha256 checksum?
     loop Tool Integrity Check
-        DBT->>Catalog: Is 'catalog' on disk?
+        DBT->>Tool: Is <tool name> already on disk?
         Note over DBT,Repository: If not, download it, it's checksum, and it's signature
-        DBT->>Catalog: Calculate 'catalog' checksum
-        DBT->>Catalog: Compare against checksum from Repository
-        DBT->>Catalog: Verify signature of `catalog`
+        DBT->>Tool: Calculate sha256 checksum of <tool name>
+        DBT->>Tool: Compare against checksum from Repository
+        DBT->>Tool: Verify signature of <tool name>
     end
-    DBT-->>Catalog: Run catalog with provided arguments
+    DBT-->>Tool: Run <tool name> with provided arguments, letting the Tool take DBT's pid in the process table.
 
 ```
         
