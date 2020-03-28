@@ -63,15 +63,18 @@ sequenceDiagram
         DBT->>Catalog: Calculate `catalog` checksum
         DBT->>Catalog: Compare against checksum from Repository
         DBT->>Catalog: Verify signature of `catalog`
-    DBT-->>Catalog: Run catalog with provided arguments (stripping off anything before the `--`)
+    DBT-->>Catalog: Run catalog with provided arguments
 
 ```
         
-So, from the command line, running: 
+So, from the command line, if you were to run: 
 
     dbt -V -- catalog list -v
     
-runs `dbt` in verbose mode, and `catalog` with flag `-v` and argument `list`
+You would run `dbt` in verbose mode, and `catalog` with flag `-v` and argument `list`
+
+The `--` tells the shell it's done parsing flags and options.  Anything to the right of it are arguments, the first of which is the name of the tool to run, and anything after that gets passed into the tool as the tool's arguments.  Slightly wonky, but very *very* useful.
+
 
 # Why?
 
