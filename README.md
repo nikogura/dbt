@@ -64,7 +64,8 @@ sequenceDiagram
         DBT->>Tool: Compare against checksum from Repository.
         DBT->>Tool: Verify signature of <tool name>.
     end
-    DBT-->>Tool: Run <tool name> with provided arguments, DBT exists.  Tool takes DBT's pid in the process table.
+    DBT-->>Tool: Run <tool name> with provided arguments.
+    Note over DBT,Repository: DBT exits.  Tool takes DBT's pid in the process table.
 
 ```
         
