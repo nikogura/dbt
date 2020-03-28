@@ -49,20 +49,22 @@ sequenceDiagram
     participant Repository
     DBT-->>Repository: Get truststore
     Repository-->DBT: Return truststore
-    DBT-->>Repository: What's latest version of ```dbt```, and what's it's sha256 checksum?
+    DBT-->>Repository: What's latest version of dbt, and what's it's sha256 checksum?
     loop Self Integrity Check
         DBT->>DBT: Calculate my own checksum
         DBT->>DBT: Compare against checksum from Repo
         DBT->>DBT: Verify signature of self
-    Note right of DBT: If validation fails, download latest version, lather, rinse, repeat
-    DBT-->>Repository: Is there a tool called `catalog`?
-    DBT-->>Repository: What's the latest version of `catalog`, and what's it's sha256 checksum?
+    end
+    Note over DBT,Catalog,Repository: If validation fails, download latest version, lather, rinse, repeat
+    DBT-->>Repository: Is there a tool called 'catalog'?
+    DBT-->>Repository: What's the latest version of 'catalog', and what's it's sha256 checksum?
     loop Tool Integrity Check
-        DBT->>Catalog: Is `catalog` on disk?
-        Note right of Catalog: If not, download it, it's checksum, and it's signature
-        DBT->>Catalog: Calculate `catalog` checksum
+        DBT->>Catalog: Is 'catalog' on disk?
+        Note over DBT,Catalog,Repository: If not, download it, it's checksum, and it's signature
+        DBT->>Catalog: Calculate 'catalog' checksum
         DBT->>Catalog: Compare against checksum from Repository
         DBT->>Catalog: Verify signature of `catalog`
+    end
     DBT-->>Catalog: Run catalog with provided arguments
 
 ```
