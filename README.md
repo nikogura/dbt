@@ -16,25 +16,59 @@ A framework for running self-updating, signed binary tools from a central, trust
 
 What kind of tools you say?  Anything that can be compiled into a stand-alone binary.
 
-Tools are always up to date (unless you specify an older version), as is `dbt` itself.  How?  _magic_. 
+Tools are always up to date (unless you specify an older version), as is `dbt` itself.  How?  *magic*. 
 
 # Overview
 
-DBT consists of a binary ```dbt``` and a config file.  The ```dbt``` binary checks a trusted repository for tools, which are themselves signed binaries.
+DBT consists of a binary ```dbt``` a config file, and a cache located at ```~/.dbt```.  The ```dbt``` binary checks a trusted repository for tools, which are themselves signed binaries.
 
-Tools are automatically downloaded, and verified for checksum and signature, then if they pass, they're run. e.g.
+Tools are automatically downloaded, and verified for checksum and signature, then if they pass, they're run.
 
-The DBT binary itself auto-updates from the trusted repository, and if it's checksum and signature checks out, it executes a 'Single White Female' on itself, replacing itself on the fly with the new version and then running the downloaded tool.
+The DBT binary itself auto-updates from the repository, and if it's checksum and signature verifies, it overwrites itself on the filesystem, then calls the new binary with the original arguments, letting the child overwrite the parent in the process table..  The new binary verifies itself against the repository, then download the tool indicated, performing the same cycle - check what's on disk, verify checksum and signature, replacing it if needed, and then executing the tool - again overwriting itself in the process table.
 
-Tools can be anything and do anything- the only limit is the imagination and skills of the author.  Due to the nature of the Go language, everything compiles down to a single binary, and you can easily cross-compile for other OSes and Architectures.
+It's rather mind-bending and recursive, but what you get is an always up to date tool with built in authorship and integrity checks.
 
-This allows the author to make tools that do things that can be truly 'write once, run anywhere' - for any desired degree of 'anywhere'.  Furthermore, the tools and dbt itself are self-updating, so every time you use it, you're using the latest version available.  
+Tools can be anything and do anything- the only limit is the imagination and skills of the author.  DBT is writen in, and inspired by Golang, where everything compiles down to a single binary, and you can easily cross-compile for other OSes and Architectures.
+
+This allows the author to make tools that do things that can be truly 'write once, run anywhere' - for any desired degree of 'anywhere'.  Furthermore, the tools and ```dbt``` itself are self-updating, so every time you use it, you're using the latest version available.  
 
 For backwards compatibility and emergencies, you can also specify the version of a tool, and use any old version in your trusted repository.  The default, however will be to get and use the latest.
 
-If the trusted repo is offline, or unavailable, you can choose to degrade gracefully to using tools already downloaded.  
+If the trusted repo is offline, or unavailable, you can choose to degrade gracefully into 'offline mode' and use tools that are already downloaded to disk.  
 
-You can also choose to limit where your tools can run.  It's all up to you.  DBT is a framework, and frameworks are all about *enablement*. 
+As an added bonus, the Tools are programs in and of themselves.  There's no difference between a binary program running by itself and one run via ```dbt```.  All ```dbt``` does is download a program, verify it for integrity and authorship, and then exec it with the arguments you provide.
+
+It's all up to you.  DBT is a framework, and frameworks are all about *enablement*. 
+
+# Visual
+
+sequenceDiagram
+    participant DBT
+    participant Catalog
+    participant Repository
+    DBT-->>Repository: Get truststore
+    Repository-->DBT: Return truststore
+    DBT-->>Repository: What's latest version of ```dbt```, and what's it's sha256 checksum?
+    loop Self Integrity Check
+        DBT->>DBT: Calculate my own checksum
+        DBT->>DBT: Compare against checksum from Repo
+        DBT->>DBT: Verify signature of self
+    Note right of DBT: If validation fails, download latest version, lather, rinse, repeat
+    DBT-->>Repository: Is there a tool called `catalog`?
+    DBT-->>Repository: What's the latest version of `catalog`, and what's it's sha256 checksum?
+    loop Tool Integrity Check
+        DBT->>Catalog: Is `catalog` on disk?
+        Note right of Catalog: If not, download it, it's checksum, and it's signature
+        DBT->>Catalog: Calculate `catalog` checksum
+        DBT->>Catalog: Compare against checksum from Repository
+        DBT->>Catalog: Verify signature of `catalog`
+    DBT-->>Catalog: Run catalog with provided arguments (stripping off anything before the `--`)
+        
+So, from the command line, running: 
+
+    dbt -V -- catalog list -v
+    
+runs `dbt` in verbose mode, and `catalog` with flag `-v` and argument `list`
 
 # Why?
 
@@ -76,47 +110,13 @@ Of course, if your command has no flags itself, only positional arguments, you c
 
 DBT is as secure as the repository you trust to hold the binaries, and the degree to which you protect the signing keys.  It will ensure, come hell or high water that every bit of the binary downloaded is what it aught to be, and that the signature is one you've decided to trust.  If it can't do that, it'll stop- immediately and scream bloody murder.  
 
-You can make the repo wide open, and give everyone a copy of a non-encrypted key and it'll work.  It's just not recommended.  I just build the tools.  You choose how to use them.
+You can make the repo wide open, and give everyone a copy of a non-encrypted key and it'll work.  It's just not recommended.  
+
+I just build the tools.  You choose how to use them.
 
 *"If you aim the gun at your foot and pull the trigger, it's UNIX's job to 
 ensure reliable delivery of the bullet to where you aimed the gun (in
 this case, Mr. Foot)."* -- Terry Lambert, FreeBSD-Hackers mailing list.
-
-# Installation
-
-DBT, as you see it here is set up for *my* test repo.  You'll need to make some changes to make it work in your infrastructure.   Once you build it, it's a binary, and you can distribute it any way you please.  As usual though, I've made it easy using a tool called `gomason`. Gomason, while plenty useful on it's own as a CI system in your pocket, was really written to support building, testing, and publishing DBT binaries.
-
-## Installation Steps
-
-1. Fork the repo.
-
-2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` `tool-repository`, and `package` lines.  
-
-3. You'll also need to change the package name in go.mod, cmd/dbt/main.go, cmd/boilerplate/main.go, cmd/catalog/main.go cmd/reposerver/main.go and TestPackageGroup in pkg/dbt/dbt_setup_test.go.  Basically you'll need to wire it up so that your fork is referencing itself, not my public repo.  Basic golang stuff.  Don't forget to check your changes into your fork.  (Sorry.  When I work out a good way to make that easier, I will implement it.)
-
-4. Install `gomason` via `go get github.com/nikogura/gomason`. Then run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT.
-
-The details of what all is supported in `metadata.json` can be found in [https://github.com/nikogura/gomason](https://github.com/nikogura/gomason).  
-
-If you run into trouble, run `gomason publish -v` to see what went wrong.  It's wordy, but fairly precise about what it's trying to do.  Typically errors stem from either bad perms in your repository, or typos in `metadata.json`.
-
-If your `metadata.json` has the following:
-
-    "repository": "http://localhost:8081/artifactory/dbt"
-    
-Then you should see a file `http://localhost:8081/artifactory/dbt/install_dbt.sh`, which you can run with:
-
-        bash -c "$(curl http://localhost:8081/artifactory/dbt/install_dbt.sh)" 
-        
-And voila!  Your DBT is now installed.
-
-You will, however need to populate the `truststore` file, which by default, with the above config would be located at `http://localhost:8081/artifactory/dbt/truststore`.  This file contains the public keys of the entities you trust to create DBT binaries.  You can edit this file by hand, it's just a bunch of PEM data squashed together.
-
-_AUTHOR'S NOTE: When I personally maintain an internal fork, I set up a clone of the fork with 2 upstreams: 'origin' is my internal fork, and 'upstream' which is the public github.com/nikogura/dbt.  Then I make all my internal changes as required, and when upstream changes, do a `git pull upstream ...`.  Usually the only changes/conflicts are in the `metadata.json`._  
-
-_Correct the conflicts in `metadata.json`, commit, and `git push origin master` and my CI system takes it from there.  It sounds complicated, and it's certainly not trivial, but it's been very reliable to date._
-
-_Rest assured, when I come across a better method, I will not keep it to myself._
 
 # Included Tools
 
@@ -143,6 +143,46 @@ The dbt `reposerver` tool is written entirely in golang.  At present, it's expec
 You can additionally utilize Amazon S3 as a repo server.  Authentication to S3 is assumed to be already in place and leverages the expected configs in ~/.aws.  Credential managers work transparently through `credential_process` as detailed in the AWS docs.
 
 *N.B.* For S3 usage, only Virtual Host based S3 urls are supported.  Why?  Because AWS is deprecating the path-style access to buckets. https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/ 
+
+# Installation
+
+Unless you want to use ```dbt``` exactly as I wrote it, you'll need to fork the codebase.  DBT, as you see it here is set up for *my* tests.  You may want to make some changes to make it work in your infrastructure.   Once you build it, it's a binary, and you can distribute it any way you please.  
+
+Mainly you'll need to change the package declarations so that they match your fork, not mine.  When I work out a cleaner way to handle this I will implement it.
+
+As usual though, I've made it easy using a tool called `gomason`. Gomason, while plenty useful on it's own as a CI system in your pocket, was really written to support building, testing, and publishing DBT binaries.
+
+## Installation Steps
+
+1. Fork the repo.
+
+2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` `tool-repository`, and `package` lines.  
+
+3. You'll also need to change the package name in go.mod, cmd/dbt/main.go, cmd/boilerplate/main.go, cmd/catalog/main.go cmd/reposerver/main.go and TestPackageGroup in pkg/dbt/dbt_setup_test.go.  Essentially, you'll need to wire it up so that your fork is referencing itself, not my public repo.  Basic golang stuff.  Don't forget to check your changes into your fork.
+
+4. Install `gomason` via `go get github.com/nikogura/gomason`. Then run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT.
+
+The details of what all is supported in `metadata.json` can be found in [https://github.com/nikogura/gomason](https://github.com/nikogura/gomason).  
+
+If you run into trouble, run `gomason publish -v` to see what went wrong.  It's wordy, but fairly precise about what it's trying to do.  Typically errors stem from either bad perms in your repository, or typos in `metadata.json`.
+
+If your `metadata.json` has the following:
+
+    "repository": "http://localhost:8081/artifactory/dbt"
+    
+Then you should see a file `http://localhost:8081/artifactory/dbt/install_dbt.sh`, which you can run with:
+
+        bash -c "$(curl http://localhost:8081/artifactory/dbt/install_dbt.sh)" 
+        
+And voila!  Your DBT is now installed.
+
+You will, however need to populate the `truststore` file, which by default, with the above config would be located at `http://localhost:8081/artifactory/dbt/truststore`.  This file contains the PEM encoded public keys of the entities you trust to create DBT binaries.  You can edit this file by hand, it's just a bunch of PEM data squashed together.
+
+_AUTHOR'S NOTE: When I personally maintain an internal fork, I set up a clone of the fork with 2 upstreams: 'origin' is my internal fork, and 'upstream' which is the public github.com/nikogura/dbt.  Then I make all my internal changes as required, and when upstream changes, do a `git pull upstream ...`.  Usually the only changes/conflicts are in the `metadata.json`._  
+
+_Correct the conflicts in `metadata.json`, commit, and `git push origin master` and my CI system takes it from there.  It sounds complicated, and it's certainly not trivial, but it's been very reliable to date._
+
+_Rest assured, when I come across a better method, I will not keep it to myself._
 
 # Configuration
 
