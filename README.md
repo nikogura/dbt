@@ -60,9 +60,9 @@ sequenceDiagram
     loop Tool Integrity Check
         DBT->>Tool: Is <tool name> already on disk?
         Note over DBT,Repository: If not, download it, it's checksum, and it's signature.
-        DBT->>Tool: Calculate sha256 checksum of <tool name>.
-        DBT->>Tool: Compare against checksum from Repository.
-        DBT->>Tool: Verify signature of <tool name>.
+        DBT->>Tool: Calculate sha256 checksum of Tool.
+        DBT->>Tool: Compare against downloaded checksum.
+        DBT->>Tool: Verify signature of Tool.
     end
     DBT-->>Tool: Run <tool name> with provided arguments.
     Note over DBT,Repository: DBT exits.  Tool takes DBT's pid in the process table.
