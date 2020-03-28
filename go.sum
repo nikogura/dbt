@@ -71,6 +71,8 @@ github.com/nikogura/gomason v0.0.0-20200112201141-917e5211f34f h1:PIVyw2a6mkx/rH
 github.com/nikogura/gomason v0.0.0-20200112201141-917e5211f34f/go.mod h1:s47+QJcdwzxPq+yc9t928sBjbjbvFHfznvK6luglVJI=
 github.com/nikogura/gomason v0.0.0-20200327164818-b96f2ebf16f4 h1:30I1Sjcaw9DZ+y7N5o9IuCPDmcH++bhwzeV2vZZnI0Y=
 github.com/nikogura/gomason v0.0.0-20200327164818-b96f2ebf16f4/go.mod h1:FgID7/IlsDIhEySC+lnZUQjeq/VIbb7hSvATvhIYNjE=
+github.com/nikogura/gomason v0.0.0-20200328070137-41ccc1964840 h1:l6jBFbMS7qrZi3KKHKjWtGPaQ1yCXLLQ7axVKNDbxpA=
+github.com/nikogura/gomason v0.0.0-20200328070137-41ccc1964840/go.mod h1:3fhmPa/nPjchD4vh0Khy3KO3+c/gHyAn973UMMLyjdc=
 github.com/orion-labs/jwt-ssh-agent-go v0.0.0-20200108200620-50a51684897c h1:gELHAk9IJQxzoRqqTkwLmwGQQlI5jKnTdZDfqhZZxoA=
 github.com/orion-labs/jwt-ssh-agent-go v0.0.0-20200108200620-50a51684897c/go.mod h1:VyukMdJzIiMSglQo/443OwZkUWwLbYtDt32A/eovsy8=
 github.com/pelletier/go-toml v1.2.0 h1:T5zMGML61Wp+FlcbWjRDT7yAxhJNAiPPLOFECq181zc=
@@ -129,6 +131,8 @@ github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXf
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/stretchr/testify v1.4.0 h1:2E4SXV/wtOkTonXsotYi4li6zVWxYlZuYNCXe9XRJyk=
 github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81PSLYec5m4=
+github.com/stretchr/testify v1.5.1 h1:nOGnQDM7FYENwehXlg/kFVnos3rEvtKTjRvOWSzb6H4=
+github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=
 github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
 golang.org/x/crypto v0.0.0-20181203042331-505ab145d0a9 h1:mKdxBk7AujPs8kU4m80U72y/zjbZ3UcXC7dClwKbUI0=

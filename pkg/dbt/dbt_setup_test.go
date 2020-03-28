@@ -663,6 +663,8 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 		log.Fatalf("Failed to get current working directory: %s", err)
 	}
 
+	gm := gomason.Gomason{Config: gomason.UserConfig{}}
+
 	lang, err := gomason.GetByName(meta.GetLanguage())
 	if err != nil {
 		log.Fatalf("Invalid language: %v", err)
@@ -694,12 +696,12 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 		log.Fatalf("build failed: %s", err)
 	}
 
-	err = gomason.HandleArtifacts(meta, workDir, cwd, true, false, true)
+	err = gm.HandleArtifacts(meta, workDir, cwd, true, false, true)
 	if err != nil {
 		log.Fatalf("signing failed: %s", err)
 	}
 
-	err = gomason.HandleExtras(meta, workDir, cwd, true, false)
+	err = gm.HandleExtras(meta, workDir, cwd, true, false)
 	if err != nil {
 		log.Fatalf("Extra artifact processing failed: %s", err)
 	}
