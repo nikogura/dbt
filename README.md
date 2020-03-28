@@ -40,7 +40,7 @@ As an added bonus, the Tools are programs in and of themselves.  There's no diff
 
 It's all up to you.  DBT is a framework, and frameworks are all about *enablement*. 
 
-# Diagram (requires (mermaid extension)[https://chrome.google.com/webstore/detail/github-%20-mermaid/goiiopgdnkogdbjmncgedmgpoajilohe?hl=en])
+# Diagram (requires [mermaid extension](https://chrome.google.com/webstore/detail/github-%20-mermaid/goiiopgdnkogdbjmncgedmgpoajilohe?hl=en))
 
 ```mermaid
 sequenceDiagram
