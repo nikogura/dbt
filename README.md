@@ -47,24 +47,24 @@ sequenceDiagram
     participant DBT
     participant Tool
     participant Repository
-    DBT-->>Repository: Get truststore from Repository (public keys of trusted tool authors
+    DBT-->>Repository: Get truststore from Repository (public keys of trusted tool authors).
     DBT-->>Repository: What's latest version of dbt, and what's it's sha256 checksum?
-    loop Self Integrity Check
-        DBT->>DBT: Calculate my own checksum
-        DBT->>DBT: Compare against checksum from Repo
-        DBT->>DBT: Verify signature of self
+    loop DBT Integrity Check
+        DBT->>DBT: Calculate my own checksum.
+        DBT->>DBT: Compare against checksum from Repository.
+        DBT->>DBT: Verify signature of DBT itself.
     end
-    Note over DBT,Repository: If validation fails, download latest version<br>execute it with the original arguments, lather, rinse, repeat
+    Note over DBT,Repository: If validation fails, download latest version<br>execute it with the original arguments,original process exits.<br>child takes over parent's pid.  Lather, rinse, and repeat.
     DBT-->>Repository: Is there a tool called <tool name>?
     DBT-->>Repository: What's the latest version of <tool name>, and what's it's sha256 checksum?
     loop Tool Integrity Check
         DBT->>Tool: Is <tool name> already on disk?
-        Note over DBT,Repository: If not, download it, it's checksum, and it's signature
-        DBT->>Tool: Calculate sha256 checksum of <tool name>
-        DBT->>Tool: Compare against checksum from Repository
-        DBT->>Tool: Verify signature of <tool name>
+        Note over DBT,Repository: If not, download it, it's checksum, and it's signature.
+        DBT->>Tool: Calculate sha256 checksum of <tool name>.
+        DBT->>Tool: Compare against checksum from Repository.
+        DBT->>Tool: Verify signature of <tool name>.
     end
-    DBT-->>Tool: Run <tool name> with provided arguments, letting the Tool take DBT's pid in the process table.
+    DBT-->>Tool: Run <tool name> with provided arguments, DBT exists.  Tool takes DBT's pid in the process table.
 
 ```
         
