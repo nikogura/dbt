@@ -55,12 +55,12 @@ sequenceDiagram
         DBT->>DBT: Compare against checksum from Repo
         DBT->>DBT: Verify signature of self
     end
-    Note over DBT,Catalog,Repository: If validation fails, download latest version, lather, rinse, repeat
+    Note over DBT,Repository: If validation fails, download latest version, lather, rinse, repeat
     DBT-->>Repository: Is there a tool called 'catalog'?
     DBT-->>Repository: What's the latest version of 'catalog', and what's it's sha256 checksum?
     loop Tool Integrity Check
         DBT->>Catalog: Is 'catalog' on disk?
-        Note over DBT,Catalog,Repository: If not, download it, it's checksum, and it's signature
+        Note over DBT,Repository: If not, download it, it's checksum, and it's signature
         DBT->>Catalog: Calculate 'catalog' checksum
         DBT->>Catalog: Compare against checksum from Repository
         DBT->>Catalog: Verify signature of `catalog`
