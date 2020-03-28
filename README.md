@@ -40,12 +40,9 @@ As an added bonus, the Tools are programs in and of themselves.  There's no diff
 
 It's all up to you.  DBT is a framework, and frameworks are all about *enablement*. 
 
-# Diagram 
+# Diagram (requires Mermaid)
 
-<script src="mermaid.min.js"></script>
-<script>mermaid.initialize({startOnLoad:true});</script>
-
-<div class="mermaid">
+```mermaid
 sequenceDiagram
     participant DBT
     participant Catalog
@@ -68,7 +65,7 @@ sequenceDiagram
         DBT->>Catalog: Verify signature of `catalog`
     DBT-->>Catalog: Run catalog with provided arguments (stripping off anything before the `--`)
 
-</div>
+```
         
 So, from the command line, running: 
 
