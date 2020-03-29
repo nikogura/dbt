@@ -24,7 +24,25 @@ DBT consists of a binary ```dbt``` a config file, and a cache located at ```~/.d
 
 Tools are automatically downloaded, and verified for checksum and signature, then if they pass, they're run.
 
-The DBT binary itself auto-updates from the repository, and if it's checksum and signature verifies, it overwrites itself on the filesystem, then calls the new binary with the original arguments, letting the child overwrite the parent in the process table..  The new binary verifies itself against the repository, then download the tool indicated, performing the same cycle - check what's on disk, verify checksum and signature, replacing it if needed, and then executing the tool - again overwriting itself in the process table.
+The DBT binary, when run:
+
+  * Fetches the latest truststore from the Repository, verifies its checksum.
+  
+  * Checks the repository to see what the latest version of `dbt` is.
+  
+  * Compares its own checksum against the latest version's checksum.
+  
+  * Auto-updates itself by downloading the latest version, and if the new version's checksum and signature verifies, it overwrites itself on the filesystem, then calls the new binary with the original arguments, letting the child overwrite the parent in the process table.  
+  
+  * The new binary verifies itself in the same manner.  Presumably at this point, it is the latest version and we can continue.
+  
+  * Then `dbt` checks the filesystem for the tool indicated, performing the same cycle.
+  
+  * Checks the Tool on disk, verify checksum against what's in the repository - replacing it if needed.
+  
+  * Verifies the signature of the Tool - replaces if needed.
+  
+  * Executes the Tool with the provided arguments, letting the Tool overwrite DBT in the process table, to continue on it's own merry way.
 
 It's rather mind-bending and recursive, but what you get is an always up to date tool with built in authorship and integrity checks.
 
