@@ -76,7 +76,7 @@ sequenceDiagram
         DBT->>DBT: Compare calculated checksum against downloaded checksum.
         DBT->>DBT: Verify signature of DBT itself.
     end
-    Note over DBT,Repository: If validation fails, download latest version<br>execute it with the original arguments,original process exits.<br>child takes over parent's pid.  Lather, rinse, and repeat.
+    Note over DBT,Repository: If validation fails, download latest version.<br>Validate that, and if it passes, execute it with the original arguments,<br>original process exits.<br>child takes over parent's pid.  Lather, rinse, and repeat.
     DBT-->>Repository: Is there a tool called <tool name>?
     DBT-->>Repository: What's the latest version of <tool name>, and what's it's sha256 checksum?
     loop Tool Integrity Check
