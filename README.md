@@ -174,14 +174,7 @@ You can additionally utilize Amazon S3 as a repo server.  Authentication to S3 i
 *N.B.* For S3 usage, only Virtual Host based S3 urls are supported.  Why?  Because AWS is deprecating the path-style access to buckets. https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/ 
 
 # Installation
-
-Unless you want to use ```dbt``` exactly as I wrote it, you'll need to fork the codebase.  DBT, as you see it here is set up for *my* tests.  You may want to make some changes to make it work in your infrastructure.   Once you build it, it's a binary, and you can distribute it any way you please.  
-
-Mainly you'll need to change the package declarations so that they match your fork, not mine.  When I work out a cleaner way to handle this I will implement it.
-
-As usual though, I've made it easy using a tool called `gomason`. Gomason, while plenty useful on it's own as a CI system in your pocket, was really written to support building, testing, and publishing DBT binaries.
-
-## Installation 
+The easiest way to install `dbt` is via a tool called `gomason`. You can build via `go build` and move the files any which way you like, but `gomason` makes it easy.
 
 If you don't want to make any changes to the code or tools:
 
