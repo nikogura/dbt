@@ -28,7 +28,11 @@ The DBT binary itself auto-updates from the repository, and if it's checksum and
 
 It's rather mind-bending and recursive, but what you get is an always up to date tool with built in authorship and integrity checks.
 
-Tools can be anything and do anything- the only limit is the imagination and skills of the author.  DBT is writen in, and inspired by Golang, where everything compiles down to a single binary, and you can easily cross-compile for other OSes and Architectures.
+Tools can be anything and do anything- the only limit is the imagination and skills of the author.  DBT is writen in, and inspired by Golang, where everything compiles down to a single binary, and you can easily cross-compile for other OSes and Architectures, but you don't have to use golang to use `dbt`.
+
+A Tool can be anything that is contained in a single file, and can have a 'detatched signature'.  Since you can digitally 'sign' any digital file, anything completely self contained in a single file is good to go.  Prefer Python?  Build your stuff with PyInstaller or PyOxidizer and DBT will distribute it to your users.  
+
+You could even have a bash script, signed by a trusted source, in a repo that DBT is configured to trust, and it will work.  Pretty cool huh?
 
 This allows the author to make tools that do things that can be truly 'write once, run anywhere' - for any desired degree of 'anywhere'.  Furthermore, the tools and ```dbt``` itself are self-updating, so every time you use it, you're using the latest version available.  
 
@@ -90,7 +94,6 @@ Sometimes you want to be a _user_ of a tool, and not it's _author_ or _maintaine
 
 Are you on the latest version?  What is the latest version?  Do you need to upgrade?  How?  Will the version you have even work?  How do you know when you need a new version? These are questions that sometimes you'd rather not have to ask.  They're also questions that, odds are, the author of the tool is already tired of answering.  Why not let the machine handle it for you?
 
-While originally designed for Golang binaries, you can use anything that is a single file, and can have a 'detatched signature'.  Since you can digitally 'sign' any digital file, anything completely self contained in a single file is good to go.  Prefer Python?  Build your stuff with PyInstaller and DBT will distribute it to your users.  You could even have a bash script, signed by a trusted source, in a repo that DBT is configured to trust, and it will work.  Pretty cool huh?
 
 DBT is doing exactly what you would do, if you had time, resources, and face it, _interest_ in doing it all by hand in a secure fashion. 
 
