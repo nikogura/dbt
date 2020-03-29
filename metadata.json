@@ -69,55 +69,55 @@
       },
       {
         "src": "catalog-description.txt",
-        "dst": "{{.Repository}}-tools/catalog/{{.Version}}/description.txt",
+        "dst": "{{.ToolRepository}}/catalog/{{.Version}}/description.txt",
         "sig": true,
         "checksums": true
       },
       {
         "src": "catalog_darwin_amd64",
-        "dst": "{{.Repository}}-tools/catalog/{{.Version}}/darwin/amd64/catalog",
+        "dst": "{{.ToolRepository}}/catalog/{{.Version}}/darwin/amd64/catalog",
         "sig": true,
         "checksums": true
       },
       {
         "src": "catalog_linux_amd64",
-        "dst": "{{.Repository}}-tools/catalog/{{.Version}}/linux/amd64/catalog",
+        "dst": "{{.ToolRepository}}/catalog/{{.Version}}/linux/amd64/catalog",
         "sig": true,
         "checksums": true
       },
       {
         "src": "boilerplate-description.txt",
-        "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/description.txt",
+        "dst": "{{.ToolRepository}}/boilerplate/{{.Version}}/description.txt",
         "sig": true,
         "checksums": true
       },
       {
         "src": "boilerplate_darwin_amd64",
-        "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/darwin/amd64/boilerplate",
+        "dst": "{{.ToolRepository}}/boilerplate/{{.Version}}/darwin/amd64/boilerplate",
         "sig": true,
         "checksums": true
       },
       {
         "src": "boilerplate_linux_amd64",
-        "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/linux/amd64/boilerplate",
+        "dst": "{{.ToolRepository}}/boilerplate/{{.Version}}/linux/amd64/boilerplate",
         "sig": true,
         "checksums": true
       },
       {
         "src": "reposerver-description.txt",
-        "dst": "{{.Repository}}-tools/reposerver/{{.Version}}/description.txt",
+        "dst": "{{.ToolRepository}}/reposerver/{{.Version}}/description.txt",
         "sig": true,
         "checksums": true
       },
       {
         "src": "reposerver_darwin_amd64",
-        "dst": "{{.Repository}}-tools/reposerver/{{.Version}}/darwin/amd64/reposerver",
+        "dst": "{{.ToolRepository}}/reposerver/{{.Version}}/darwin/amd64/reposerver",
         "sig": true,
         "checksums": true
       },
       {
         "src": "reposerver_linux_amd64",
-        "dst": "{{.Repository}}-tools/reposerver/{{.Version}}/linux/amd64/reposerver",
+        "dst": "{{.ToolRepository}}/reposerver/{{.Version}}/linux/amd64/reposerver",
         "sig": true,
         "checksums": true
       }

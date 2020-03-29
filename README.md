@@ -180,13 +180,13 @@ If you don't want to make any changes to the code or tools:
 
 1. Fork the repo.
 
-2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` `tool-repository`, and `package` lines.  
+2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` and `tool-repository` lines.  
 
 3. Install `gomason` via `go get github.com/nikogura/gomason`. Then run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT together with the tools `catalog`, `boilerplate`, and `reposerver`.
 
 4. Run the installer you built. It'll be found in `<repo>/install_dbt.sh`.
 
-5. Verify installation by running: `dbt catalog list` .
+5. Verify installation by running: `dbt catalog list`.
 
 ## Customization Steps
 
@@ -198,7 +198,7 @@ To customise:
 
 1. Fork the repo.
 
-2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` `tool-repository`, and `package` lines.  
+2. Change the `metadata.json` file to reflect your own repository setup and preferences.  You need to change the `repository`, `tool-repository`, and `package` lines.  
 
 3. You'll also need to change the package name in go.mod, cmd/dbt/main.go, cmd/boilerplate/main.go, cmd/catalog/main.go cmd/reposerver/main.go and TestPackageGroup in pkg/dbt/dbt_setup_test.go.  Essentially, you'll need to wire it up so that your fork is referencing itself, not my public repo.  Basic golang stuff.  Don't forget to check your changes into your fork.
 
