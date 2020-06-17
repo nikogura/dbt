@@ -70,9 +70,9 @@ URL="$REPO/$VERSION/$OS/$ARCH/$FILE"
 
 echo "Installing from $URL"
 
-TMPDIR=$(mktemp -d)
+TDIR=$(mktemp -d)
 
-DOWNLOAD_PATH="$TMPDIR/$FILE"
+DOWNLOAD_PATH="$TDIR/$FILE"
 
 USERNAME=$($USERNAMEFUNC)
 PASSWORD=$($PASSWORDFUNC)
@@ -93,6 +93,6 @@ else
 
 fi
 
-rm -r $TMPDIR
+rm -r $TDIR
 
 echo "Installation complete.

@@ -48,9 +48,9 @@ URL="$REPO/$VERSION/$OS/$ARCH/$FILE"
 
 echo "Installing from $URL"
 
-TMPDIR=$(mktemp -d)
+TDIR=$(mktemp -d)
 
-DOWNLOAD_PATH="$TMPDIR/$FILE"
+DOWNLOAD_PATH="$TDIR/$FILE"
 
 s3re="https://([A-Za-z-]+)\.s3\..*\.amazonaws\.com"
 
@@ -78,6 +78,6 @@ else
 
 fi
 
-rm -r $TMPDIR
+rm -r $TDIR
 
 echo "Installation complete."
