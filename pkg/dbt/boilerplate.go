@@ -12,6 +12,71 @@ import (
 	"time"
 )
 
+// ERR_TEMPLATE_NOT_FOUND default error prefix for when templates are not found
+const ERR_TEMPLATE_NOT_FOUND = "template not found"
+
+// GITIGNORE_TEMPLATE_NAME internal name for template that produces .gitignore
+const GITIGNORE_TEMPLATE_NAME = "gitignore"
+
+// METADATA_TEMPLATE_NAME internal name template that produces metadata.json
+const METADATA_TEMPLATE_NAME = "metadata"
+
+// PRECOMMIT_TEMPLATE_NAME internal name for template that produces pre-commit-hook.sh
+const PRECOMMIT_TEMPLATE_NAME = "precommithook"
+
+// GOMOD_TEMPLATE_NAME internal name for template that produces go.mod
+const GOMOD_TEMPLATE_NAME = "gomod"
+
+// MAINGO_TEMPLATE_NAME internal name for template that produces main.go
+const MAINGO_TEMPLATE_NAME = "maingo"
+
+// ROOTGO_TEMPLATE_NAME internal name for template that produces root.go
+const ROOTGO_TEMPLATE_NAME = "rootgo"
+
+// LICENSE_TEMPLATE_NAME internal name for template that produces LICENSE
+const LICENSE_TEMPLATE_NAME = "license"
+
+// EMPTYGO_TEMPLATE_NAME internal name for template that produces <pkgname>.go
+const EMPTYGO_TEMPLATE_NAME = "emptygo"
+
+// DESCRIPTION_TEMPLATE_NAME internal name for template that produces description.tmpl
+const DESCRIPTION_TEMPLATE_NAME = "description"
+
+// README_TEMPLATE_NAME internal name for template that produces README.md
+const README_TEMPLATE_NAME = "readme"
+
+// TEMPLATES_FROM_FILESYSTEM_ENV_VAR ENV var telling boilerplate to load templates from the filesystem rather than use the defaults.
+const TEMPLATES_FROM_FILESYSTEM_ENV_VAR = "BOILERPLATE_TEMPLATES_FROM_FILESYSTEM"
+
+// TemplatesFromFilesystem  Switch to tell Boilerplate to read templates from the filesystem rather than using the defaults.  Set to true if BOILERPLATE_TEMPLATES_FROM_FILESYSTEM is undefined, or set to anything other than 'false', or '0'.
+var TemplatesFromFilesystem bool
+
+var DefaultTemplateByName map[string]string
+
+func init() {
+	tffs := os.Getenv(TEMPLATES_FROM_FILESYSTEM_ENV_VAR)
+	if tffs != "" {
+		if tffs != "false" {
+			if tffs != "0" {
+				TemplatesFromFilesystem = true
+			}
+		}
+	}
+
+	DefaultTemplateByName = map[string]string{
+		GITIGNORE_TEMPLATE_NAME:   DEFAULT_GITIGNORE_TEMPLATE,
+		METADATA_TEMPLATE_NAME:    DEFAULT_METADATA_TEMPLATE,
+		PRECOMMIT_TEMPLATE_NAME:   DEFAULT_PREHOOK_TEMPLATE,
+		GOMOD_TEMPLATE_NAME:       DEFAULT_GOMODULE_TEMPLATE,
+		MAINGO_TEMPLATE_NAME:      DEFAULT_MAIN_GO_TEMPLATE,
+		ROOTGO_TEMPLATE_NAME:      DEFAULT_ROOT_GO_TEMPLATE,
+		LICENSE_TEMPLATE_NAME:     DEFAULT_LICENSE_TEMPLATE,
+		EMPTYGO_TEMPLATE_NAME:     DEFAULT_EMPTY_GO_TEMPLATE,
+		DESCRIPTION_TEMPLATE_NAME: DEFAULT_DESCRIPTION_TEMPLATE,
+		README_TEMPLATE_NAME:      DEFAULT_README_TEMPLATE,
+	}
+}
+
 // ToolFile contains information about a boilerplate file to be written
 type ToolFile struct {
 	Name    string
@@ -33,6 +98,22 @@ type ToolInfo struct {
 	Author             ToolAuthor
 	CopyrightYear      int
 	Repository         string
+}
+
+// GetTemplate returns a template string either from the default, or from the filesystem.
+func GetTemplate(filename string) (template string, err error) {
+	if TemplatesFromFilesystem {
+		// TODO implement load templates from filesystem
+		err = errors.New("Templates from filesystem not implemented yet.")
+		return template, err
+	} else {
+		tmpl, ok := DefaultTemplateByName[filename]
+		if ok {
+			return tmpl, err
+		}
+		err = errors.New(fmt.Sprintf("%s:%s", ERR_TEMPLATE_NOT_FOUND, filename))
+		return tmpl, err
+	}
 }
 
 // WriteConfigFiles writes the various files for the tool we're creating
@@ -99,17 +180,42 @@ func FilesForTool(location string, toolName string, packageName string, packageD
 	info := ToolInfo{packageName, toolName, packageDescription, author, timestamp.Year(), repository}
 
 	// .gitignore
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/.gitignore", location), Content: GitignoreContents(), Mode: 0644})
+	tmpl, err := GetTemplate(GITIGNORE_TEMPLATE_NAME)
+	if err != nil {
+		err = errors.Wrapf(err, fmt.Sprintf("%s: %s", ERR_TEMPLATE_NOT_FOUND, GITIGNORE_TEMPLATE_NAME))
+		return files, err
+	}
+
+	files = append(files, ToolFile{Name: fmt.Sprintf("%s/.gitignore", location), Content: tmpl, Mode: 0644})
 
 	// pre-commit hook
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/pre-commit-hook.sh", location), Content: PreCommitHookContents(), Mode: 0755})
+	tmpl, err = GetTemplate(PRECOMMIT_TEMPLATE_NAME)
+	if err != nil {
+		err = errors.Wrapf(err, fmt.Sprintf("%s: %s", ERR_TEMPLATE_NOT_FOUND, PRECOMMIT_TEMPLATE_NAME))
+		return files, err
+	}
+
+	files = append(files, ToolFile{Name: fmt.Sprintf("%s/pre-commit-hook.sh", location), Content: tmpl, Mode: 0755})
 
 	// Description Template
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/templates/description.tmpl", location), Content: DescriptionTemplateContents(), Mode: 0644})
+	tmpl, err = GetTemplate(DESCRIPTION_TEMPLATE_NAME)
+	if err != nil {
+		err = errors.Wrapf(err, fmt.Sprintf("%s: %s", ERR_TEMPLATE_NOT_FOUND, DESCRIPTION_TEMPLATE_NAME))
+		return files, err
+	}
+
+	files = append(files, ToolFile{Name: fmt.Sprintf("%s/templates/description.tmpl", location), Content: tmpl, Mode: 0644})
 
 	// metadata.json
 	fileName := "metadata.json"
-	content, err := fillTemplate(fileName, MetadataContents(), info)
+
+	tmpl, err = GetTemplate(METADATA_TEMPLATE_NAME)
+	if err != nil {
+		err = errors.Wrapf(err, fmt.Sprintf("%s: %s", ERR_TEMPLATE_NOT_FOUND, METADATA_TEMPLATE_NAME))
+		return files, err
+	}
+
+	content, err := fillTemplate(fileName, tmpl, info)
 	content = strings.Replace(content, "__VERSION__", "{{.Version}}", -1)
 	content = strings.Replace(content, "__REPOSITORY__", "{{.Repository}}", -1)
 	content = strings.Replace(content, "__TOOLNAME__", "{{.Name}}", -1)
@@ -122,7 +228,13 @@ func FilesForTool(location string, toolName string, packageName string, packageD
 
 	// Apache License
 	fileName = "LICENSE"
-	content, err = fillTemplate(fileName, LicenseContents(), info)
+	tmpl, err = GetTemplate(LICENSE_TEMPLATE_NAME)
+	if err != nil {
+		err = errors.Wrapf(err, fmt.Sprintf("%s: %s", ERR_TEMPLATE_NOT_FOUND, LICENSE_TEMPLATE_NAME))
+		return files, err
+	}
+
+	content, err = fillTemplate(fileName, tmpl, info)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
 		return files, err
@@ -131,7 +243,13 @@ func FilesForTool(location string, toolName string, packageName string, packageD
 
 	// go.mod
 	fileName = "go.mod"
-	content, err = fillTemplate(fileName, GoModuleContents(), info)
+	tmpl, err = GetTemplate(GOMOD_TEMPLATE_NAME)
+	if err != nil {
+		err = errors.Wrapf(err, fmt.Sprintf("%s: %s", ERR_TEMPLATE_NOT_FOUND, GOMOD_TEMPLATE_NAME))
+		return files, err
+	}
+
+	content, err = fillTemplate(fileName, tmpl, info)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
 		return files, err
@@ -141,7 +259,13 @@ func FilesForTool(location string, toolName string, packageName string, packageD
 
 	// main.go
 	fileName = "main.go"
-	content, err = fillTemplate(fileName, MainGoContents(), info)
+	tmpl, err = GetTemplate(MAINGO_TEMPLATE_NAME)
+	if err != nil {
+		err = errors.Wrapf(err, fmt.Sprintf("%s: %s", ERR_TEMPLATE_NOT_FOUND, MAINGO_TEMPLATE_NAME))
+		return files, err
+	}
+
+	content, err = fillTemplate(fileName, tmpl, info)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
 		return files, err
@@ -151,7 +275,13 @@ func FilesForTool(location string, toolName string, packageName string, packageD
 
 	// root.go
 	fileName = "root.go"
-	content, err = fillTemplate(fileName, RootGoContents(), info)
+	tmpl, err = GetTemplate(ROOTGO_TEMPLATE_NAME)
+	if err != nil {
+		err = errors.Wrapf(err, fmt.Sprintf("%s: %s", ERR_TEMPLATE_NOT_FOUND, ROOTGO_TEMPLATE_NAME))
+		return files, err
+	}
+
+	content, err = fillTemplate(fileName, tmpl, info)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
 		return files, err
@@ -160,7 +290,13 @@ func FilesForTool(location string, toolName string, packageName string, packageD
 
 	// empty.go
 	fileName = "emptygofile"
-	content, err = fillTemplate(fileName, EmptyGoFileContents(), info)
+	tmpl, err = GetTemplate(EMPTYGO_TEMPLATE_NAME)
+	if err != nil {
+		err = errors.Wrapf(err, fmt.Sprintf("%s: %s", ERR_TEMPLATE_NOT_FOUND, EMPTYGO_TEMPLATE_NAME))
+		return files, err
+	}
+
+	content, err = fillTemplate(fileName, tmpl, info)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
 		return files, err
@@ -169,7 +305,13 @@ func FilesForTool(location string, toolName string, packageName string, packageD
 
 	// README.md
 	fileName = "README.md"
-	content, err = fillTemplate(fileName, ReadMeContents(), info)
+	tmpl, err = GetTemplate(README_TEMPLATE_NAME)
+	if err != nil {
+		err = errors.Wrapf(err, fmt.Sprintf("%s: %s", ERR_TEMPLATE_NOT_FOUND, README_TEMPLATE_NAME))
+		return files, err
+	}
+
+	content, err = fillTemplate(fileName, tmpl, info)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
 		return files, err

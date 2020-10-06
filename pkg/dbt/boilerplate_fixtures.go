@@ -450,13 +450,31 @@ func testFilesForTool(location string, toolName string, packageName string, pack
 	info := ToolInfo{packageName, toolName, packageDescription, author, timestamp.Year(), repository}
 
 	// .gitignore
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/.gitignore", location), Content: GitignoreContents(), Mode: 0644})
+	tmpl, err := GetTemplate(GITIGNORE_TEMPLATE_NAME)
+	if err != nil {
+		err = errors.Wrapf(err, fmt.Sprintf("%s: %s", ERR_TEMPLATE_NOT_FOUND, GITIGNORE_TEMPLATE_NAME))
+		return files, err
+	}
+
+	files = append(files, ToolFile{Name: fmt.Sprintf("%s/.gitignore", location), Content: tmpl, Mode: 0644})
 
 	// pre-commit hook
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/pre-commit-hook.sh", location), Content: PreCommitHookContents(), Mode: 0755})
+	tmpl, err = GetTemplate(PRECOMMIT_TEMPLATE_NAME)
+	if err != nil {
+		err = errors.Wrapf(err, fmt.Sprintf("%s: %s", ERR_TEMPLATE_NOT_FOUND, PRECOMMIT_TEMPLATE_NAME))
+		return files, err
+	}
+
+	files = append(files, ToolFile{Name: fmt.Sprintf("%s/pre-commit-hook.sh", location), Content: tmpl, Mode: 0755})
 
 	// Description Template
-	files = append(files, ToolFile{Name: fmt.Sprintf("%s/description.tmpl", location), Content: DescriptionTemplateContents(), Mode: 0644})
+	tmpl, err = GetTemplate(DESCRIPTION_TEMPLATE_NAME)
+	if err != nil {
+		err = errors.Wrapf(err, fmt.Sprintf("%s: %s", ERR_TEMPLATE_NOT_FOUND, DESCRIPTION_TEMPLATE_NAME))
+		return files, err
+	}
+
+	files = append(files, ToolFile{Name: fmt.Sprintf("%s/description.tmpl", location), Content: tmpl, Mode: 0644})
 
 	// metadata.json
 	fileName := "metadata.json"
@@ -520,7 +538,13 @@ func testFilesForTool(location string, toolName string, packageName string, pack
 
 	// README.md
 	fileName = "README.md"
-	content, err = fillTemplate(fileName, ReadMeContents(), info)
+	tmpl, err = GetTemplate(README_TEMPLATE_NAME)
+	if err != nil {
+		err = errors.Wrapf(err, fmt.Sprintf("%s: %s", ERR_TEMPLATE_NOT_FOUND, README_TEMPLATE_NAME))
+		return files, err
+	}
+
+	content, err = fillTemplate(fileName, tmpl, info)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
 		return files, err
