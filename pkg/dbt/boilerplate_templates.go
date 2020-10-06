@@ -1,7 +1,7 @@
 package dbt
 
-// DEFAULT_GITIGNORE_TEMPLATE the contents of the .gitignore file
-const DEFAULT_GITIGNORE_TEMPLATE = `# Created by .ignore support plugin (hsz.mobi)
+// GITIGNORE_TEMPLATE the contents of the .gitignore file
+var GITIGNORE_TEMPLATE = `# Created by .ignore support plugin (hsz.mobi)
 ### Go template
 # Binaries for programs and plugins
 *.exe
@@ -25,8 +25,8 @@ const DEFAULT_GITIGNORE_TEMPLATE = `# Created by .ignore support plugin (hsz.mob
 *.iml
 `
 
-// DEFAULT_METADATA_TEMPLATE contents of an initial metadata.json file
-const DEFAULT_METADATA_TEMPLATE = `{
+// METADATA_TEMPLATE contents of an initial metadata.json file
+var METADATA_TEMPLATE = `{
   "name": "{{.ToolName}}",
   "version": "0.1.0",
   "package": "{{.PackageName}}",
@@ -80,12 +80,12 @@ const DEFAULT_METADATA_TEMPLATE = `{
   }
 }`
 
-// DEFAULT_PREHOOK_TEMPLATE a git pre-commit hook
-const DEFAULT_PREHOOK_TEMPLATE = `#!/usr/bin/env bash
+// PREHOOK_TEMPLATE a git pre-commit hook
+var PREHOOK_TEMPLATE = `#!/usr/bin/env bash
 /usr/local/go/bin/gofmt -w ./`
 
-// DEFAULT_GOMODULE_TEMPLATE requirements for a basic tool
-const DEFAULT_GOMODULE_TEMPLATE = `module {{.PackageName}}
+// GOMODULE_TEMPLATE requirements for a basic tool
+var GOMODULE_TEMPLATE = `module {{.PackageName}}
 
 require (
 	github.com/davecgh/go-spew v0.0.0-20171005155431-ecdeabc65495
@@ -110,8 +110,8 @@ require (
 )
 `
 
-// DEFAULT_MAIN_GO_TEMPLATE cobra main.go file
-const DEFAULT_MAIN_GO_TEMPLATE = `
+// MAINGO_TEMPLATE cobra main.go file
+var MAINGO_TEMPLATE = `
 // Copyright © {{.CopyrightYear}} {{.Author.Name}} <{{.Author.Email}}>
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -133,8 +133,8 @@ func main() {
 	cmd.Execute()
 }`
 
-// DEFAULT_ROOT_GO_TEMPLATE root.go cobra file
-const DEFAULT_ROOT_GO_TEMPLATE = `// Copyright © {{.CopyrightYear}} {{.Author.Name}} <{{.Author.Email}}>
+// ROOTGO_TEMPLATE root.go cobra file
+var ROOTGO_TEMPLATE = `// Copyright © {{.CopyrightYear}} {{.Author.Name}} <{{.Author.Email}}>
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -222,8 +222,8 @@ func initConfig() {
 }
 `
 
-// DEFAULT_LICENSE_TEMPLATE Apache license
-const DEFAULT_LICENSE_TEMPLATE = `Apache License
+// LICENSE_TEMPLATE Apache license
+var LICENSE_TEMPLATE = `Apache License
 	Version 2.0, January 2004
 http://www.apache.org/licenses/
 
@@ -425,8 +425,8 @@ APPENDIX: How to apply the Apache License to your work.
 	See the License for the specific language governing permissions and
 	limitations under the License.`
 
-// DEFAULT_EMPTY_GO_TEMPLATE an empty go file in the tool package
-const DEFAULT_EMPTY_GO_TEMPLATE = `package {{.ToolName}}
+// EMPTYGO_TEMPLATE an empty go file in the tool package
+var EMPTYGO_TEMPLATE = `package {{.ToolName}}
 
 import (
 	"fmt"
@@ -436,8 +436,8 @@ func Run() {
 	fmt.Println("It works")
 }`
 
-// DEFAULT_DESCRIPTION_TEMPLATE description template
-const DEFAULT_DESCRIPTION_TEMPLATE = "{{.Description}}"
+// DESCRIPTION_TEMPLATE description template
+var DESCRIPTION_TEMPLATE = "{{.Description}}"
 
-// DEFAULT_README_TEMPLATE a boilerplate readme stub
-const DEFAULT_README_TEMPLATE = "# {{.ToolName}}\n\n{{.PackageDescription}}\n"
+// README_TEMPLATE a boilerplate readme stub
+var README_TEMPLATE = "# {{.ToolName}}\n\n{{.PackageDescription}}\n"

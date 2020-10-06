@@ -3,10 +3,12 @@ package dbt
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -45,35 +47,20 @@ const DESCRIPTION_TEMPLATE_NAME = "description"
 // README_TEMPLATE_NAME internal name for template that produces README.md
 const README_TEMPLATE_NAME = "readme"
 
-// TEMPLATES_FROM_FILESYSTEM_ENV_VAR ENV var telling boilerplate to load templates from the filesystem rather than use the defaults.
-const TEMPLATES_FROM_FILESYSTEM_ENV_VAR = "BOILERPLATE_TEMPLATES_FROM_FILESYSTEM"
-
-// TemplatesFromFilesystem  Switch to tell Boilerplate to read templates from the filesystem rather than using the defaults.  Set to true if BOILERPLATE_TEMPLATES_FROM_FILESYSTEM is undefined, or set to anything other than 'false', or '0'.
-var TemplatesFromFilesystem bool
-
-var DefaultTemplateByName map[string]string
+var TemplateByName map[string]string
 
 func init() {
-	tffs := os.Getenv(TEMPLATES_FROM_FILESYSTEM_ENV_VAR)
-	if tffs != "" {
-		if tffs != "false" {
-			if tffs != "0" {
-				TemplatesFromFilesystem = true
-			}
-		}
-	}
-
-	DefaultTemplateByName = map[string]string{
-		GITIGNORE_TEMPLATE_NAME:   DEFAULT_GITIGNORE_TEMPLATE,
-		METADATA_TEMPLATE_NAME:    DEFAULT_METADATA_TEMPLATE,
-		PRECOMMIT_TEMPLATE_NAME:   DEFAULT_PREHOOK_TEMPLATE,
-		GOMOD_TEMPLATE_NAME:       DEFAULT_GOMODULE_TEMPLATE,
-		MAINGO_TEMPLATE_NAME:      DEFAULT_MAIN_GO_TEMPLATE,
-		ROOTGO_TEMPLATE_NAME:      DEFAULT_ROOT_GO_TEMPLATE,
-		LICENSE_TEMPLATE_NAME:     DEFAULT_LICENSE_TEMPLATE,
-		EMPTYGO_TEMPLATE_NAME:     DEFAULT_EMPTY_GO_TEMPLATE,
-		DESCRIPTION_TEMPLATE_NAME: DEFAULT_DESCRIPTION_TEMPLATE,
-		README_TEMPLATE_NAME:      DEFAULT_README_TEMPLATE,
+	TemplateByName = map[string]string{
+		GITIGNORE_TEMPLATE_NAME:   GITIGNORE_TEMPLATE,
+		METADATA_TEMPLATE_NAME:    METADATA_TEMPLATE,
+		PRECOMMIT_TEMPLATE_NAME:   PREHOOK_TEMPLATE,
+		GOMOD_TEMPLATE_NAME:       GOMODULE_TEMPLATE,
+		MAINGO_TEMPLATE_NAME:      MAINGO_TEMPLATE,
+		ROOTGO_TEMPLATE_NAME:      ROOTGO_TEMPLATE,
+		LICENSE_TEMPLATE_NAME:     LICENSE_TEMPLATE,
+		EMPTYGO_TEMPLATE_NAME:     EMPTYGO_TEMPLATE,
+		DESCRIPTION_TEMPLATE_NAME: DESCRIPTION_TEMPLATE,
+		README_TEMPLATE_NAME:      README_TEMPLATE,
 	}
 }
 
@@ -102,18 +89,27 @@ type ToolInfo struct {
 
 // GetTemplate returns a template string either from the default, or from the filesystem.
 func GetTemplate(filename string) (template string, err error) {
-	if TemplatesFromFilesystem {
-		// TODO implement load templates from filesystem
-		err = errors.New("Templates from filesystem not implemented yet.")
-		return template, err
-	} else {
-		tmpl, ok := DefaultTemplateByName[filename]
-		if ok {
-			return tmpl, err
+	tmpl, ok := TemplateByName[filename]
+	if ok {
+		b64Pattern := regexp.MustCompile(`^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)?$`)
+
+		if b64Pattern.MatchString(tmpl) {
+			data, err := base64.StdEncoding.DecodeString(tmpl)
+			if err != nil {
+				err = errors.Wrapf(err, "failed decoding base64 string %s", tmpl)
+				return template, err
+			}
+
+			template = string(data)
+			return template, err
+
 		}
-		err = errors.New(fmt.Sprintf("%s:%s", ERR_TEMPLATE_NOT_FOUND, filename))
+
+		template = tmpl
 		return tmpl, err
 	}
+	err = errors.New(fmt.Sprintf("%s:%s", ERR_TEMPLATE_NOT_FOUND, filename))
+	return template, err
 }
 
 // WriteConfigFiles writes the various files for the tool we're creating
