@@ -202,23 +202,50 @@ If you don't want to make any changes to the code or tools:
 
 5. Verify installation by running: `dbt catalog list`.
 
-## Customization Steps
+## Customization of Boilerplate Templates
 
-The above is fine if you want `dbt` straight out of the box.  If you want different behavior, or to say, modify the `boilerplate` templates, you'll need to do some extra work.
+The above is fine if you want `dbt` straight out of the box.  If you want to modify the `boilerplate` templates, you'll need to do some extra work.
 
-To customise:
+The variables that are overridable are:
+
+* GITIGNORE_TEMPLATE Produces `.gitignore`.
+
+* METATADATA_TEMPLATE Produces `metadata.json`.
+
+* PREHOOOK_TEMPLATE Produces `pre-commit-hook.sh`.
+
+* GOMODULE_TEMPLATE Produces `go.mod`.
+
+* MAINGO_TEMPLATE Produces `main.go`.
+
+* ROOTGO_TEMPLATE Produces `cmd/root.go`.
+
+* LICENSE_TEMPLATE Produces `LICENSE`.
+
+* EMPTYGO_TEMPLATE Produces `pkg/<tool name>/<tool name>.go`.
+
+* DESCRIPTION_TEMPLATE Produces `templates/description.tmpl`.
+
+* README_TEMPLATE Produces `README.md`.
+    
+
+To customise `boilerplate` templates:
 
 1. Fork the repo.
 
 1. Change the `metadata.json` file to reflect your own repository setup and preferences.  You need to change the `repository`, `tool-repository`, and `package` lines.
 
-1. Install `gomason` via `go get github.com/nikogura/gomason`. Then run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT.
+1. Install `gomason` via `go get github.com/nikogura/gomason`.
 
 1. Create new versions of the boilerplate files.
 
 1. Base64 encode your boilerplate files, and export them into ENV vars.  This is crude, but it's the only way I have found to date where you can inject YOUR code as variables into MY code.
 
-1. Add your template overrides by adding `"ldflags": "-X github.com/nikogura/dbt/pkg/dbt.METADATA_TEMPLATE=${METADATA_TEMPLATE}"` to `metadata.json` under your build targets.  Don't forget to commit and push.  Remember `gomason` will pull from the remote repo before building.  It never sees what's in your local clone.  It pulls a fresh clone every time it runs - by design it's a 'clean room' for your code.
+1. Add your template overrides by adding 'ldflags' lines to each build target in `metadata.json`.  eg:
+
+``"ldflags": "-X github.com/nikogura/dbt/pkg/dbt.METADATA_TEMPLATE=${METADATA_TEMPLATE}"``
+
+Don't forget to commit and push.  Remember `gomason` will pull from the remote repo before building.  It never sees what's in your local clone.  It pulls a fresh clone every time it runs.  By design it's a 'clean room' for your code.
 
 1. Publish via `gomason publish -s`.  You have to skip the tests, since my tests run against my package, which is `github.com/nikogura/dbt`.  They won't run against your forked package unless you laborously go through my code and remove all references to my package.  (That's certainly possible too, though annoying.)
 
