@@ -30,7 +30,7 @@ Another thing these tools all have in common is they work off a "push model".  T
 
 DBT in contrast works on a _pull model_.  The default is you get the latest version of whatever tool we're talking about.  You can, however, request a previous version instead.  So long as the old versions are available in your repository, the user can do whatever they need to do.  They're the user.  Tools exist to make user's lives easier/better - else what's the use?
 
-Once you set up your tool repository, `dbt` downloads and verifies the tools, automatically looking for and using the latest version - unless the user goes out of their way to use a previous version.  That's it.  That's the magic.  Downloading and verifying in a fashion that gets out of the way of the user.
+Once you set up your tool repository, `dbt` downloads and verifies the tools, automatically looking for and using the latest version - unless the user goes out of their way to use a previous version.  That's it.  That's the magic: Downloading and verifying in a fashion that gets out of the way of the user and lets them do their job.
 
 # Overview
 
