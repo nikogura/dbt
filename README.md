@@ -12,11 +12,25 @@
 
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)  
 
-A framework for running self-updating, signed binary tools from a central, trusted repository.
+A tool framework for self-updating, self-verifying binary tools.
 
 What kind of tools you say?  Anything that can be compiled into a stand-alone binary.
 
 Tools are always up to date (unless you specify an older version), as is `dbt` itself.  How?  *magic*. 
+
+DBT is basically just a downloader and verifier for executable files.  That's it.  That's all it does.
+
+Say you have a program binary that people use to do their jobs.  How do you distribute it?  How do people stay up to date?  How do they get bug fixes and new versions?
+
+There are a bazillion ways of solving this problem.  At some level, `dbt` is just one more method.  Why is this better than the others?  User Experience.  DBT gets out of the way and helps the user do what they should be doing all along, but usually don't have time to do - that is verify the integrity and authorship of the tools they use in their daily life.
+
+You absolutely can maintain some sort of device and server management software like Jamf or Chef or Puppet, and update all your OS packages all the time.  These solutions exist, and they're great - when they work well together.  Often they do not- or they're so heavy handed your small agile shop can't maintain them well enough to stay out of the user's way.
+
+Another thing these tools all have in common is they work off a "push model".  The central administrator pushes out updates, and you use whatever you get.  Again this is great - when it works.  Be honest however, when's the last time you were required to update to the latest something and things stopped working?  This month?  This week?  Today.  Yeah.
+
+DBT in contrast works on a _pull model_.  The default is you get the latest version of whatever tool we're talking about.  You can, however, request a previous version instead.  So long as the old versions are available in your repository, the user can do whatever they need to do.  They're the user.  Tools exist to make user's lives easier/better - else what's the use?
+
+Once you set up your tool repository, `dbt` downloads and verifies the tools, automatically looking for and using the latest version - unless the user goes out of their way to use a previous version.  That's it.  That's the magic.  Downloading and verifying in a fashion that gets out of the way of the user.
 
 # Overview
 
@@ -180,7 +194,7 @@ If you don't want to make any changes to the code or tools:
 
 1. Fork the repo.
 
-2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` and `tool-repository` lines.  
+2. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` and `tool-repository` lines. Commit and push the changes back to your repo. 
 
 3. Install `gomason` via `go get github.com/nikogura/gomason`. Then run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT together with the tools `catalog`, `boilerplate`, and `reposerver`.
 
@@ -190,21 +204,25 @@ If you don't want to make any changes to the code or tools:
 
 ## Customization Steps
 
-The above is fine if you want `dbt` straight out of the box.  If you want different behavior, or to modify the templates, you'll need to do some extra work.
-
-This will entail replacing the pesky `nikogura` parts out of the package names and replacing them with the name of your github organization (or other VCS provider).  I know right?  That Nik guy, he causes so many problems...
+The above is fine if you want `dbt` straight out of the box.  If you want different behavior, or to say, modify the `boilerplate` templates, you'll need to do some extra work.
 
 To customise:
 
 1. Fork the repo.
 
-2. Change the `metadata.json` file to reflect your own repository setup and preferences.  You need to change the `repository`, `tool-repository`, and `package` lines.  
+1. Change the `metadata.json` file to reflect your own repository setup and preferences.  You need to change the `repository`, `tool-repository`, and `package` lines.  
 
-3. You'll also need to change the package name in go.mod, cmd/dbt/main.go, cmd/boilerplate/main.go, cmd/catalog/main.go cmd/reposerver/main.go and TestPackageGroup in pkg/dbt/dbt_setup_test.go.  Essentially, you'll need to wire it up so that your fork is referencing itself, not my public repo.  Basic golang stuff.  Don't forget to check your changes into your fork.
+1. Install `gomason` via `go get github.com/nikogura/gomason`. Then run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT.
 
-4. Install `gomason` via `go get github.com/nikogura/gomason`. Then run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT.
+1. Create new versions of the boilerplate files.
 
-5. Run the installer you built. It'll be found in `<repo>/install_dbt.sh`.  
+1. Base64 encode your boilerplate files, and export them into ENV vars.  This is crude, but it's the only way I have found to date where you can inject YOUR code as variables into MY code.
+
+1. Add `"ldflags": "-X github.com/nikogura/dbt/pkg/dbt.METADATA_TEMPLATE=${METADATA_TEMPLATE}"` to `metadata.json` under your build targets.
+
+1. Publish via `gomason publish -s`.  You have to skip the tests, since my tests run against my package, which is `github.com/nikogura/dbt`.  They won't run against your forked package unless you laborously go through my code and remove all references to my package.  (That's certainly possible too, though annoying.)
+
+1. Run the installer you built. It'll be found in `<repo>/install_dbt.sh`.  
 
 With an HTTP reposerver like Artifactory or DBT's internal server, you can install this script via `curl https://your.repo.host/path/to/install_dbt.sh | bash`.  
   
@@ -234,11 +252,7 @@ And voila!  Your DBT is now installed.
 
 You will, however need to populate the `truststore` file, which by default, with the above config would be located at `http://localhost:8081/artifactory/dbt/truststore`.  This file contains the PEM encoded public keys of the entities you trust to create DBT binaries.  You can edit this file by hand, it's just a bunch of PEM data squashed together.
 
-_AUTHOR'S NOTE: When I personally maintain an internal fork, I set up a clone of the fork with 2 upstreams: 'origin' is my internal fork, and 'upstream' which is the public github.com/nikogura/dbt.  Then I make all my internal changes as required, and when upstream changes, do a `git pull upstream ...`.  Usually the only changes/conflicts are in the `metadata.json`._  
-
-_Correct the conflicts in `metadata.json`, commit, and `git push origin master` and my CI system takes it from there.  It sounds complicated, and it's certainly not trivial, but it's been very reliable to date._
-
-_Rest assured, when I come across a better method, I will not keep it to myself._
+_AUTHOR'S NOTE: When I personally maintain an internal fork, I set up a clone of the fork with 2 upstreams: 'origin' is my internal fork, and 'upstream' which is the public github.com/nikogura/dbt.  Then I make all my internal changes as required, and when upstream changes, do a `git pull upstream ...`.  Usually the only changes/conflicts are in the `metadata.json`. To maintain private boilerplate templates I put something like: `export VARIABLE_NAME=$(cat file | base64)` in a Makefile or my CI script and let the machine do the tedious parts.  It's crude, but I can only work with what golang gives me.  The goal is to allow any user to run `dbt boilerplate gen` locally and get my organization's templates._
 
 # Configuration
 
