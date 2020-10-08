@@ -210,7 +210,7 @@ To customise:
 
 1. Fork the repo.
 
-1. Change the `metadata.json` file to reflect your own repository setup and preferences.  You need to change the `repository`, `tool-repository`, and `package` lines.  
+1. Change the `metadata.json` file to reflect your own repository setup and preferences.  You need to change the `repository`, `tool-repository`, and `package` lines.
 
 1. Install `gomason` via `go get github.com/nikogura/gomason`. Then run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT.
 
@@ -218,7 +218,7 @@ To customise:
 
 1. Base64 encode your boilerplate files, and export them into ENV vars.  This is crude, but it's the only way I have found to date where you can inject YOUR code as variables into MY code.
 
-1. Add `"ldflags": "-X github.com/nikogura/dbt/pkg/dbt.METADATA_TEMPLATE=${METADATA_TEMPLATE}"` to `metadata.json` under your build targets.
+1. Add your template overrides by adding `"ldflags": "-X github.com/nikogura/dbt/pkg/dbt.METADATA_TEMPLATE=${METADATA_TEMPLATE}"` to `metadata.json` under your build targets.  Don't forget to commit and push.  Remember `gomason` will pull from the remote repo before building.  It never sees what's in your local clone.  It pulls a fresh clone every time it runs - by design it's a 'clean room' for your code.
 
 1. Publish via `gomason publish -s`.  You have to skip the tests, since my tests run against my package, which is `github.com/nikogura/dbt`.  They won't run against your forked package unless you laborously go through my code and remove all references to my package.  (That's certainly possible too, though annoying.)
 
