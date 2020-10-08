@@ -1,4 +1,6 @@
-# DBT  *Dynamic Binary Toolkit*
+# DBT  *Dynamic Binary Toolkit* 
+
+A cross- platform framework for downloading and verifying binary tools.
 
 [![Current Release](https://img.shields.io/github/release/nikogura/dbt.svg)](https://img.shields.io/github/release/nikogura/dbt.svg)
 
@@ -12,7 +14,6 @@
 
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)  
 
-A tool framework for self-updating, self-verifying binary tools.
 
 What kind of tools you say?  Anything that can be compiled into a stand-alone binary.
 
