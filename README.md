@@ -246,7 +246,7 @@ To customise `boilerplate` templates:
 
 1. Add your template overrides by adding 'ldflags' lines to each build target in `metadata.json`.  eg:
 
-    ``"ldflags": "-X github.com/nikogura/dbt/pkg/dbt.METADATA_TEMPLATE=${METADATA_TEMPLATE}"``
+    `"ldflags": "-X github.com/nikogura/dbt/pkg/dbt.METADATA_TEMPLATE=${METADATA_TEMPLATE}"`
 
     Don't forget to commit and push.  Remember `gomason` will pull from the remote repo before building.  It never sees what's in your local clone.  It pulls a fresh clone every time it runs.  By design it's a 'clean room' for your code.
 
