@@ -245,23 +245,23 @@ To customise `boilerplate` templates:
 
 1. Add your template overrides by adding 'ldflags' lines to each build target in `metadata.json`.  eg:
 
-``"ldflags": "-X github.com/nikogura/dbt/pkg/dbt.METADATA_TEMPLATE=${METADATA_TEMPLATE}"``
+    ``"ldflags": "-X github.com/nikogura/dbt/pkg/dbt.METADATA_TEMPLATE=${METADATA_TEMPLATE}"``
 
-Don't forget to commit and push.  Remember `gomason` will pull from the remote repo before building.  It never sees what's in your local clone.  It pulls a fresh clone every time it runs.  By design it's a 'clean room' for your code.
+    Don't forget to commit and push.  Remember `gomason` will pull from the remote repo before building.  It never sees what's in your local clone.  It pulls a fresh clone every time it runs.  By design it's a 'clean room' for your code.
 
 1. Publish via `gomason publish -s`.  You have to skip the tests, since my tests run against my package, which is `github.com/nikogura/dbt`.  They won't run against your forked package unless you laborously go through my code and remove all references to my package.  (That's certainly possible too, though annoying.)
 
 1. Run the installer you built. It'll be found in `<repo>/install_dbt.sh`.  
 
-With an HTTP reposerver like Artifactory or DBT's internal server, you can install this script via `curl https://your.repo.host/path/to/install_dbt.sh | bash`.  
+    With an HTTP reposerver like Artifactory or DBT's internal server, you can install this script via `curl https://your.repo.host/path/to/install_dbt.sh | bash`.  
   
-If you're using S3 as your backend, you will have to do it in 2 steps: 
+    If you're using S3 as your backend, you will have to do it in 2 steps: 
 
-1. `aws s3 cp s3://<your bucket>/install_dbt.sh install_dbt.sh`.  
+    1. `aws s3 cp s3://<your bucket>/install_dbt.sh install_dbt.sh`.  
     
-2. `bash install_dbt.sh`.  
+    2. `bash install_dbt.sh`.  
 
-This 2 step is forced by the aws cli not being able to feed a downloaded object directly to bash.  (Or at least, I haven't figured out how to make it do so - yet!)
+    This 2 step is forced by the aws cli not being able to feed a downloaded object directly to bash.  (Or at least, I haven't figured out how to make it do so - yet!)
 
 6. Verify installation by running: `dbt catalog list` .
 
