@@ -164,6 +164,17 @@ I just build the tools.  You choose how to use them.
 ensure reliable delivery of the bullet to where you aimed the gun (in
 this case, Mr. Foot)."* -- Terry Lambert, FreeBSD-Hackers mailing list.
 
+# Repository Support
+
+The dbt `reposerver` tool is written entirely in golang.  All the internal tests work off an instance of the dbt reposerver.  See [Reposerver](#reposerver) for more details on how to run it.
+
+[Artifactory Open Source](https://www.jfrog.com/open-source) can be used as a dbt repo.  It works well without auth, or with basic authentication. Paid Artifactory versions work well too.
+
+You can additionally utilize Amazon S3 as a repo server.  Authentication to S3 is assumed to be already in place and leverages the expected configs in ~/.aws.  Credential managers work transparently through `credential_process` as detailed in the AWS docs.
+
+*N.B.* For S3 usage, only Virtual Host based S3 urls are supported.  Why?  Because AWS is deprecating the path-style access to buckets. Check out [https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/](https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/) for more information.
+
+
 # Included Tools
 
 The whole point of DBT is that you'll create your own tools to do things your way.  DBT is itself just a framework, and does exactly *nothing* without the tools that it's designed to download and run.  By itself, it can't even tell you what tools are available to you.  
@@ -172,23 +183,138 @@ DBT is designed to be as open and generic as possible. I, the author, don't know
 
 There are, however, some common tasks that any user of DBT might want at their fingertips. The following is a list of tools that will build automatically with dbt and be available for your pleasure:
 
-* *Catalog*  A tool for showing what tools are in your repository.
-
-* *Boilerplate*  A tool for generating tool boilerplate.  You could do it by hand, but why? 
-
-* *Reposerver* A dbt repository server.  It serves up the various dbt tools and components from a file location on disk. 
-
 If for some reason you don't want to use the included tools, just remove them from your `metadata.json` and they won't publish.
 
-# Repository Support
+## Catalog
 
-[Artifactory Open Source](https://www.jfrog.com/open-source) can be used as a dbt repo.  It works well without auth, or with basic authentication. 
+A tool for showing what tools are in your repository.
 
-The dbt `reposerver` tool is written entirely in golang.  At present, it's expected to run inside of a VPN or other private network, as it doesn't currently have authentication support.  Stay tuned for authentication support.
+Command: `dbt catalog list`
 
-You can additionally utilize Amazon S3 as a repo server.  Authentication to S3 is assumed to be already in place and leverages the expected configs in ~/.aws.  Credential managers work transparently through `credential_process` as detailed in the AWS docs.
+Output: 
 
-*N.B.* For S3 usage, only Virtual Host based S3 urls are supported.  Why?  Because AWS is deprecating the path-style access to buckets. https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/ 
+    Fetching information from the repository...
+    Commands:
+    
+    	Command Name		Latest Version		Description
+    
+    
+    
+    	    boilerplate    		3.0.4			A tool boilerplate generating tool for DBT.
+    	        catalog    		3.0.4			Tool for showing available DBT tools.
+    	     certinator    		1.0.0			Instrument Hashicorp Vault to create CA's and Certificates for Clients and Services
+    	      genkeyset    		0.1.2			Generate a JWK KeySet for use with Orionlabs PTT
+    	     reposerver    		3.0.4			A tool repository server for DBT.
+    
+    Further information on any tool can be shown by running 'dbt <command> help'.
+    
+### Catalog Help
+
+Command: `dbt catalog help` 
+
+Output:
+
+    Tool for showing available DBT tools.
+    
+    DBT tools are made available in a trusted repository.  This tool show's what's available there.
+    
+    Usage:
+      catalog [command]
+    
+    Available Commands:
+      help        Help about any command
+      list        ListCatalog available tools.
+    
+    Flags:
+      -h, --help       help for catalog
+      -V, --verbose    Verbose output
+      -v, --versions   Show all version information for tools.
+    
+    Use "catalog [command] --help" for more information about a command.
+
+
+## Boilerplate
+
+A tool for generating tool boilerplate.  You could do it by hand, but why? 
+
+Command: `dbt boilerplate gen`
+
+Output:
+
+    Enter a name for your new tool: fargle
+    Enter a go package for your new tool: github.com/nikogura/fargle
+    Enter a short, one line description for your new tool: Do cool stuff
+    Enter your name: Nik Ogura
+    Enter  your email address: nik.ogura@gmail.com
+    Enter the dbt tool repository url for your new tool (where compiled tools will be published): https://niks-cool-dbt-repo.com/tools
+    Creating /home/nik/fargle/pkg/fargle
+    Creating /home/nik/fargle/templates
+    Creating /home/nik/fargle/cmd
+    Writing /home/nik/fargle/.gitignore
+    Writing /home/nik/fargle/pre-commit-hook.sh
+    Writing /home/nik/fargle/templates/description.tmpl
+    Writing /home/nik/fargle/metadata.json
+    Writing /home/nik/fargle/LICENSE
+    Writing /home/nik/fargle/go.mod
+    Writing /home/nik/fargle/main.go
+    Writing /home/nik/fargle/cmd/root.go
+    Writing /home/nik/fargle/pkg/fargle/fargle.go
+    Writing /home/nik/fargle/README.md
+
+The code generated by the `boilerplate` tool will compile, and publish via `gomason` provided you have `metadata.json` wired up to a repo you can write to.  After that it's up to you.
+
+### Boilerplate Help
+
+Command: `dbt boilerplate help`
+
+Output: 
+
+    DBT tool for creating DBT tools.
+    
+    Sure, a DBT tool is just a signed go binary.  You can create 'em any old way.
+    
+    Sometimes, however, you have better things to do with your time, and just want to get something working hence DBT boilerplate.
+    
+    Usage:
+      boilerplate [command]
+    
+    Available Commands:
+      gen         Creates a new DBT tool.
+      help        Help about any command
+    
+    Flags:
+      -h, --help   help for boilerplate
+    
+    Use "boilerplate [command] --help" for more information about a command.
+
+## Reposerver
+
+An http repository server.  It serves up the various dbt tools and components from a file location on disk. 
+
+At present, the repo server supports basic auth via _htpasswd_ file.  Other auth options will be available as time allows.
+
+### Reposerver Config
+
+A JSON file of the form:
+
+    {
+	    "address": "my-hostname.com",
+        "port": 443,
+        "serverRoot": "/path/to/where/you/store/tools",
+        "authType": "basic-htpasswd",
+        "authGets": false,
+        "authOpts": {
+            "idpFile": "/path/to/htpasswd/file"
+        }
+    }
+
+### Running the Reposerver
+
+Command: `dbt reposerver -f /path/to/config`
+
+Output:
+
+    {"level":"info","msg":"Running dbt artifact server on my-hostname.com port 443.  Serving tree at: /var/dbt","time":"2020-11-11T11:18:43-08:00"} 
 
 # Installation
 The easiest way to install `dbt` is via a tool called `gomason`. You can build via `go build` and move the files any which way you like, but `gomason` makes it easy.
