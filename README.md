@@ -23,7 +23,9 @@ DBT is basically just a downloader and verifier for executable files.  That's it
 
 Say you have a program binary that people use to do their jobs.  How do you distribute it?  How do people stay up to date?  How do they get bug fixes and new versions?
 
-There are a bazillion ways of solving this problem.  At some level, `dbt` is just one more method.  Why is this better than the others?  User Experience.  DBT gets out of the way and helps the user do what they should be doing all along, but usually don't have time to do - that is verify the integrity and authorship of the tools they use in their daily life.
+There are a bazillion ways of solving this problem.  At some level, `dbt` is just one more method.  Why is this better than the others?  User Experience.  
+
+DBT gets out of the way and helps the user do what they should be doing all along, but usually don't have time to do - that is verify the integrity and authorship of the tools they use in their daily life.
 
 You absolutely can maintain some sort of device and server management software like Jamf or Chef or Puppet, and update all your OS packages all the time.  These solutions exist, and they're great - when they work well together.  Often they do not- or they're so heavy handed your small agile shop can't maintain them well enough to stay out of the user's way.
 
@@ -211,25 +213,25 @@ The above is fine if you want `dbt` straight out of the box.  If you want to mod
 
 The variables that are overridable are:
 
-* GITIGNORE_TEMPLATE Produces `.gitignore`.
+* GITIGNORE_TEMPLATE produces `.gitignore`.
 
-* METATADATA_TEMPLATE Produces `metadata.json`.
+* METATADATA_TEMPLATE produces `metadata.json`.
 
-* PREHOOOK_TEMPLATE Produces `pre-commit-hook.sh`.
+* PREHOOOK_TEMPLATE produces `pre-commit-hook.sh`.
 
-* GOMODULE_TEMPLATE Produces `go.mod`.
+* GOMODULE_TEMPLATE produces `go.mod`.
 
-* MAINGO_TEMPLATE Produces `main.go`.
+* MAINGO_TEMPLATE produces `main.go`.
 
-* ROOTGO_TEMPLATE Produces `cmd/root.go`.
+* ROOTGO_TEMPLATE produces `cmd/root.go`.
 
-* LICENSE_TEMPLATE Produces `LICENSE`.
+* LICENSE_TEMPLATE produces `LICENSE`.
 
-* EMPTYGO_TEMPLATE Produces `pkg/<tool name>/<tool name>.go`.
+* EMPTYGO_TEMPLATE produces `pkg/<tool name>/<tool name>.go`.
 
-* DESCRIPTION_TEMPLATE Produces `templates/description.tmpl`.
+* DESCRIPTION_TEMPLATE produces `templates/description.tmpl`.
 
-* README_TEMPLATE Produces `README.md`.
+* README_TEMPLATE produces `README.md`.
     
 
 To customise `boilerplate` templates:

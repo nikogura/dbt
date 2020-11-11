@@ -25,6 +25,7 @@ import (
 var address string
 var port int
 var serverRoot string
+var configFile string
 
 var rootCmd = &cobra.Command{
 	Use:   "reposerver",
@@ -44,6 +45,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&address, "address", "a", "127.0.0.1", "Address on which to run server.")
 	rootCmd.Flags().IntVarP(&port, "port", "p", 9999, "Port on which to run server.")
 	rootCmd.Flags().StringVarP(&serverRoot, "root", "r", "", "Server Root (Local path from which to serve components.")
+	rootCmd.Flags().StringVarP(&configFile, "file", "f", "", "Config file for reposerver.")
 }
 
 // Execute  execute the command
@@ -56,7 +58,24 @@ func Execute() {
 
 // Run run the reposerver
 func Run(cmd *cobra.Command, args []string) {
-	repo := dbt.DBTRepoServer{}
+	var repo *dbt.DBTRepoServer
+
+	if configFile != "" {
+		r, err := dbt.NewRepoServer(configFile)
+		if err != nil {
+			log.Fatalf("Failed to create reposerver from file: %s", err)
+		}
+
+		repo = r
+
+	} else {
+		repo = &dbt.DBTRepoServer{}
+	}
+
+	if repo == nil {
+		log.Fatalf("Failed to initialize reposerver object.  Cannot continue.")
+	}
+
 	err := repo.RunRepoServer()
 	if err != nil {
 		log.Fatalf("Error running server: %s", err)
