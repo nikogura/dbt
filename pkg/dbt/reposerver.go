@@ -6,7 +6,6 @@ import (
 	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/mux"
 	"github.com/nikogura/gomason/pkg/gomason"
-	"github.com/orion-labs/jwt-ssh-agent-go/pkg/agentjwt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -86,16 +85,16 @@ func (d *DBTRepoServer) RunRepoServer() (err error) {
 			htpasswd := auth.HtpasswdFileProvider(d.AuthOpts.IdpFile)
 			authenticator := auth.NewBasicAuthenticator("DBT Server", htpasswd)
 			r.PathPrefix("/").HandlerFunc(authenticator.Wrap(d.PutHandlerHtpasswd)).Methods("PUT")
-		case AUTH_SSH_AGENT_FILE:
-			r.PathPrefix("/").HandlerFunc(d.PutHandlerPubkeyFile).Methods("PUT")
-		case AUTH_SSH_AGENT_FUNC:
-			r.PathPrefix("/").HandlerFunc(d.PutHandlerPubkeyFunc).Methods("PUT")
-		case AUTH_BASIC_LDAP:
-			err = errors.New("basic auth via ldap not yet supported")
-			return err
-		case AUTH_SSH_AGENT_LDAP:
-			err = errors.New("ssh-agent auth via ldap not yet supported")
-			return err
+		//case AUTH_SSH_AGENT_FILE:
+		//	r.PathPrefix("/").HandlerFunc(d.PutHandlerPubkeyFile).Methods("PUT")
+		//case AUTH_SSH_AGENT_FUNC:
+		//	r.PathPrefix("/").HandlerFunc(d.PutHandlerPubkeyFunc).Methods("PUT")
+		//case AUTH_BASIC_LDAP:
+		//	err = errors.New("basic auth via ldap not yet supported")
+		//	return err
+		//case AUTH_SSH_AGENT_LDAP:
+		//	err = errors.New("ssh-agent auth via ldap not yet supported")
+		//	return err
 		default:
 			err = errors.New(fmt.Sprintf("unsupported auth method: %s", d.AuthType))
 			return err
@@ -200,84 +199,84 @@ func (d *DBTRepoServer) PutHandlerHtpasswd(w http.ResponseWriter, r *auth.Authen
 	w.WriteHeader(http.StatusCreated)
 }
 
-// PubkeyFromFile takes a subject name, and pulls the corresponding pubkey out of the identity provider file
-func (d *DBTRepoServer) PubkeyFromFile(subject string) (pubkey string, err error) {
-	// need to get pubkey file similar to: htpasswd := PubkeyFileProvider(d.AuthOpts.IdpFile)
-	return pubkey, err
-}
-
-// PubkeyFromFunc takes a subject name, and runs the configured function to return the corresponding public key
-func (d *DBTRepoServer) PubkeyFromFunc(subject string) (pubkey string, err error) {
-
-	return pubkey, err
-}
-
-func (d *DBTRepoServer) PubkeyAuth(subject string, authFunc func(subject string) (pubkey string, err error)) (principal string) {
-
-	return principal
-}
-
-// PutHandlerPubKeyFile
-func (d *DBTRepoServer) PutHandlerPubkeyFile(w http.ResponseWriter, r *http.Request) {
-	tokenString := r.Header.Get("Token")
-
-	// Parse the token, which includes setting up it's internals so it can be verified.
-	subject, token, err := agentjwt.ParsePubkeySignedToken(tokenString, d.PubkeyFromFile)
-	if err != nil {
-		log.Errorf("Error: %s", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	if !token.Valid {
-		log.Info("Auth Failed")
-		w.WriteHeader(http.StatusUnauthorized)
-	}
-
-	log.Infof("Subject %s successfully authenticated", subject)
-
-	err = d.HandlePut(r.URL.Path, r.Body, r.Header.Get("X-Checksum-Md5"), r.Header.Get("X-Checksum-Sha1"), r.Header.Get("X-Checksum-Sha256"))
-	if err != nil {
-		err = errors.Wrapf(err, "failed writing file %s", r.URL.Path)
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Error(err)
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
-}
-
-// PutHandlerPubkeyFunc
-func (d *DBTRepoServer) PutHandlerPubkeyFunc(w http.ResponseWriter, r *http.Request) {
-	tokenString := r.Header.Get("Token")
-
-	// sanity check username
-
-	//Parse the token, which includes setting up it's internals so it can be verified.
-	subject, token, err := agentjwt.ParsePubkeySignedToken(tokenString, d.PubkeyFromFunc)
-	if err != nil {
-		log.Errorf("Error: %s", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	if !token.Valid {
-		log.Info("Auth Failed")
-		w.WriteHeader(http.StatusUnauthorized)
-	}
-
-	log.Infof("Subject %s successfully authenticated", subject)
-
-	err = d.HandlePut(r.URL.Path, r.Body, r.Header.Get("X-Checksum-Md5"), r.Header.Get("X-Checksum-Sha1"), r.Header.Get("X-Checksum-Sha256"))
-	if err != nil {
-		err = errors.Wrapf(err, "failed writing file %s", r.URL.Path)
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Error(err)
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
-}
+//// PubkeyFromFile takes a subject name, and pulls the corresponding pubkey out of the identity provider file
+//func (d *DBTRepoServer) PubkeyFromFile(subject string) (pubkey string, err error) {
+//	// need to get pubkey file similar to: htpasswd := PubkeyFileProvider(d.AuthOpts.IdpFile)
+//	return pubkey, err
+//}
+//
+//// PubkeyFromFunc takes a subject name, and runs the configured function to return the corresponding public key
+//func (d *DBTRepoServer) PubkeyFromFunc(subject string) (pubkey string, err error) {
+//
+//	return pubkey, err
+//}
+//
+//func (d *DBTRepoServer) PubkeyAuth(subject string, authFunc func(subject string) (pubkey string, err error)) (principal string) {
+//
+//	return principal
+//}
+//
+//// PutHandlerPubKeyFile
+//func (d *DBTRepoServer) PutHandlerPubkeyFile(w http.ResponseWriter, r *http.Request) {
+//	tokenString := r.Header.Get("Token")
+//
+//	// Parse the token, which includes setting up it's internals so it can be verified.
+//	subject, token, err := agentjwt.ParsePubkeySignedToken(tokenString, d.PubkeyFromFile)
+//	if err != nil {
+//		log.Errorf("Error: %s", err)
+//		w.WriteHeader(http.StatusBadRequest)
+//		return
+//	}
+//
+//	if !token.Valid {
+//		log.Info("Auth Failed")
+//		w.WriteHeader(http.StatusUnauthorized)
+//	}
+//
+//	log.Infof("Subject %s successfully authenticated", subject)
+//
+//	err = d.HandlePut(r.URL.Path, r.Body, r.Header.Get("X-Checksum-Md5"), r.Header.Get("X-Checksum-Sha1"), r.Header.Get("X-Checksum-Sha256"))
+//	if err != nil {
+//		err = errors.Wrapf(err, "failed writing file %s", r.URL.Path)
+//		w.WriteHeader(http.StatusInternalServerError)
+//		log.Error(err)
+//		return
+//	}
+//
+//	w.WriteHeader(http.StatusCreated)
+//}
+//
+//// PutHandlerPubkeyFunc
+//func (d *DBTRepoServer) PutHandlerPubkeyFunc(w http.ResponseWriter, r *http.Request) {
+//	tokenString := r.Header.Get("Token")
+//
+//	// sanity check username
+//
+//	//Parse the token, which includes setting up it's internals so it can be verified.
+//	subject, token, err := agentjwt.ParsePubkeySignedToken(tokenString, d.PubkeyFromFunc)
+//	if err != nil {
+//		log.Errorf("Error: %s", err)
+//		w.WriteHeader(http.StatusBadRequest)
+//		return
+//	}
+//
+//	if !token.Valid {
+//		log.Info("Auth Failed")
+//		w.WriteHeader(http.StatusUnauthorized)
+//	}
+//
+//	log.Infof("Subject %s successfully authenticated", subject)
+//
+//	err = d.HandlePut(r.URL.Path, r.Body, r.Header.Get("X-Checksum-Md5"), r.Header.Get("X-Checksum-Sha1"), r.Header.Get("X-Checksum-Sha256"))
+//	if err != nil {
+//		err = errors.Wrapf(err, "failed writing file %s", r.URL.Path)
+//		w.WriteHeader(http.StatusInternalServerError)
+//		log.Error(err)
+//		return
+//	}
+//
+//	w.WriteHeader(http.StatusCreated)
+//}
 
 // Auth Methods
 // basic-htpasswd
