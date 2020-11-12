@@ -10,7 +10,7 @@ RUN go build github.com/nikogura/dbt/cmd/reposerver
 
 RUN mv reposerver /usr/local/bin
 
-RUN cp dockerfiles/reposerver-entrypoint.sh /
+RUN cp dockerfiles/reposerver/entrypoint.sh /
 
 WORKDIR /
 
