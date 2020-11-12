@@ -69,7 +69,11 @@ func Run(cmd *cobra.Command, args []string) {
 		repo = r
 
 	} else {
-		repo = &dbt.DBTRepoServer{}
+		repo = &dbt.DBTRepoServer{
+			Address:    address,
+			Port:       port,
+			ServerRoot: serverRoot,
+		}
 	}
 
 	if repo == nil {
