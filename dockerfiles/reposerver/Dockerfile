@@ -22,4 +22,4 @@ ENV PORT 9999
 ENV SERVER_ROOT /var/dbt
 ENV CONFIG_FILE /etc/dbt/reposerver.json
 
-ENTRYPOINT ["/reposerver-entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
