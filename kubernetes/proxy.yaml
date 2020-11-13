@@ -1,0 +1,16 @@
+---
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: dbt
+  namespace: dbt
+spec:
+  virtualhost:
+    fqdn: dbt.nikogura.com
+    tls:
+      secretName: projectcontour/infradel-wildcard
+  routes:
+    - match: "/"
+      services:
+        - name: dbt
+          port: 80

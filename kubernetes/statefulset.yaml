@@ -1,0 +1,52 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: dbt
+  namespace: dbt
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dbt
+  serviceName: dbt
+  template:
+    metadata:
+      labels:
+        app: dbt
+    spec:
+      containers:
+        - name: dbt
+          image: nikogura/dbt-reposerver:3.1.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9999
+              name: dbt
+              protocol: TCP
+
+          env:
+            - name: CONFIG_FILE
+              value: /etc/dbt/reposerver.json
+
+          volumeMounts:
+            - name: dbt-storage
+              mountPath: /var/dbt
+
+            - name: dbt-config
+              mountPath: /etc/dbt
+
+      volumes:
+        - name: dbt-config
+          configMap:
+            name: dbt
+
+  volumeClaimTemplates:
+    - metadata:
+        name: dbt-storage
+      spec:
+        accessModes: ['ReadWriteOnce']
+        #        storageClassName: default
+        resources:
+          requests:
+            storage: 10Gi
+

@@ -315,6 +315,12 @@ Command: `dbt reposerver -f /path/to/config`
 Output:
 
     {"level":"info","msg":"Running dbt artifact server on my-hostname.com port 443.  Serving tree at: /var/dbt","time":"2020-11-11T11:18:43-08:00"} 
+    
+### Running the Reposerver in Kubernetes
+
+Checkout the [kubernetes](kubernetes) directory for example manifests for running the reposerver in Kubernetes.
+
+These examples use the HTTPPRoxy ingress from [projectcontour](https://projectcontour.io/).  Any old ingress will do though.
 
 # Installation
 The easiest way to install `dbt` is via a tool called `gomason`. You can build via `go build` and move the files any which way you like, but `gomason` makes it easy.
