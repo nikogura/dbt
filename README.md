@@ -378,7 +378,24 @@ To customise `boilerplate` templates:
 
     Don't forget to commit and push.  Remember `gomason` will pull from the remote repo before building.  It never sees what's in your local clone.  It pulls a fresh clone every time it runs.  By design it's a 'clean room' for your code.
 
-1. Publish via `gomason publish -s`.  You have to skip the tests, since my tests run against my package, which is `github.com/nikogura/dbt`.  They won't run against your forked package unless you laborously go through my code and remove all references to my package.  (That's certainly possible too, though annoying.)
+1. Publish via `gomason publish -s`.  A couple of examples that work well:
+
+    1. From a shell run:
+    
+        `METADATA_TEMPLATE=$(cat metadata.tmpl | base64) gomason publish -vs`
+
+    1. From a Makefile:
+    
+        ```
+        .EXPORT_ALL_VARIABLES:
+    
+        METADATA_TEMPLATE = $(shell cat metadata.tmpl | base64)
+    
+        publish:
+            @gomason publish -vs
+        ```
+
+    You have to skip the tests, since _my_ tests run against _my_ package, which is `github.com/nikogura/dbt`.  They won't run against your forked package unless you laborously go through my code and remove all references to my package.  (That's certainly possible too, though annoying.)
 
 1. Run the installer you built. It'll be found in `<repo>/install_dbt.sh`.  
 
@@ -392,7 +409,7 @@ To customise `boilerplate` templates:
 
     This 2 step is forced by the aws cli not being able to feed a downloaded object directly to bash.  (Or at least, I haven't figured out how to make it do so - yet!)
 
-6. Verify installation by running: `dbt catalog list` .
+1. Verify installation by running: `dbt catalog list` .
 
 The details of what all is supported in `metadata.json` can be found in [https://github.com/nikogura/gomason](https://github.com/nikogura/gomason).  
 
