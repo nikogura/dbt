@@ -1,6 +1,6 @@
 # DBT  *Dynamic Binary Toolkit* 
 
-A cross- platform framework for downloading and verifying binary tools.
+A framework for self-updating binary tools.
 
 [![Current Release](https://img.shields.io/github/release/nikogura/dbt.svg)](https://img.shields.io/github/release/nikogura/dbt.svg)
 
@@ -144,7 +144,7 @@ With DBT, you have the best of both worlds.  You can force your tools to use an 
 
 Generally speaking, you will run your tools with a command of the form:
 
-    dbt [flags] -- <command>  <command args and flags>
+    dbt [flags] -- <tool>  <tool args and flags>
     
 Take special note of the `--`  That double dash separates the flags for `dbt` itself from those of the command.  It can get confusing if you don't spot the double dash and grok it's meaning.
 
@@ -323,7 +323,7 @@ Checkout the [kubernetes](kubernetes) directory for example manifests for runnin
 These examples use the HTTPPRoxy ingress from [projectcontour](https://projectcontour.io/).  Any old ingress will do though.
 
 # Installation
-The easiest way to install `dbt` is via a tool called `gomason`. You can build via `go build` and move the files any which way you like, but `gomason` makes it easy.
+The easiest way to install `dbt` is via a tool called [gomason](https://github.com/nikogura/gomason). You can build via `go build` and move the files any which way you like, but `gomason` makes it easy.
 
 If you don't want to make any changes to the code or tools:
 
@@ -331,7 +331,7 @@ If you don't want to make any changes to the code or tools:
 
 1. Change the `metadata.json` file to reflect your own repository setup and preferences.  Specifically you need to change the `repository` and `tool-repository` lines. Commit and push the changes back to your repo. 
 
-1. Install `gomason` via `go get github.com/nikogura/gomason`. Then run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT together with the tools `catalog`, `boilerplate`, and `reposerver`.
+1. Install [gomason](https://github.com/nikogura/gomason) via `go get github.com/nikogura/gomason`. Then run `gomason publish`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT together with the tools `catalog`, `boilerplate`, and `reposerver`.
 
 1. Run the installer you built. It'll be found in `<repo>/install_dbt.sh`.  With an HTTP reposerver like Artifactory or DBT's internal server, you can install this script via `curl https://your.repo.host/path/to/install_dbt.sh | bash`.  
 
