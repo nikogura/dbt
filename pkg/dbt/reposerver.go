@@ -108,19 +108,26 @@ func (d *DBTRepoServer) RunRepoServer() (err error) {
 			htpasswd := auth.HtpasswdFileProvider(d.AuthOpts.IdpFile)
 			authenticator := auth.NewBasicAuthenticator("DBT Server", htpasswd)
 			r.PathPrefix("/").Handler(auth.JustCheck(authenticator, http.FileServer(http.Dir(d.ServerRoot)).ServeHTTP)).Methods("GET", "HEAD")
-		case AUTH_SSH_AGENT_FILE:
-
-		case AUTH_SSH_AGENT_FUNC:
-
-		case AUTH_BASIC_LDAP:
-			err = errors.New("basic auth via ldap not yet supported")
-			return err
-		case AUTH_SSH_AGENT_LDAP:
-			err = errors.New("ssh-agent auth via ldap not yet supported")
-			return err
+		//case AUTH_SSH_AGENT_FILE:
+		//	err = errors.New("pubkey auth via file not yet supported")
+		//	return err
+		//
+		//case AUTH_SSH_AGENT_FUNC:
+		//	err = errors.New("pubkey auth via file not yet supported")
+		//	return err
+		//
+		//case AUTH_BASIC_LDAP:
+		//	err = errors.New("basic auth via ldap not yet supported")
+		//	return err
+		//
+		//case AUTH_SSH_AGENT_LDAP:
+		//	err = errors.New("ssh-agent auth via ldap not yet supported")
+		//	return err
+		//
 		default:
 			err = errors.New(fmt.Sprintf("unsupported auth method: %s", d.AuthType))
 			return err
+
 		}
 	} else {
 		r.PathPrefix("/").Handler(http.FileServer(http.Dir(d.ServerRoot))).Methods("GET", "HEAD")
