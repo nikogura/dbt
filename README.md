@@ -146,9 +146,9 @@ Generally speaking, you will run your tools with a command of the form:
 
     dbt [flags] -- <tool>  <tool args and flags>
     
-Take special note of the `--`  That double dash separates the flags for `dbt` itself from those of the command.  It can get confusing if you don't spot the double dash and grok it's meaning.
+Take special note of the `--`  That double dash separates the flags for `dbt` itself from those of the tool.  It can get confusing if you don't spot the double dash and grok it's meaning.
 
-Without it, any flags you try to run on `<command>` will be consumed by `dbt` itself, and the result will probably not be what you intend.
+Without it, any flags you try to run on `<tool>` will be consumed by `dbt` itself, and the result will probably not be what you intend.
 
 Of course, if your command has no flags itself, only positional arguments, you can run it straight without the double dash.  
 
