@@ -17,11 +17,13 @@ package dbt
 import (
 	"crypto/sha1"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -258,4 +260,34 @@ func GetFunc(shellCommand string) (result string, err error) {
 	result = strings.TrimSuffix(string(stdoutBytes), "\n")
 
 	return result, err
+}
+
+// AuthHeaders Convenience function to add auth headers - basic or token for non-s3 requests.
+func (dbt *DBT) AuthHeaders(r *http.Request) (err error) {
+	username := dbt.Config.Username
+	password := dbt.Config.Password
+
+	// Username func takes precedence over hardcoded username
+	if dbt.Config.UsernameFunc != "" {
+		username, err = GetFunc(dbt.Config.UsernameFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
+			return err
+		}
+	}
+
+	// PasswordFunc takes precedence over hardcoded password
+	if dbt.Config.PasswordFunc != "" {
+		password, err = GetFunc(dbt.Config.PasswordFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
+			return err
+		}
+	}
+
+	if username != "" && password != "" {
+		r.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+	}
+
+	return err
 }

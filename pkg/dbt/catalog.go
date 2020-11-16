@@ -1,7 +1,6 @@
 package dbt
 
 import (
-	"encoding/base64"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -106,29 +105,10 @@ func (dbt *DBT) FetchToolDescription(tool string, version string) (description s
 		return description, err
 	}
 
-	username := dbt.Config.Username
-	password := dbt.Config.Password
-
-	// Username func takes precedence over hardcoded username
-	if dbt.Config.UsernameFunc != "" {
-		username, err = GetFunc(dbt.Config.UsernameFunc)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
-			return description, err
-		}
-	}
-
-	// PasswordFunc takes precedence over hardcoded password
-	if dbt.Config.PasswordFunc != "" {
-		password, err = GetFunc(dbt.Config.PasswordFunc)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
-			return description, err
-		}
-	}
-
-	if username != "" && password != "" {
-		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+	err = dbt.AuthHeaders(req)
+	if err != nil {
+		err = errors.Wrapf(err, "failed adding auth headers")
+		return description, err
 	}
 
 	resp, err := client.Do(req)
@@ -179,29 +159,10 @@ func (dbt *DBT) FetchToolNames() (tools []Tool, err error) {
 		return tools, err
 	}
 
-	username := dbt.Config.Username
-	password := dbt.Config.Password
-
-	// Username func takes precedence over hardcoded username
-	if dbt.Config.UsernameFunc != "" {
-		username, err = GetFunc(dbt.Config.UsernameFunc)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
-			return tools, err
-		}
-	}
-
-	// PasswordFunc takes precedence over hardcoded password
-	if dbt.Config.PasswordFunc != "" {
-		password, err = GetFunc(dbt.Config.PasswordFunc)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
-			return tools, err
-		}
-	}
-
-	if username != "" && password != "" {
-		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+	err = dbt.AuthHeaders(req)
+	if err != nil {
+		err = errors.Wrapf(err, "failed adding auth headers")
+		return tools, err
 	}
 
 	resp, err := client.Do(req)

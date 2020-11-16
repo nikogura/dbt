@@ -15,7 +15,6 @@
 package dbt
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -50,7 +49,7 @@ const ConfigFilePath = ConfigDir + "/dbt.json"
 const TruststorePath = TrustDir + "/truststore"
 
 // VERSION DBT's version
-const VERSION = "3.1.2"
+const VERSION = "3.1.3"
 
 // DBT the dbt object itself
 type DBT struct {
@@ -68,6 +67,9 @@ type Config struct {
 	Password     string      `json:"password,omitempty"`
 	UsernameFunc string      `json:"usernamefunc,omitempty"`
 	PasswordFunc string      `json:"passwordfunc,omitempty"`
+	Pubkey       string      `json:"pubkey,omitempty"`
+	PubkeyPath   string      `json:"pubkeypath,omitempty"`
+	PubkeyFunc   string      `json:"pubkeyfunc,omitempty"`
 }
 
 // DbtConfig internal config of dbt
@@ -236,29 +238,10 @@ func (dbt *DBT) FetchTrustStore(homedir string) (err error) {
 		return err
 	}
 
-	username := dbt.Config.Username
-	password := dbt.Config.Password
-
-	// Username func takes precedence over hardcoded username
-	if dbt.Config.UsernameFunc != "" {
-		username, err = GetFunc(dbt.Config.UsernameFunc)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to get username from shell function %q", dbt.Config.UsernameFunc)
-			return err
-		}
-	}
-
-	// PasswordFunc takes precedence over hardcoded password
-	if dbt.Config.PasswordFunc != "" {
-		password, err = GetFunc(dbt.Config.PasswordFunc)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to get password from shell function %q", dbt.Config.PasswordFunc)
-			return err
-		}
-	}
-
-	if username != "" && password != "" {
-		req.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+	err = dbt.AuthHeaders(req)
+	if err != nil {
+		err = errors.Wrapf(err, "failed adding auth headers")
+		return err
 	}
 
 	resp, err := client.Do(req)
