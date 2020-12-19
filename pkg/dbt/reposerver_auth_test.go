@@ -97,6 +97,8 @@ func TestRepoServerAuth(t *testing.T) {
 				t.Fatalf("Failed creating auth file %s: %s", idpFile, err)
 			}
 
+			// TODO start ssh agent if necessary
+
 			// write config file
 			tmplData := struct {
 				Port       int
@@ -154,6 +156,8 @@ func TestRepoServerAuth(t *testing.T) {
 				if file.auth {
 					req.SetBasicAuth(tc.Auth.user, tc.Auth.credential)
 				}
+
+				// TODO add switch for pubkey auth
 
 				fmt.Printf("Writing %s to server\n", fileUrl)
 
