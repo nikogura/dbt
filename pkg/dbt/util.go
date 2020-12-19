@@ -317,14 +317,17 @@ func (dbt *DBT) AuthHeaders(r *http.Request) (err error) {
 		}
 	}
 
-	// use username and pubkey to set Token header
-	token, err := agentjwt.SignedJwtToken(username, pubkey)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to sign JWT token")
-	}
+	// Don't try to sign a token if we don't actually have a public key
+	if pubkey != "" {
+		// use username and pubkey to set Token header
+		token, err := agentjwt.SignedJwtToken(username, pubkey)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to sign JWT token")
+		}
 
-	if token != "" {
-		r.Header.Add("Token", token)
+		if token != "" {
+			r.Header.Add("Token", token)
+		}
 	}
 
 	return err
