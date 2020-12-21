@@ -301,9 +301,13 @@ A JSON file of the form:
 	    "address": "my-hostname.com",
         "port": 443,
         "serverRoot": "/path/to/where/you/store/tools",
-        "authType": "basic-htpasswd",
+        "authTypeGet": "basic-htpasswd",
         "authGets": false,
-        "authOpts": {
+        "authOptsGet": {
+            "idpFile": "/path/to/htpasswd/file"
+        },
+        "authTypePut": "basic-htpasswd",
+        "authOptsPut": {
             "idpFile": "/path/to/htpasswd/file"
         }
     }

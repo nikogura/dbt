@@ -38,12 +38,13 @@ func init() {
 
 // DBTRepoServer The reference 'trusted repository' server for dbt.
 type DBTRepoServer struct {
-	Address    string   `json:"address"`
-	Port       int      `json:"port"`
-	ServerRoot string   `json:"serverRoot"`
-	AuthType   string   `json:"authType"`
-	AuthGets   bool     `json:"authGets"`
-	AuthOpts   AuthOpts `json:"authOpts"`
+	Address     string   `json:"address"`
+	Port        int      `json:"port"`
+	ServerRoot  string   `json:"serverRoot"`
+	AuthTypeGet string   `json:"authTypeGet"`
+	AuthTypePut string   `json:"authTypePut"`
+	AuthGets    bool     `json:"authGets"`
+	AuthOpts    AuthOpts `json:"authOpts"`
 }
 
 // AuthOpts Struct for holding Auth options
@@ -80,8 +81,8 @@ func (d *DBTRepoServer) RunRepoServer() (err error) {
 	r := mux.NewRouter()
 
 	// handle the uploads if enabled
-	if d.AuthType != "" {
-		switch d.AuthType {
+	if d.AuthTypePut != "" {
+		switch d.AuthTypePut {
 		case AUTH_BASIC_HTPASSWD:
 			htpasswd := auth.HtpasswdFileProvider(d.AuthOpts.IdpFile)
 			authenticator := auth.NewBasicAuthenticator("DBT Server", htpasswd)
@@ -97,23 +98,23 @@ func (d *DBTRepoServer) RunRepoServer() (err error) {
 		//	err = errors.New("ssh-agent auth via ldap not yet supported")
 		//	return err
 		default:
-			err = errors.New(fmt.Sprintf("unsupported auth method: %s", d.AuthType))
+			err = errors.New(fmt.Sprintf("unsupported auth method: %s", d.AuthTypePut))
 			return err
 		}
 	}
 
 	// handle the downloads and indices
-	if d.AuthType != "" && d.AuthGets {
-		switch d.AuthType {
+	if d.AuthTypeGet != "" && d.AuthGets {
+		switch d.AuthTypeGet {
 		case AUTH_BASIC_HTPASSWD:
 			htpasswd := auth.HtpasswdFileProvider(d.AuthOpts.IdpFile)
 			authenticator := auth.NewBasicAuthenticator("DBT Server", htpasswd)
 			r.PathPrefix("/").Handler(auth.JustCheck(authenticator, http.FileServer(http.Dir(d.ServerRoot)).ServeHTTP)).Methods("GET", "HEAD")
 		case AUTH_SSH_AGENT_FILE:
-			r.PathPrefix("/").Handler(d.JustCheckPubkeyFile(http.FileServer(http.Dir(d.ServerRoot)).ServeHTTP)).Methods("GET", "HEAD")
+			r.PathPrefix("/").Handler(d.CheckPubkeysGetFile(http.FileServer(http.Dir(d.ServerRoot)).ServeHTTP)).Methods("GET", "HEAD")
 
 		case AUTH_SSH_AGENT_FUNC:
-			r.PathPrefix("/").Handler(d.JustCheckPubkeyFunc(http.FileServer(http.Dir(d.ServerRoot)).ServeHTTP)).Methods("GET", "HEAD")
+			r.PathPrefix("/").Handler(d.CheckPubkeysGetFunc(http.FileServer(http.Dir(d.ServerRoot)).ServeHTTP)).Methods("GET", "HEAD")
 
 		//case AUTH_BASIC_LDAP:
 		//	err = errors.New("basic auth via ldap not yet supported")
@@ -124,7 +125,7 @@ func (d *DBTRepoServer) RunRepoServer() (err error) {
 		//	return err
 		//
 		default:
-			err = errors.New(fmt.Sprintf("unsupported auth method: %s", d.AuthType))
+			err = errors.New(fmt.Sprintf("unsupported auth method: %s", d.AuthTypeGet))
 			return err
 
 		}
@@ -205,19 +206,111 @@ func (d *DBTRepoServer) PutHandlerHtpasswd(w http.ResponseWriter, r *auth.Authen
 	w.WriteHeader(http.StatusCreated)
 }
 
-// PubkeyFromFile takes a subject name, and pulls the corresponding pubkey out of the identity provider file
-func (d *DBTRepoServer) PubkeyFromFile(subject string) (pubkey string, err error) {
-	// TODO need to get pubkey file similar to: htpasswd := PubkeyFileProvider(d.AuthOpts.IdpFile)
-
-	return pubkey, err
+// PubkeyUser A representation of a user permitted to authenticate via public key.  PubkeyUsers will have at minimum a Username, and a list of authorized public keys.
+type PubkeyUser struct {
+	Username       string   `json:"username"`
+	AuthorizedKeys []string `json:"keys"`
 }
 
-// PubkeyFromFunc takes a subject name, and runs the configured function to return the corresponding public key
-func (d *DBTRepoServer) PubkeyFromFunc(subject string) (pubkey string, err error) {
+// PubkeyIdpFile A representation of a public key IDP (Identity Provider) file.  Will have a list of users allowed to GET and a list of users authorized to PUT.
+type PubkeyIdpFile struct {
+	GetUsers []PubkeyUser `json:"getUsers"`
+	PutUsers []PubkeyUser `json:"putUsers"`
+}
 
-	// TODO need to implement PubkeyFromFunc
+// LoadPubkeyIdpFile Loads a public key IDP JSON file.
+func LoadPubkeyIdpFile(filePath string) (pkidp PubkeyIdpFile, err error) {
+	fileData, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to read idp file %s", filePath)
+		return pkidp, err
+	}
 
-	return pubkey, err
+	err = json.Unmarshal(fileData, &pkidp)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to unmarshal data in %s to PubkeyIdpFile", filePath)
+		return pkidp, err
+	}
+
+	return pkidp, err
+}
+
+/*
+Sample Pubkey IDP File
+{
+	"getUsers": [
+		{
+			"username": "foo",
+			"keys": [
+			]
+		}
+	],
+	"putUsers": [
+		{
+			"username": "bar",
+			"keys": [
+			]
+		}
+	]
+*/
+
+// PubkeysFromFilePut takes a subject name, and pulls the corresponding pubkey out of the identity provider file for puts
+func (d *DBTRepoServer) PubkeysFromFilePut(subject string) (pubkeys string, err error) {
+	idpFile, err := LoadPubkeyIdpFile(d.AuthOpts.IdpFile)
+	if err != nil {
+		err = errors.Wrapf(err, "failed loading idp file%s", d.AuthOpts.IdpFile)
+		return pubkeys, err
+	}
+
+	for _, u := range idpFile.PutUsers {
+		if u.Username == subject {
+			// TODO make work with multiple pubkeys
+			pubkeys = u.AuthorizedKeys[0]
+			log.Printf("Returning put key %q\n", pubkeys)
+			return pubkeys, err
+		}
+	}
+
+	err = errors.New(fmt.Sprintf("pubkey not found for %s", subject))
+
+	return pubkeys, err
+}
+
+// PubkeyFromFileGet takes a subject name, and pulls the corresponding pubkey out of the identity provider file for puts
+func (d *DBTRepoServer) PubkeysFromFileGet(subject string) (pubkeys string, err error) {
+	idpFile, err := LoadPubkeyIdpFile(d.AuthOpts.IdpFile)
+	if err != nil {
+		err = errors.Wrapf(err, "failed loading idp file%s", d.AuthOpts.IdpFile)
+		return pubkeys, err
+	}
+
+	for _, u := range idpFile.GetUsers {
+		if u.Username == subject {
+			// TODO make work with multiple pubkeys
+			pubkeys = u.AuthorizedKeys[0]
+			log.Printf("Returning get key %q\n", pubkeys)
+			return pubkeys, err
+		}
+	}
+	err = errors.New(fmt.Sprintf("pubkey not found for %s", subject))
+
+	return pubkeys, err
+}
+
+// PubkeyFromFuncPut takes a subject name, and runs the configured function to return the corresponding public key
+func (d *DBTRepoServer) PubkeysFromFuncPut(subject string) (pubkeys string, err error) {
+
+	// TODO need to implement PubkeyFromFunc.
+
+	return pubkeys, err
+}
+
+// PubkeyFromFuncGet takes a subject name, and runs the configured function to return the corresponding public key
+func (d *DBTRepoServer) PubkeysFromFuncGet(subject string) (pubkeys string, err error) {
+
+	// TODO need to implement PubkeyFromFunc.
+
+	return pubkeys, err
 }
 
 // AuthenticatedHandlerFunc is like http.HandlerFunc, but takes AuthenticatedRequest instead of http.Request
@@ -234,69 +327,80 @@ type AuthenticatedRequest struct {
 	Username string
 }
 
-// RequireAuth Informs the Client that Authentication is required
-func RequireAuth(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusUnauthorized)
-
-	return
-}
-
-// CheckAuth Function that actually checks the Token sent by the client in the headers.
-func CheckAuth(w http.ResponseWriter, r *http.Request, pubkeyRetrievalFunc func(subject string) (pubkey string, err error)) (username string) {
+// CheckPubkeyAuth Function that actually checks the Token sent by the client in the headers.
+func CheckPubkeyAuth(w http.ResponseWriter, r *http.Request, pubkeyRetrievalFunc func(subject string) (pubkeys string, err error)) (username string) {
 	tokenString := r.Header.Get("Token")
+
+	if tokenString == "" {
+		log.Info("Auth Failed: no token provided.")
+		w.WriteHeader(http.StatusUnauthorized)
+		return username
+	}
+
+	// TODO sanity check username?
 
 	//Parse the token, which includes setting up it's internals so it can be verified.
 	subject, token, err := agentjwt.ParsePubkeySignedToken(tokenString, pubkeyRetrievalFunc)
 	if err != nil {
-		log.Errorf("Error: %s", err)
+		log.Errorf("Error parsing token: %s", err)
 		w.WriteHeader(http.StatusBadRequest)
-		return subject
+		return username
 	}
 
 	if !token.Valid {
 		log.Info("Auth Failed")
 		w.WriteHeader(http.StatusUnauthorized)
-		return subject
+		return username
 	}
 
 	log.Infof("Subject %s successfully authenticated", subject)
-	return subject
+	username = subject
+
+	return username
 }
 
 // Wrap returns an http.HandlerFunc which wraps AuthenticatedHandlerFunc
-func Wrap(wrapped AuthenticatedHandlerFunc, pubkeyRetrievalFunc func(subject string) (pubkey string, err error)) http.HandlerFunc {
+func Wrap(wrapped AuthenticatedHandlerFunc, pubkeyRetrievalFunc func(subject string) (pubkeys string, err error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if username := CheckAuth(w, r, pubkeyRetrievalFunc); username == "" {
-			RequireAuth(w, r)
-		} else {
+		if username := CheckPubkeyAuth(w, r, pubkeyRetrievalFunc); username != "" {
 			ar := &AuthenticatedRequest{Request: *r, Username: username}
 			wrapped(w, ar)
 		}
 	}
 }
 
-// JustCheckPubkeyFile Checks the pubkey signature in the JWT token against a public key found in a htpasswd like file and if things check out, passes things along to the provided handler.
-func (d *DBTRepoServer) JustCheckPubkeyFile(wrapped http.HandlerFunc) http.HandlerFunc {
+// CheckPubkeysGetFile Checks the pubkey signature in the JWT token against a public key found in a htpasswd like file and if things check out, passes things along to the provided handler.
+func (d *DBTRepoServer) CheckPubkeysGetFile(wrapped http.HandlerFunc) http.HandlerFunc {
 	return Wrap(func(w http.ResponseWriter, ar *AuthenticatedRequest) {
 		ar.Header.Set("X-Authenticated-Username", ar.Username)
 		wrapped(w, &ar.Request)
-	}, d.PubkeyFromFile)
+	}, d.PubkeysFromFileGet)
 }
 
-// JustCheckPubkeyFunc Checks the pubkey signature in the JWT token against a public key produced from a function and if things check out, passes things along to the provided handler.
-func (d *DBTRepoServer) JustCheckPubkeyFunc(wrapped http.HandlerFunc) http.HandlerFunc {
+// CheckPubkeysGetFunc Checks the pubkey signature in the JWT token against a public key produced from a function and if things check out, passes things along to the provided handler.
+func (d *DBTRepoServer) CheckPubkeysGetFunc(wrapped http.HandlerFunc) http.HandlerFunc {
 	return Wrap(func(w http.ResponseWriter, ar *AuthenticatedRequest) {
 		ar.Header.Set("X-Authenticated-Username", ar.Username)
 		wrapped(w, &ar.Request)
-	}, d.PubkeyFromFunc)
+	}, d.PubkeysFromFuncGet)
 }
 
 // PutHandlerPubKeyFile
 func (d *DBTRepoServer) PutHandlerPubkeyFile(w http.ResponseWriter, r *http.Request) {
 	tokenString := r.Header.Get("Token")
 
+	fmt.Printf("Put Token from server: %q\n", tokenString)
+
+	if tokenString == "" {
+		log.Info("Put Auth Failed: no token provided.")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// TODO sanity check username?
+
 	// Parse the token, which includes setting up it's internals so it can be verified.
-	subject, token, err := agentjwt.ParsePubkeySignedToken(tokenString, d.PubkeyFromFile)
+	subject, token, err := agentjwt.ParsePubkeySignedToken(tokenString, d.PubkeysFromFilePut)
 	if err != nil {
 		log.Errorf("Error: %s", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -325,10 +429,16 @@ func (d *DBTRepoServer) PutHandlerPubkeyFile(w http.ResponseWriter, r *http.Requ
 func (d *DBTRepoServer) PutHandlerPubkeyFunc(w http.ResponseWriter, r *http.Request) {
 	tokenString := r.Header.Get("Token")
 
-	// sanity check username
+	if tokenString == "" {
+		log.Info("Put Auth Failed: no token provided.")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// TODO sanity check username?
 
 	//Parse the token, which includes setting up it's internals so it can be verified.
-	subject, token, err := agentjwt.ParsePubkeySignedToken(tokenString, d.PubkeyFromFunc)
+	subject, token, err := agentjwt.ParsePubkeySignedToken(tokenString, d.PubkeysFromFuncPut)
 	if err != nil {
 		log.Errorf("Error: %s", err)
 		w.WriteHeader(http.StatusBadRequest)
