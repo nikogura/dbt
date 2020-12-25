@@ -10,12 +10,10 @@ jobs:
     working_directory: /go/src/github.com/nikogura/dbt
     steps:
       - checkout
-      - run: mkdir -p .ssh
-      - run: chmod 700 .ssh
-      - run: echo "${TEST_PRIVATE_KEY}" | base64 -d > .ssh/id_rsa.test
-      - run: chmod 700 .ssh/id_rsa.test
-      - run: echo "${TEST_PUBLIC_KEY}" | base64 -d > .ssh/id_rsa.test.pub
-      - run: ssh-add ./ssh/id_rsa.test
+      - run: echo "${TEST_PRIVATE_KEY}" | base64 -d > ~/.ssh/id_rsa.test
+      - run: chmod 700 ~/.ssh/id_rsa.test
+      - run: echo "${TEST_PUBLIC_KEY}" | base64 -d > ~/.ssh/id_rsa.test.pub
+      - run: ssh-add ~/.ssh/id_rsa.test
       - run: gpg-agent --daemon
       - run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
       - run: bash <(curl -s https://codecov.io/bash)
