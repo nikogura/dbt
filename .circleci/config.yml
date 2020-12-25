@@ -15,7 +15,7 @@ jobs:
       - run: echo "${TEST_PRIVATE_KEY}" | base64 -d > .ssh/id_rsa.test
       - run: chmod 700 .ssh/id_rsa.test
       - run: echo "${TEST_PUBLIC_KEY}" | base64 -d > .ssh/id_rsa.test.pub
-      - run: ssh-add id_rsa.test
+      - run: ssh-add ./ssh/id_rsa.test
       - run: gpg-agent --daemon
       - run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
       - run: bash <(curl -s https://codecov.io/bash)
