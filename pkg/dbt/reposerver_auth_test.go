@@ -46,7 +46,10 @@ func TestRepoServerAuth(t *testing.T) {
   "serverRoot": "{{.ServerRoot}}",
   "authTypeGet": "basic-htpasswd",
   "authGets": true,
-  "authOpts": {
+  "authOptsGet": {
+    "idpFile": "{{.IdpFile}}"
+  },
+  "authOptsPut": {
     "idpFile": "{{.IdpFile}}"
   },
 	"authTypePut": "basic-htpasswd"
@@ -85,7 +88,10 @@ func TestRepoServerAuth(t *testing.T) {
  "serverRoot": "{{.ServerRoot}}",
  "authTypeGet": "ssh-agent-file",
  "authGets": true,
- "authOpts": {
+ "authOptsGet": {
+   "idpFile": "{{.IdpFile}}"
+ },
+ "authOptsPut": {
    "idpFile": "{{.IdpFile}}"
  },
 	"authTypePut": "ssh-agent-file"
@@ -95,24 +101,20 @@ func TestRepoServerAuth(t *testing.T) {
   "getUsers": [
     {
       "username": "nik",
-      "keys": [
-        "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQD3ETSz3t6zQCMaf+mAY9/gGc/e3Yuj5miepHfneRIqXx+jvULL/h6ldNjH4wvtf9GCr/KwJUVxL+k1UqzPwSYLnEXfsO3qLD6JmBSMtyiuOrfIBJqU7NimtSm8fPL9wF/J5ACrl99T5qR7+ykks7W8cbbZ/UY+PPO0SN0E7LYvKWBGnl7M0ah0Hyofg7xiIhrTQf+CBXj7mM1vBi+HbTnRR+Nl5+X9d78y4j1aI9LvjeOOPU1sVEDdcYWsu4xFqXl12hnjSHRcLNlTThO4T0k+EPVQ4ryBM5HC14lkDIacCaR4Dtfz909NvVGR+4Y5aE1OxevzAxxJSrSdpkTbKKDA8qTaMO56gjQ1saS7i7Bv5SzReGaUqv0sZi0xDhYFz4lEvfsa82q7ic9s10kkrrYQYUF8lFS1lBnAthN6Mu/10Iorf/KvG84OltYVAAhotCnER9dkvTEU7eyIX4ITfOO50cbvzwZk5sk/vATvuYfO7+V9w7N8P5z2pOipbFtCsW6aV1cH+frKA7MR0aZRSfdzPjINvp25HxT/ctZZxwacrzpY3GSofh2hMNfitUjZvHyLRcRY0Zx0iGON3531RTwR9j8+95HhWvuYGFC41sUfWdUjHWpnNagX5PS7JlFvT4ha0LOnElpfTgiVVcCfLdURByK1stwhT0H2Z4lGrqvjEQ== vayde@Talathar.local"
-      ]
+      "publickey": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org"
     }
   ],
   "putUsers": [
     {
       "username": "nik",
-      "keys": [
-        "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQD3ETSz3t6zQCMaf+mAY9/gGc/e3Yuj5miepHfneRIqXx+jvULL/h6ldNjH4wvtf9GCr/KwJUVxL+k1UqzPwSYLnEXfsO3qLD6JmBSMtyiuOrfIBJqU7NimtSm8fPL9wF/J5ACrl99T5qR7+ykks7W8cbbZ/UY+PPO0SN0E7LYvKWBGnl7M0ah0Hyofg7xiIhrTQf+CBXj7mM1vBi+HbTnRR+Nl5+X9d78y4j1aI9LvjeOOPU1sVEDdcYWsu4xFqXl12hnjSHRcLNlTThO4T0k+EPVQ4ryBM5HC14lkDIacCaR4Dtfz909NvVGR+4Y5aE1OxevzAxxJSrSdpkTbKKDA8qTaMO56gjQ1saS7i7Bv5SzReGaUqv0sZi0xDhYFz4lEvfsa82q7ic9s10kkrrYQYUF8lFS1lBnAthN6Mu/10Iorf/KvG84OltYVAAhotCnER9dkvTEU7eyIX4ITfOO50cbvzwZk5sk/vATvuYfO7+V9w7N8P5z2pOipbFtCsW6aV1cH+frKA7MR0aZRSfdzPjINvp25HxT/ctZZxwacrzpY3GSofh2hMNfitUjZvHyLRcRY0Zx0iGON3531RTwR9j8+95HhWvuYGFC41sUfWdUjHWpnNagX5PS7JlFvT4ha0LOnElpfTgiVVcCfLdURByK1stwhT0H2Z4lGrqvjEQ== vayde@Talathar.local"
-      ]
+      "publickey": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org"
     }
   ]
 }
 `,
 			authinfo{
 				user:       "nik",
-				credential: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQD3ETSz3t6zQCMaf+mAY9/gGc/e3Yuj5miepHfneRIqXx+jvULL/h6ldNjH4wvtf9GCr/KwJUVxL+k1UqzPwSYLnEXfsO3qLD6JmBSMtyiuOrfIBJqU7NimtSm8fPL9wF/J5ACrl99T5qR7+ykks7W8cbbZ/UY+PPO0SN0E7LYvKWBGnl7M0ah0Hyofg7xiIhrTQf+CBXj7mM1vBi+HbTnRR+Nl5+X9d78y4j1aI9LvjeOOPU1sVEDdcYWsu4xFqXl12hnjSHRcLNlTThO4T0k+EPVQ4ryBM5HC14lkDIacCaR4Dtfz909NvVGR+4Y5aE1OxevzAxxJSrSdpkTbKKDA8qTaMO56gjQ1saS7i7Bv5SzReGaUqv0sZi0xDhYFz4lEvfsa82q7ic9s10kkrrYQYUF8lFS1lBnAthN6Mu/10Iorf/KvG84OltYVAAhotCnER9dkvTEU7eyIX4ITfOO50cbvzwZk5sk/vATvuYfO7+V9w7N8P5z2pOipbFtCsW6aV1cH+frKA7MR0aZRSfdzPjINvp25HxT/ctZZxwacrzpY3GSofh2hMNfitUjZvHyLRcRY0Zx0iGON3531RTwR9j8+95HhWvuYGFC41sUfWdUjHWpnNagX5PS7JlFvT4ha0LOnElpfTgiVVcCfLdURByK1stwhT0H2Z4lGrqvjEQ== vayde@Talathar.local",
+				credential: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org",
 			},
 			[]testfile{
 				{
@@ -131,7 +133,7 @@ func TestRepoServerAuth(t *testing.T) {
 			"pubkey",
 			authinfo{
 				user:       "nik",
-				credential: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQD3ETSz3t6zQCMaf+mAY9/gGc/e3Yuj5miepHfneRIqXx+jvULL/h6ldNjH4wvtf9GCr/KwJUVxL+k1UqzPwSYLnEXfsO3qLD6JmBSMtyiuOrfIBJqU7NimtSm8fPL9wF/J5ACrl99T5qR7+ykks7W8cbbZ/UY+PPO0SN0E7LYvKWBGnl7M0ah0Hyofg7xiIhrTQf+CBXj7mM1vBi+HbTnRR+Nl5+X9d78y4j1aI9LvjeOOPU1sVEDdcYWsu4xFqXl12hnjSHRcLNlTThO4T0k+EPVQ4ryBM5HC14lkDIacCaR4Dtfz909NvVGR+4Y5aE1OxevzAxxJSrSdpkTbKKDA8qTaMO56gjQ1saS7i7Bv5SzReGaUqv0sZi0xDhYFz4lEvfsa82q7ic9s10kkrrYQYUF8lFS1lBnAthN6Mu/10Iorf/KvG84OltYVAAhotCnER9dkvTEU7eyIX4ITfOO50cbvzwZk5sk/vATvuYfO7+V9w7N8P5z2pOipbFtCsW6aV1cH+frKA7MR0aZRSfdzPjINvp25HxT/ctZZxwacrzpY3GSofh2hMNfitUjZvHyLRcRY0Zx0iGON3531RTwR9j8+95HhWvuYGFC41sUfWdUjHWpnNagX5PS7JlFvT4ha0LOnElpfTgiVVcCfLdURByK1stwhT0H2Z4lGrqvjEQ== vayde@Talathar.local",
+				credential: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org",
 			},
 		},
 	}
@@ -165,8 +167,7 @@ func TestRepoServerAuth(t *testing.T) {
 				t.Fatalf("Failed creating get auth file %s: %s", idpFile, err)
 			}
 
-			// TODO make test case work off of test key, not my own
-			// TODO start ssh agent if necessary
+			// TODO start ssh agent if necessary?
 
 			// write config file
 			tmplData := struct {
@@ -211,7 +212,7 @@ func TestRepoServerAuth(t *testing.T) {
 			fmt.Printf("Sleeping for 1 second for the test artifact server to start up.")
 			time.Sleep(time.Second * 1)
 
-			// Write test files.  This is a basic HTTP request, not doing anything fancy through the DBT client.
+			// PUT test files.  This is a basic HTTP request, not doing anything fancy through the DBT client.
 			// DBT is only a reader.  How you write the files is up to you, but the auth mechanism is the same regardless.
 			client := &http.Client{}
 
@@ -259,7 +260,7 @@ func TestRepoServerAuth(t *testing.T) {
 
 				assert.Equal(t, file.result, resp.StatusCode, "File put request response code did not meet expectations.")
 
-				// verify file was written
+				// GET Test files
 				// don't bother with unauthenticated files.  We don't allow that.
 				if file.auth {
 					fmt.Printf("Verifying %s exists on server\n", fileUrl)
@@ -330,7 +331,6 @@ func TestRepoServerAuth(t *testing.T) {
 			if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
 				_ = os.Remove(tmpDir)
 			}
-
 		})
 	}
 }

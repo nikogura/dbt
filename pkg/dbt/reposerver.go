@@ -44,7 +44,8 @@ type DBTRepoServer struct {
 	AuthTypeGet string   `json:"authTypeGet"`
 	AuthTypePut string   `json:"authTypePut"`
 	AuthGets    bool     `json:"authGets"`
-	AuthOpts    AuthOpts `json:"authOpts"`
+	AuthOptsGet AuthOpts `json:"authOptsGet"`
+	AuthOptsPut AuthOpts `json:"authOptsPut"`
 }
 
 // AuthOpts Struct for holding Auth options
@@ -84,7 +85,7 @@ func (d *DBTRepoServer) RunRepoServer() (err error) {
 	if d.AuthTypePut != "" {
 		switch d.AuthTypePut {
 		case AUTH_BASIC_HTPASSWD:
-			htpasswd := auth.HtpasswdFileProvider(d.AuthOpts.IdpFile)
+			htpasswd := auth.HtpasswdFileProvider(d.AuthOptsPut.IdpFile)
 			authenticator := auth.NewBasicAuthenticator("DBT Server", htpasswd)
 			r.PathPrefix("/").HandlerFunc(authenticator.Wrap(d.PutHandlerHtpasswd)).Methods("PUT")
 		case AUTH_SSH_AGENT_FILE:
@@ -107,7 +108,7 @@ func (d *DBTRepoServer) RunRepoServer() (err error) {
 	if d.AuthTypeGet != "" && d.AuthGets {
 		switch d.AuthTypeGet {
 		case AUTH_BASIC_HTPASSWD:
-			htpasswd := auth.HtpasswdFileProvider(d.AuthOpts.IdpFile)
+			htpasswd := auth.HtpasswdFileProvider(d.AuthOptsGet.IdpFile)
 			authenticator := auth.NewBasicAuthenticator("DBT Server", htpasswd)
 			r.PathPrefix("/").Handler(auth.JustCheck(authenticator, http.FileServer(http.Dir(d.ServerRoot)).ServeHTTP)).Methods("GET", "HEAD")
 		case AUTH_SSH_AGENT_FILE:
@@ -208,8 +209,8 @@ func (d *DBTRepoServer) PutHandlerHtpasswd(w http.ResponseWriter, r *auth.Authen
 
 // PubkeyUser A representation of a user permitted to authenticate via public key.  PubkeyUsers will have at minimum a Username, and a list of authorized public keys.
 type PubkeyUser struct {
-	Username       string   `json:"username"`
-	AuthorizedKeys []string `json:"keys"`
+	Username      string `json:"username"`
+	AuthorizedKey string `json:"publickey"`
 }
 
 // PubkeyIdpFile A representation of a public key IDP (Identity Provider) file.  Will have a list of users allowed to GET and a list of users authorized to PUT.
@@ -241,31 +242,29 @@ Sample Pubkey IDP File
 	"getUsers": [
 		{
 			"username": "foo",
-			"keys": [
-			]
+			"publickey": ""
 		}
 	],
 	"putUsers": [
 		{
 			"username": "bar",
-			"keys": [
-			]
+			"publickey": ""
 		}
 	]
+}
 */
 
-// PubkeysFromFilePut takes a subject name, and pulls the corresponding pubkey out of the identity provider file for puts
-func (d *DBTRepoServer) PubkeysFromFilePut(subject string) (pubkeys string, err error) {
-	idpFile, err := LoadPubkeyIdpFile(d.AuthOpts.IdpFile)
+// PubkeyFromFilePut takes a subject name, and pulls the corresponding pubkey out of the identity provider file for puts
+func (d *DBTRepoServer) PubkeyFromFilePut(subject string) (pubkeys string, err error) {
+	idpFile, err := LoadPubkeyIdpFile(d.AuthOptsPut.IdpFile)
 	if err != nil {
-		err = errors.Wrapf(err, "failed loading idp file%s", d.AuthOpts.IdpFile)
+		err = errors.Wrapf(err, "failed loading PUT IDP file%s", d.AuthOptsPut.IdpFile)
 		return pubkeys, err
 	}
 
 	for _, u := range idpFile.PutUsers {
 		if u.Username == subject {
-			// TODO make work with multiple pubkeys
-			pubkeys = u.AuthorizedKeys[0]
+			pubkeys = u.AuthorizedKey
 			log.Printf("Returning put key %q\n", pubkeys)
 			return pubkeys, err
 		}
@@ -277,17 +276,16 @@ func (d *DBTRepoServer) PubkeysFromFilePut(subject string) (pubkeys string, err 
 }
 
 // PubkeyFromFileGet takes a subject name, and pulls the corresponding pubkey out of the identity provider file for puts
-func (d *DBTRepoServer) PubkeysFromFileGet(subject string) (pubkeys string, err error) {
-	idpFile, err := LoadPubkeyIdpFile(d.AuthOpts.IdpFile)
+func (d *DBTRepoServer) PubkeyFromFileGet(subject string) (pubkeys string, err error) {
+	idpFile, err := LoadPubkeyIdpFile(d.AuthOptsGet.IdpFile)
 	if err != nil {
-		err = errors.Wrapf(err, "failed loading idp file%s", d.AuthOpts.IdpFile)
+		err = errors.Wrapf(err, "failed loading GET IDP file%s", d.AuthOptsGet.IdpFile)
 		return pubkeys, err
 	}
 
 	for _, u := range idpFile.GetUsers {
 		if u.Username == subject {
-			// TODO make work with multiple pubkeys
-			pubkeys = u.AuthorizedKeys[0]
+			pubkeys = u.AuthorizedKey
 			log.Printf("Returning get key %q\n", pubkeys)
 			return pubkeys, err
 		}
@@ -374,7 +372,7 @@ func (d *DBTRepoServer) CheckPubkeysGetFile(wrapped http.HandlerFunc) http.Handl
 	return Wrap(func(w http.ResponseWriter, ar *AuthenticatedRequest) {
 		ar.Header.Set("X-Authenticated-Username", ar.Username)
 		wrapped(w, &ar.Request)
-	}, d.PubkeysFromFileGet)
+	}, d.PubkeyFromFileGet)
 }
 
 // CheckPubkeysGetFunc Checks the pubkey signature in the JWT token against a public key produced from a function and if things check out, passes things along to the provided handler.
@@ -400,7 +398,7 @@ func (d *DBTRepoServer) PutHandlerPubkeyFile(w http.ResponseWriter, r *http.Requ
 	// TODO sanity check username?
 
 	// Parse the token, which includes setting up it's internals so it can be verified.
-	subject, token, err := agentjwt.ParsePubkeySignedToken(tokenString, d.PubkeysFromFilePut)
+	subject, token, err := agentjwt.ParsePubkeySignedToken(tokenString, d.PubkeyFromFilePut)
 	if err != nil {
 		log.Errorf("Error: %s", err)
 		w.WriteHeader(http.StatusBadRequest)
