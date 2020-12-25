@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"github.com/orion-labs/jwt-ssh-agent-go/pkg/agentjwt"
 	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
@@ -262,8 +263,10 @@ func GetFunc(shellCommand string) (result string, err error) {
 	return result, err
 }
 
-// AuthHeaders Convenience function to add auth headers - basic or token for non-s3 requests.
+// AuthHeaders Convenience function to add auth headers - basic or token for non-s3 requests.  Depending on how client is configured, could result in both Basic Auth and Token headers.  Reposerver will, however only pay attention to one or the other.
 func (dbt *DBT) AuthHeaders(r *http.Request) (err error) {
+	// Basic Auth
+	// start with values hardcoded in the config file
 	username := dbt.Config.Username
 	password := dbt.Config.Password
 
@@ -287,6 +290,44 @@ func (dbt *DBT) AuthHeaders(r *http.Request) (err error) {
 
 	if username != "" && password != "" {
 		r.Header.Add("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+	}
+
+	// Pubkey JWT Auth
+	// Start with username and pubkey hardcoded in the config
+	pubkey := dbt.Config.Pubkey
+
+	// read pubkey from file
+	if dbt.Config.PubkeyPath != "" {
+		b, err := ioutil.ReadFile(dbt.Config.PubkeyPath)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to read public key from file %s", dbt.Config.PubkeyPath)
+			return err
+		}
+
+		pubkey = string(b)
+
+	}
+
+	// PubkeyFunc takes precedence over files and hardcoding
+	if dbt.Config.PubkeyFunc != "" {
+		pubkey, err = GetFunc(dbt.Config.PubkeyFunc)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to get public key from shell function %q", dbt.Config.PubkeyFunc)
+			return err
+		}
+	}
+
+	// Don't try to sign a token if we don't actually have a public key
+	if pubkey != "" {
+		// use username and pubkey to set Token header
+		token, err := agentjwt.SignedJwtToken(username, pubkey)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to sign JWT token")
+		}
+
+		if token != "" {
+			r.Header.Add("Token", token)
+		}
 	}
 
 	return err

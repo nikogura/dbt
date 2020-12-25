@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/nikogura/gomason/pkg/gomason"
+	"github.com/orion-labs/jwt-ssh-agent-go/pkg/agentjwt"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"html/template"
@@ -30,9 +31,12 @@ func TestRepoServerAuth(t *testing.T) {
 	cases := []struct {
 		Name           string
 		ConfigTemplate string
+		AuthTypeGet    string
 		AuthFile       string
-		Auth           authinfo
+		AuthGet        authinfo
 		TestFiles      []testfile
+		AuthTypePut    string
+		AuthPut        authinfo
 	}{
 		{
 			"basic",
@@ -40,12 +44,17 @@ func TestRepoServerAuth(t *testing.T) {
 	"address": "127.0.0.1",
   "port": {{.Port}},
   "serverRoot": "{{.ServerRoot}}",
-  "authType": "basic-htpasswd",
+  "authTypeGet": "basic-htpasswd",
   "authGets": true,
-  "authOpts": {
+  "authOptsGet": {
     "idpFile": "{{.IdpFile}}"
-  }
+  },
+  "authOptsPut": {
+    "idpFile": "{{.IdpFile}}"
+  },
+	"authTypePut": "basic-htpasswd"
 }`,
+			"basic",
 			"nik:$apr1$ytmDEY.X$LJt5T3fWtswK3KF5iINxT1",
 			authinfo{
 				user:       "nik",
@@ -59,11 +68,72 @@ func TestRepoServerAuth(t *testing.T) {
 					auth:     false,
 				},
 				{
-					name:     "foo",
+					name:     "bar",
 					contents: "frobnitz ene woo",
 					result:   201,
 					auth:     true,
 				},
+			},
+			"basic",
+			authinfo{
+				user:       "nik",
+				credential: "letmein",
+			},
+		},
+		{
+			"pubkey",
+			`{
+	"address": "127.0.0.1",
+ "port": {{.Port}},
+ "serverRoot": "{{.ServerRoot}}",
+ "authTypeGet": "ssh-agent-file",
+ "authGets": true,
+ "authOptsGet": {
+   "idpFile": "{{.IdpFile}}"
+ },
+ "authOptsPut": {
+   "idpFile": "{{.IdpFile}}"
+ },
+	"authTypePut": "ssh-agent-file"
+}`,
+			"pubkey",
+			`{
+  "getUsers": [
+    {
+      "username": "nik",
+      "publickey": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org"
+    }
+  ],
+  "putUsers": [
+    {
+      "username": "nik",
+      "publickey": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org"
+    }
+  ]
+}
+`,
+			authinfo{
+				user:       "nik",
+				credential: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org",
+			},
+			[]testfile{
+				{
+					name:     "foo",
+					contents: "frobnitz ene woo",
+					result:   401,
+					auth:     false,
+				},
+				{
+					name:     "bar",
+					contents: "frobnitz ene woo",
+					result:   201,
+					auth:     true,
+				},
+			},
+			"pubkey",
+			authinfo{
+				user:       "nik",
+				credential: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org",
 			},
 		},
 	}
@@ -94,8 +164,10 @@ func TestRepoServerAuth(t *testing.T) {
 
 			err = ioutil.WriteFile(idpFile, []byte(tc.AuthFile), 0644)
 			if err != nil {
-				t.Fatalf("Failed creating auth file %s: %s", idpFile, err)
+				t.Fatalf("Failed creating get auth file %s: %s", idpFile, err)
 			}
+
+			// TODO start ssh agent if necessary?
 
 			// write config file
 			tmplData := struct {
@@ -117,7 +189,7 @@ func TestRepoServerAuth(t *testing.T) {
 
 			err = tmpl.Execute(buf, tmplData)
 			if err != nil {
-				t.Fatalf("Failed to execute template for %s", tc.Name)
+				t.Fatalf("Failed to execute template for %s: %s", tc.Name, err)
 			}
 
 			err = ioutil.WriteFile(configFile, buf.Bytes(), 0644)
@@ -140,7 +212,8 @@ func TestRepoServerAuth(t *testing.T) {
 			fmt.Printf("Sleeping for 1 second for the test artifact server to start up.")
 			time.Sleep(time.Second * 1)
 
-			// write some files
+			// PUT test files.  This is a basic HTTP request, not doing anything fancy through the DBT client.
+			// DBT is only a reader.  How you write the files is up to you, but the auth mechanism is the same regardless.
 			client := &http.Client{}
 
 			for _, file := range tc.TestFiles {
@@ -148,14 +221,35 @@ func TestRepoServerAuth(t *testing.T) {
 
 				req, err := http.NewRequest(http.MethodPut, fileUrl, bytes.NewReader([]byte(file.contents)))
 				if err != nil {
-					t.Errorf("Failed creatign request for %s: %s", file.name, err)
-				}
-
-				if file.auth {
-					req.SetBasicAuth(tc.Auth.user, tc.Auth.credential)
+					t.Errorf("Failed creating request for %s: %s", file.name, err)
 				}
 
 				fmt.Printf("Writing %s to server\n", fileUrl)
+
+				if file.auth {
+					switch tc.AuthTypePut {
+					case "basic":
+						fmt.Printf("Basic Authed Request.\n")
+						req.SetBasicAuth(tc.AuthPut.user, tc.AuthPut.credential)
+
+					case "pubkey":
+						fmt.Printf("Pubkey Authed Request.\n")
+						// use username and pubkey to set Token header
+						token, err := agentjwt.SignedJwtToken(tc.AuthPut.user, tc.AuthPut.credential)
+						if err != nil {
+							t.Errorf("failed to sign JWT token: %s", err)
+						}
+
+						fmt.Printf("Token in client: %q\n", token)
+
+						if token != "" {
+							fmt.Printf("Adding token header to request.\n")
+							req.Header.Add("Token", token)
+						}
+					}
+				} else {
+					fmt.Printf("Unauthenticated Request.\n")
+				}
 
 				resp, err := client.Do(req)
 				if err != nil {
@@ -166,7 +260,7 @@ func TestRepoServerAuth(t *testing.T) {
 
 				assert.Equal(t, file.result, resp.StatusCode, "File put request response code did not meet expectations.")
 
-				// verify file was written
+				// GET Test files
 				// don't bother with unauthenticated files.  We don't allow that.
 				if file.auth {
 					fmt.Printf("Verifying %s exists on server\n", fileUrl)
@@ -185,7 +279,30 @@ func TestRepoServerAuth(t *testing.T) {
 					req.Header.Set("X-Checksum-Sha1", sha1sum)
 					req.Header.Set("X-Checksum-Sha256", sha256sum)
 
-					req.SetBasicAuth(tc.Auth.user, tc.Auth.credential)
+					if file.auth {
+						switch tc.AuthTypePut {
+						case "basic":
+							fmt.Printf("Basic Authed Request.\n")
+							req.SetBasicAuth(tc.AuthGet.user, tc.AuthGet.credential)
+
+						case "pubkey":
+							fmt.Printf("Pubkey Authed Request.\n")
+							// use username and pubkey to set Token header
+							token, err := agentjwt.SignedJwtToken(tc.AuthGet.user, tc.AuthGet.credential)
+							if err != nil {
+								t.Errorf("failed to sign JWT token: %s", err)
+							}
+
+							fmt.Printf("Token in client: %q\n", token)
+
+							if token != "" {
+								fmt.Printf("Adding token header to request.\n")
+								req.Header.Add("Token", token)
+							}
+						}
+					} else {
+						fmt.Printf("Unauthenticated Request.\n")
+					}
 
 					resp, err := client.Do(req)
 					if err != nil {
@@ -214,7 +331,6 @@ func TestRepoServerAuth(t *testing.T) {
 			if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
 				_ = os.Remove(tmpDir)
 			}
-
 		})
 	}
 }

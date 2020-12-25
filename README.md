@@ -291,7 +291,13 @@ Output:
 
 An http repository server.  It serves up the various dbt tools and components from a file location on disk. 
 
-At present, the repo server supports basic auth via _htpasswd_ file.  Other auth options will be available as time allows.
+At present, the repo server supports basic auth via _htpasswd_ file and public key auth from an ssh-agent via JWT.  Other auth options will be available as time allows.
+
+Separate IDP (Identity Provider) files can be provided to provide privilege separation between tool use (GET) and tool publishing (PUT).  Likewise separate auth methods can be used for GET and PUT.
+
+Why did I make it possible to have split auth methods?  Flexibility.  Passwordless ssh-key auth for a user is good UX.  It's secure, and easy for the users.  It's kind of a pain for CI systems and other automated uses.  Sometimes just sticking a password in the environment is the best way for these use cases.  Hey, do what you want.  I'm just trying to help.
+
+The PublicKey Auth IDP file contains sections for both GET and PUT, so a single file can be used for both.  Obviously if you do use separate files, only the appropriate portion of each file will be read.
 
 ### Reposerver Config
 
@@ -301,12 +307,37 @@ A JSON file of the form:
 	    "address": "my-hostname.com",
         "port": 443,
         "serverRoot": "/path/to/where/you/store/tools",
-        "authType": "basic-htpasswd",
+        "authTypeGet": "basic-htpasswd",
+        "authTypePut": "basic-htpasswd",
         "authGets": false,
-        "authOpts": {
-            "idpFile": "/path/to/htpasswd/file"
-        }
+        "authOptsGet": {
+            "idpFile": "/path/to/htpasswd/file/for/gets"
+        },
+        "authOptsPutt": {
+            "idpFile": "/path/to/htpasswd/file/for/puts"
+        },
     }
+
+### Reposerver IDP File
+
+The reposerver takes an IDP file.  In the case of http basic auth, this is a standard htpasswd file.
+
+In the case of Public Key JWT Auth, it looks like so:
+
+      {
+         "getUsers": [
+            {
+               "username": "foo",
+               "publickey": "ssh-rsa ...... foo@example.com"
+            }
+         ],
+         "putUsers": [
+            {
+               "username": "bar",
+               "publickey": "ssh-rsa ...... bar@example.com"
+            }
+         ]
+      }
 
 ### Running the Reposerver
 

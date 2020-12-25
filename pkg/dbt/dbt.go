@@ -579,7 +579,7 @@ func (dbt *DBT) runExec(homedir string, args []string) (err error) {
 	return err
 }
 
-// VerboseOutput Covenience function so I don't have to write 'if verbose {...}' all the time.
+// VerboseOutput Convenience function so I don't have to write 'if verbose {...}' all the time.
 func (dbt *DBT) VerboseOutput(message string, args ...interface{}) {
 	if dbt.Verbose {
 		if len(args) == 0 {
