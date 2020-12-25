@@ -11,7 +11,7 @@ jobs:
     steps:
       - checkout
       - run: echo "${TEST_PRIVATE_KEY}" | base64 -d > id_rsa.test
-      - run: echo "${TEST_PUBLIC_KEY" | base64 -d > id_rsa.test.pub
+      - run: echo "${TEST_PUBLIC_KEY}" | base64 -d > id_rsa.test.pub
       - run: ssh-add id_rsa.test
       - run: gpg-agent --daemon
       - run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
