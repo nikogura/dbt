@@ -164,9 +164,9 @@ Failing to secure your repository and signing keys is an _excellent_ way to p0wn
 
 I just build the tools.  You choose how to use them.
 
-*"If you aim the gun at your foot and pull the trigger, it's UNIX's job to 
+>"If you aim the gun at your foot and pull the trigger, it's UNIX's job to 
 ensure reliable delivery of the bullet to where you aimed the gun (in
-this case, Mr. Foot)."* -- Terry Lambert, FreeBSD-Hackers mailing list.
+this case, Mr. Foot)." -- Terry Lambert, FreeBSD-Hackers mailing list.
 
 # Repository Support
 
