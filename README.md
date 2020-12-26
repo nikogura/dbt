@@ -158,7 +158,7 @@ DBT is as secure as the repository you trust to hold the binaries, and the degre
 
 It will ensure, come hell or high water that every bit of the binary downloaded is what it aught to be, and that the signature is one you've decided to trust.  If it can't do that, it'll stop- immediately and scream bloody murder.  
 
-You can make the repo wide open, give everyone a copy of a non-encrypted key, and things will work.  It's just not recommended - or safe.  
+You can make the repo wide open, let anybody PUT tools there, give everyone a copy of a non-encrypted signing key, and everything will _just work_.  It's just not recommended - or safe.  
 
 Failing to secure your repository and signing keys is an _excellent_ way to p0wn your entire organization and every user of `dbt`.  If you do this, it's not my fault, nor is it the fault of `dbt`.  You have been warned.
 
