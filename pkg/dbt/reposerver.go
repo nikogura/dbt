@@ -236,24 +236,6 @@ func LoadPubkeyIdpFile(filePath string) (pkidp PubkeyIdpFile, err error) {
 	return pkidp, err
 }
 
-/*
-Sample Pubkey IDP File
-{
-	"getUsers": [
-		{
-			"username": "foo",
-			"publickey": ""
-		}
-	],
-	"putUsers": [
-		{
-			"username": "bar",
-			"publickey": ""
-		}
-	]
-}
-*/
-
 // PubkeyFromFilePut takes a subject name, and pulls the corresponding pubkey out of the identity provider file for puts
 func (d *DBTRepoServer) PubkeyFromFilePut(subject string) (pubkeys string, err error) {
 	idpFile, err := LoadPubkeyIdpFile(d.AuthOptsPut.IdpFile)
@@ -296,19 +278,27 @@ func (d *DBTRepoServer) PubkeyFromFileGet(subject string) (pubkeys string, err e
 }
 
 // PubkeyFromFuncPut takes a subject name, and runs the configured function to return the corresponding public key
-func (d *DBTRepoServer) PubkeysFromFuncPut(subject string) (pubkeys string, err error) {
+func (d *DBTRepoServer) PubkeysFromFuncPut(subject string) (pubkey string, err error) {
 
-	// TODO need to implement PubkeyFromFunc.
+	pubkey, err = GetFuncUsername(d.AuthOptsPut.IdpFunc, subject)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to get password from shell function %q", d.AuthOptsPut.IdpFunc)
+		return pubkey, err
+	}
 
-	return pubkeys, err
+	return pubkey, err
 }
 
 // PubkeyFromFuncGet takes a subject name, and runs the configured function to return the corresponding public key
-func (d *DBTRepoServer) PubkeysFromFuncGet(subject string) (pubkeys string, err error) {
+func (d *DBTRepoServer) PubkeysFromFuncGet(subject string) (pubkey string, err error) {
 
-	// TODO need to implement PubkeyFromFunc.
+	pubkey, err = GetFuncUsername(d.AuthOptsGet.IdpFunc, subject)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to get password from shell function %q", d.AuthOptsGet.IdpFunc)
+		return pubkey, err
+	}
 
-	return pubkeys, err
+	return pubkey, err
 }
 
 // AuthenticatedHandlerFunc is like http.HandlerFunc, but takes AuthenticatedRequest instead of http.Request

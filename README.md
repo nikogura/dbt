@@ -232,6 +232,7 @@ Output:
     
     Use "catalog [command] --help" for more information about a command.
 
+---
 
 ## Boilerplate
 
@@ -287,21 +288,33 @@ Output:
     
     Use "boilerplate [command] --help" for more information about a command.
 
+--- 
+
 ## Reposerver
 
-An http repository server.  It serves up the various dbt tools and components from a file location on disk. 
+An HTTP repository server.  It serves up the various dbt tools and components from a file location on disk. 
 
-At present, the repo server supports basic auth via _htpasswd_ file and public key auth from an ssh-agent via JWT.  Other auth options will be available as time allows.
+Available Reposerver Auth Methods:
 
-Separate IDP (Identity Provider) files can be provided to provide privilege separation between tool use (GET) and tool publishing (PUT).  Likewise separate auth methods can be used for GET and PUT.
+* *basic-htpasswd* Your basic htpasswd file.  Supports using different files for GET requests (dbt users) and PUT requests (dbt tool authors).
 
-Why did I make it possible to have split auth methods?  Flexibility.  Passwordless ssh-key auth for a user is good UX.  It's secure, and easy for the users.  It's kind of a pain for CI systems and other automated uses.  Sometimes just sticking a password in the environment is the best way for these use cases.  Hey, do what you want.  I'm just trying to help.
+* *ssh-agent-file* Authentication via [JWT](https://en.wikipedia.org/wiki/JSON_Web_Token) signed by an SSH key stored in the `ssh-agent`.    Users are mapped to public keys by a server-side file. IDP files for the _ssh-agent-file_ auth method can contain both GET and PUT users in a single file.
+
+* *ssh-agent-func* Authentication via [JWT](https://en.wikipedia.org/wiki/JSON_Web_Token) signed by an SSH key stored in the `ssh-agent`.    Users are mapped to public keys by a server-side shell function.  This method can, for instance, retrieve the SSH public key for a user from an LDAP directory.
+  
+You can even have different auth methods for GET and PUT requests.  Why did I make it possible to have split auth methods?  Flexibility.  Passwordless ssh-key auth for a user is good UX for users.  It's secure, and easy for the users.  It's kind of a pain for CI systems and other automated uses.  Sometimes just sticking a password in the environment is the best way for these use cases.  Hey, do what you want.  I'm just trying to help.
 
 The PublicKey Auth IDP file contains sections for both GET and PUT, so a single file can be used for both.  Obviously if you do use separate files, only the appropriate portion of each file will be read.
 
+You can choose to require authentication on GET requests or not.  Unauthenticated gets are appropriate for running a reposerver inside of a VPN.  If you're exposing your reposerver to the internet, authenticating all requests is highly recommended.
+
 ### Reposerver Config
 
-A JSON file of the form:
+Some examples of reposerver config files:
+
+#### Basic Htpasswd Auth
+
+Create your reposerver config file should be of the form:
 
     {
 	    "address": "my-hostname.com",
@@ -313,14 +326,53 @@ A JSON file of the form:
         "authOptsGet": {
             "idpFile": "/path/to/htpasswd/file/for/gets"
         },
-        "authOptsPutt": {
+        "authOptsPut": {
             "idpFile": "/path/to/htpasswd/file/for/puts"
+        },
+    }
+
+#### JWT Auth with Public Keys
+
+See [https://github.com/orion-labs/jwt-ssh-agent-go#background](https://github.com/orion-labs/jwt-ssh-agent-go#background) for details.
+
+##### Public Keys Mapped to Users in a File
+
+Your reposerver config should look something like:
+
+    {
+	    "address": "my-hostname.com",
+        "port": 443,
+        "serverRoot": "/path/to/where/you/store/tools",
+        "authTypeGet": "ssh-agent-file",
+        "authTypePut": "ssh-agent-file",
+        "authGets": true,
+        "authOptsGet": {
+            "idpFile": "/path/to/idp/file"
+        },
+        "authOptsPut": {
+            "idpFile": "/path/to/idp/file"
+        },
+    }
+
+##### Public Keys Mapped to Users via Function
+    {
+	    "address": "my-hostname.com",
+        "port": 443,
+        "serverRoot": "/path/to/where/you/store/tools",
+        "authTypeGet": "ssh-agent-file",
+        "authTypePut": "ssh-agent-file",
+        "authGets": true,
+        "authOptsGet": {
+            "idpFunc": "ldapsearch '(&(objectClass=posixAccount)(uid='"$1"'))' 'sshPublicKey' | sed -n '/^ /{H;d};/sshPublicKey:/x;$g;s/\n *//g;s/sshPublicKey: //gp'"
+        },
+        "authOptsPut": {
+            "idpFunc": "ldapsearch '(&(objectClass=posixAccount)(uid='"$1"'))' 'sshPublicKey' | sed -n '/^ /{H;d};/sshPublicKey:/x;$g;s/\n *//g;s/sshPublicKey: //gp'"
         },
     }
 
 ### Reposerver IDP File
 
-The reposerver takes an IDP file.  In the case of http basic auth, this is a standard htpasswd file.
+The reposerver takes an IDP (Identity Provider) file.  In the case of http basic auth, this is a standard htpasswd file.
 
 In the case of Public Key JWT Auth, it looks like so:
 
@@ -352,6 +404,34 @@ Output:
 Checkout the [kubernetes](kubernetes) directory for example manifests for running the reposerver in Kubernetes.
 
 These examples use the HTTPPRoxy ingress from [projectcontour](https://projectcontour.io/).  Any old ingress will do though.
+
+### Reposerver Config Reference
+
+* *address* The IP or hostname on which your reposerver is running.
+
+* *port* The port on which your reposerver is running
+
+* *serverRoot* The directory who's contents get served up to dbt clients
+
+* *authTypeGet* Auth type to use for GET requests.
+
+* *authTypePut* Auth type to use for PUT requests.
+
+* *authGets* Whether to require authentication of GET requests at all.  Obviously if this is false, your authTypeGet doesn't amount to much.
+
+* *authOptsGet* Auth Options for GET Requests.  Can contain:
+
+    * *idpFile* File path to IDP file.
+
+    * *idpFunc* Shell function that receives the username as $1 and is expected to return a ssh public key for that username.
+
+* *authOptsPut* Auth Options for PUT Requests.  Can contain:
+
+    * *idpFile* File path to IDP file.
+
+    * *idpFunc* Shell function that receives the username as $1 and is expected to return a ssh public key for that username.
+
+---
 
 # Installation
 The easiest way to install `dbt` is via a tool called [gomason](https://github.com/nikogura/gomason). You can build via `go build` and move the files any which way you like, but `gomason` makes it easy.

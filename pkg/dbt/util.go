@@ -263,6 +263,43 @@ func GetFunc(shellCommand string) (result string, err error) {
 	return result, err
 }
 
+// GetFuncUsername runs a shell command that is a getter function for the username.  This could certainly be dangerous, so be careful how you use it.
+func GetFuncUsername(shellCommand string, username string) (result string, err error) {
+	// add the username as the first arg of the shell command
+	shellCommand = fmt.Sprintf("%s %s", shellCommand, username)
+
+	cmd := exec.Command("sh", "-c", shellCommand)
+
+	stdout, err := cmd.StdoutPipe()
+
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+
+	cmd.Env = os.Environ()
+
+	err = cmd.Start()
+	if err != nil {
+		err = errors.Wrapf(err, "failed to run %q", shellCommand)
+		return result, err
+	}
+
+	stdoutBytes, err := ioutil.ReadAll(stdout)
+	if err != nil {
+		err = errors.Wrapf(err, "error reading stdout from func")
+		return result, err
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		err = errors.Wrapf(err, "error waiting for %q to exit", shellCommand)
+		return result, err
+	}
+
+	result = strings.TrimSuffix(string(stdoutBytes), "\n")
+
+	return result, err
+}
+
 // AuthHeaders Convenience function to add auth headers - basic or token for non-s3 requests.  Depending on how client is configured, could result in both Basic Auth and Token headers.  Reposerver will, however only pay attention to one or the other.
 func (dbt *DBT) AuthHeaders(r *http.Request) (err error) {
 	// Basic Auth
