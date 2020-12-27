@@ -450,7 +450,13 @@ If you don't want to make any changes to the code or tools:
 
 1. Run the installer you built. It'll be found in `<repo>/install_dbt.sh`.  With an HTTP reposerver like Artifactory or DBT's internal server, you can install this script via `curl https://your.repo.host/path/to/install_dbt.sh | bash`.  
 
-    If you're using S3 as your backend, you will have to do it in 2 steps: 1. ` aws s3 cp s3://<your bucket>/install_dbt.sh install_dbt.sh`.  2. `bash install_dbt.sh`.  This 2 step is forced by the aws cli not being able to feed a downloaded object directly to bash.  (Or at least, I haven't figured out how to make it do so - yet!)
+    If you're using S3 as your backend, you will have to do it in 2 steps: 
+    
+    1. `aws s3 cp s3://<your bucket>/install_dbt.sh install_dbt.sh`
+       
+    1. `bash install_dbt.sh`.  
+       
+    This 2 step is forced by the aws cli not being able to feed a downloaded object directly to bash.  (Or at least, I haven't figured out how to make it do so - yet!)
 
 1. Verify installation by running: `dbt catalog list`.
 
