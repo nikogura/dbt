@@ -691,12 +691,12 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 		_ = lang.Checkout(workDir, meta, version)
 	}
 
-	err = lang.Build(workDir, meta)
+	err = lang.Build(workDir, meta, "")
 	if err != nil {
 		log.Fatalf("build failed: %s", err)
 	}
 
-	err = gm.HandleArtifacts(meta, workDir, cwd, true, false, true)
+	err = gm.HandleArtifacts(meta, workDir, cwd, true, false, true, "")
 	if err != nil {
 		log.Fatalf("signing failed: %s", err)
 	}

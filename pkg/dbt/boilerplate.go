@@ -29,6 +29,9 @@ const PRECOMMIT_TEMPLATE_NAME = "precommithook"
 // GOMOD_TEMPLATE_NAME internal name for template that produces go.mod
 const GOMOD_TEMPLATE_NAME = "gomod"
 
+// GOSUM_TEMPLATE_NAME internal name for template that produces go.sum
+const GOSUM_TEMPLATE_NAME = "gosum"
+
 // MAINGO_TEMPLATE_NAME internal name for template that produces main.go
 const MAINGO_TEMPLATE_NAME = "maingo"
 
@@ -55,6 +58,7 @@ func init() {
 		METADATA_TEMPLATE_NAME:    METADATA_TEMPLATE,
 		PRECOMMIT_TEMPLATE_NAME:   PREHOOK_TEMPLATE,
 		GOMOD_TEMPLATE_NAME:       GOMODULE_TEMPLATE,
+		GOSUM_TEMPLATE_NAME:       GOSUM_TEMPLATE,
 		MAINGO_TEMPLATE_NAME:      MAINGO_TEMPLATE,
 		ROOTGO_TEMPLATE_NAME:      ROOTGO_TEMPLATE,
 		LICENSE_TEMPLATE_NAME:     LICENSE_TEMPLATE,
@@ -252,6 +256,22 @@ func FilesForTool(location string, toolName string, packageName string, packageD
 	}
 
 	files = append(files, ToolFile{Name: fmt.Sprintf("%s/go.mod", location), Content: content, Mode: 0644})
+
+	// go.sum
+	fileName = "go.sum"
+	tmpl, err = GetTemplate(GOSUM_TEMPLATE_NAME)
+	if err != nil {
+		err = errors.Wrapf(err, fmt.Sprintf("%s: %s", ERR_TEMPLATE_NOT_FOUND, GOSUM_TEMPLATE_NAME))
+		return files, err
+	}
+
+	content, err = fillTemplate(fileName, tmpl, info)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to generate content for %s", fileName)
+		return files, err
+	}
+
+	files = append(files, ToolFile{Name: fmt.Sprintf("%s/go.sum", location), Content: content, Mode: 0644})
 
 	// main.go
 	fileName = "main.go"
