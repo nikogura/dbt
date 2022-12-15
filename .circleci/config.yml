@@ -9,7 +9,7 @@ jobs:
 
     working_directory: /go/src/github.com/nikogura/dbt
     steps:
-      - run: mkdir -p /go/src/github.com/nikogura/dbt
+      - run: sudo mkdir -p /go/src/github.com/nikogura/dbt
       - checkout
       - run: echo "${TEST_PRIVATE_KEY}" | base64 -d > ~/.ssh/id_rsa.test
       - run: chmod 700 ~/.ssh/id_rsa.test
