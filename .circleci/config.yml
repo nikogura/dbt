@@ -5,7 +5,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:latest
+      - image: cimg/go:1.19.4
 
     working_directory: /go/src/github.com/nikogura/dbt
     steps:
