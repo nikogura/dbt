@@ -444,9 +444,9 @@ If you don't want to make any changes to the code or tools:
 
 1. Fork the repo.
 
-1. Change the `metadata.json` file in your fork to reflect your own repository setup and preferences.  Specifically you need to change the `repository` and `tool-repository` lines. Commit and push the changes back to your repo.  Note that S3 urls must be of the `https` form, e.g. `https://your-dbt.s3.us-east-1.amazonaws.com` and `https://your-dbt-tools.s3.us-east-1.amazonaws.com`.  
+1. Change the `metadata.json` file in your fork to reflect your own repository setup and preferences.  Specifically you need to change the `repository` and `tool-repository` lines. If you're making changes to dbt itself, commit and push the changes back to your repo.   If you're running dbt as-is, you don't need to commit your changes.
 
-   *N.B.* For S3 usage, only Virtual Host based S3 urls are supported.  Why?  Because AWS is deprecating the path-style access to buckets. Check out [https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/](https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/) for more information.
+    *N.B.* S3 urls must be of the `https` form, e.g. `https://your-dbt.s3.us-east-1.amazonaws.com` and `https://your-dbt-tools.s3.us-east-1.amazonaws.com`.  Only Virtual Host based S3 urls are supported.  Why?  Because AWS is deprecating the path-style access to buckets. Check out [https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/](https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/) for more information.
 
 1. Install [gomason](https://github.com/nikogura/gomason) via `go get github.com/nikogura/gomason@latest`. Then run `gomason publish -s`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT together with the tools `catalog`, `boilerplate`, and `reposerver`.  (The `-s` flag skips running the tests on dbt locally.  I've already run them prior to publishing, but by all means, feel free to do so yourself again.)
 
