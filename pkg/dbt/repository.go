@@ -22,8 +22,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/keybase/go-crypto/openpgp"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/openpgp"
 	"golang.org/x/net/html"
 	"gopkg.in/cheggaaa/pb.v1"
 	"io"
@@ -475,6 +475,7 @@ func (dbt *DBT) VerifyFileSignature(homedir string, filePath string) (success bo
 	}
 
 	for _, cert := range certs {
+
 		entities, err := openpgp.ReadArmoredKeyRing(strings.NewReader(cert))
 		if err != nil {
 			err = errors.Wrap(err, "failed to read cert from truststore")
