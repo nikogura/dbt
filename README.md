@@ -15,9 +15,11 @@ A framework for self-updating binary tools.
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)  
 
 
+Imagine a set of tools that are always up-to-date, and always safe to use.  Imagine anyone in your organization being able to easily contribute to this tool chest with minimal preparation.  Imagine everything always _just working_, and getting out of your way so you can do your thing.  Sound like magic?
+
 What kind of tools you say?  Anything that can be compiled into a stand-alone binary.
 
-Tools are always up to date (unless you specify an older version), as is `dbt` itself.  How?  *magic*. 
+The `dbt` tool keeps ensures your tools are always up-to-date (unless you specify an older version), and it does the same for itself.
 
 DBT is basically just a downloader and verifier for executable files.  That's it.  That's all it does.
 
@@ -25,9 +27,9 @@ Say you have a program binary that people use to do their jobs.  How do you dist
 
 There are a bazillion ways of solving this problem.  At some level, `dbt` is just one more method.  Why is this better than the others?  User Experience.  
 
-DBT gets out of the way and helps the user do what they should be doing all along, but usually don't have time to do - that is verify the integrity and authorship of the tools they use in their daily life.
+DBT gets out of the way and helps the user do what they should be doing all along, but usually don't have time to do - that is: verify the integrity and authorship of the tools they use in their daily life.
 
-You absolutely can maintain some sort of device and server management software like Jamf or Chef or Puppet, and update all your OS packages all the time.  These solutions exist, and they're great - when they work well together.  Often they do not- or they're so heavy handed your small agile shop can't maintain them well enough to stay out of the user's way.
+You absolutely can maintain some sort of device and server management software like Jamf or Chef or Puppet, and update all your OS packages all the time.  These solutions exist, and they're great - when they work well together.  Often they do not- or they're so heavy-handed your small agile shop can't maintain them well enough to stay out of the user's way.
 
 Another thing these tools all have in common is they work off a "push model".  The central administrator pushes out updates, and you use whatever you get.  Again this is great - when it works.  Be honest however, when's the last time you were required to update to the latest something and things stopped working?  This month?  This week?  Today.  Yeah.
 
@@ -36,6 +38,49 @@ DBT in contrast works on a _pull model_.  The default is you get the latest vers
 Once you set up your tool repository, `dbt` downloads and verifies the tools, automatically looking for and using the latest version - unless the user goes out of their way to use a previous version.  That's it.  That's the magic: Downloading and verifying in a fashion that gets out of the way of the user and lets them do their job.
 
 # Overview
+
+To use `dbt`, you need the following
+
+* A repository your users can reach.
+
+* The `dbt` binary installed locally
+
+* Crypto keys for code signing
+
+That's it!  
+
+When compiled, `dbt` creates installation shell scripts for any OS and chip architecture you specify.  The installer will install itself locally into your path, and voila!  Everything should _just work_.
+
+What's more, via the included `boilerplate` tool your users can create new tools to do anything you need.  Creation is quick and easy with working program stubs being generated automatically.  
+
+You can give users their own code signing keys, or choose to only trust keys used by your build system.  It's all up to you.  All `dbt` does is do what any conscientious, well-built system would do for you, but it does it automagically on any system where you can compile and run golang programs - which is most of them.
+
+# Installation
+The easiest way to install `dbt` is via a tool called [gomason](https://github.com/nikogura/gomason). You can build via `go build` and move the files any which way you like, but `gomason` makes it easy.  Gomason is actually the build system I wrote for dbt, and then broke out as its own project since it was quite useful in a general sense.
+
+If you don't want to make any changes to the code or tools:
+
+1. Fork the repo.
+
+1. Change the `metadata.json` file in your fork to reflect your own repository setup and preferences.  Specifically you need to change the `repository` and `tool-repository` lines. If you're making changes to dbt itself, commit and push the changes back to your repo.   If you're running dbt as-is, you don't need to commit your changes.
+
+   *N.B.* S3 urls must be of the `https` form, e.g. `https://your-dbt.s3.us-east-1.amazonaws.com` and `https://your-dbt-tools.s3.us-east-1.amazonaws.com`.  Only Virtual Host based S3 urls are supported.  Why?  Because AWS is deprecating the path-style access to buckets. Check out [https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/](https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/) for more information.
+
+1. Install [gomason](https://github.com/nikogura/gomason) via `go get github.com/nikogura/gomason@latest`. Then run `gomason publish -s`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT together with the tools `catalog`, `boilerplate`, and `reposerver`.  (The `-s` flag skips running the tests on dbt locally.  I've already run them prior to publishing, but by all means, feel free to do so yourself again.)
+
+1. Run the installer you built. It'll be found in `<repo>/install_dbt.sh`.  With an HTTP reposerver like Artifactory or DBT's internal server, you can install this script via `curl https://your.repo.host/path/to/install_dbt.sh | bash`.
+
+   If you're using S3 as your backend, you will have to do it in 2 steps:
+
+    1. `aws s3 cp s3://<your bucket>/install_dbt.sh install_dbt.sh`
+
+    1. `bash install_dbt.sh`.
+
+   This 2 step is forced by the aws cli not being able to feed a downloaded object directly to bash.  (Or at least, I haven't figured out how to make it do so - yet!)
+
+1. Verify installation by running: `dbt catalog list`.
+
+# Components
 
 DBT consists of a binary ```dbt``` a config file, and a cache located at ```~/.dbt```.  The ```dbt``` binary checks a trusted repository for tools, which are themselves signed binaries.
 
@@ -436,31 +481,6 @@ These examples use the HTTPPRoxy ingress from [projectcontour](https://projectco
     * *idpFunc* Shell function that receives the username as $1 and is expected to return a ssh public key for that username.
 
 ---
-
-# Installation
-The easiest way to install `dbt` is via a tool called [gomason](https://github.com/nikogura/gomason). You can build via `go build` and move the files any which way you like, but `gomason` makes it easy.
-
-If you don't want to make any changes to the code or tools:
-
-1. Fork the repo.
-
-1. Change the `metadata.json` file in your fork to reflect your own repository setup and preferences.  Specifically you need to change the `repository` and `tool-repository` lines. If you're making changes to dbt itself, commit and push the changes back to your repo.   If you're running dbt as-is, you don't need to commit your changes.
-
-    *N.B.* S3 urls must be of the `https` form, e.g. `https://your-dbt.s3.us-east-1.amazonaws.com` and `https://your-dbt-tools.s3.us-east-1.amazonaws.com`.  Only Virtual Host based S3 urls are supported.  Why?  Because AWS is deprecating the path-style access to buckets. Check out [https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/](https://aws.amazon.com/blogs/aws/amazon-s3-path-deprecation-plan-the-rest-of-the-story/) for more information.
-
-1. Install [gomason](https://github.com/nikogura/gomason) via `go get github.com/nikogura/gomason@latest`. Then run `gomason publish -s`.  If you have it all set up correctly, it should build and install the binary as well as the installer script for your version of DBT together with the tools `catalog`, `boilerplate`, and `reposerver`.  (The `-s` flag skips running the tests on dbt locally.  I've already run them prior to publishing, but by all means, feel free to do so yourself again.)
-
-1. Run the installer you built. It'll be found in `<repo>/install_dbt.sh`.  With an HTTP reposerver like Artifactory or DBT's internal server, you can install this script via `curl https://your.repo.host/path/to/install_dbt.sh | bash`.  
-
-    If you're using S3 as your backend, you will have to do it in 2 steps: 
-    
-    1. `aws s3 cp s3://<your bucket>/install_dbt.sh install_dbt.sh`
-       
-    1. `bash install_dbt.sh`.  
-       
-    This 2 step is forced by the aws cli not being able to feed a downloaded object directly to bash.  (Or at least, I haven't figured out how to make it do so - yet!)
-
-1. Verify installation by running: `dbt catalog list`.
 
 ## Customization of Boilerplate Templates
 
