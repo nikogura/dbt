@@ -80,6 +80,18 @@ If you don't want to make any changes to the code or tools:
 
 1. Verify installation by running: `dbt catalog list`.
 
+# Usage
+
+Generally speaking, you will run your tools with a command of the form:
+
+    dbt [flags] -- <tool>  <tool args and flags>
+
+Take special note of the `--`  That double dash separates the flags for `dbt` itself from those of the tool.  It can get confusing if you don't spot the double dash and grok it's meaning.
+
+Without it, any flags you try to run on `<tool>` will be consumed by `dbt` itself, and the result will probably not be what you intend.
+
+Of course, if your command has no flags itself, only positional arguments, you can run it straight without the double dash.
+
 # Components
 
 DBT consists of a binary ```dbt``` a config file, and a cache located at ```~/.dbt```.  The ```dbt``` binary checks a trusted repository for tools, which are themselves signed binaries.
@@ -184,18 +196,6 @@ DBT does your due diligence for you, and lets you get on with your day.
 Another real-world example:  Imagine this, you've got a system of dynamic VM's and Containers, all leveraging common tooling.  You might even have a serious DAG or web of 'things' dynamically generating other 'things' in a busy and automated fashion.  What is there's a problem, or an upgrade?  With normal utility tools and scripts you have to re-bake your machine images and containers to pick up the changes.  You might say that that's a good thing.  But what if it's not?
 
 With DBT, you have the best of both worlds.  You can force your tools to use an explicit version (```dbt -v 1.2.3  -- <tool>```).  You can also dispense with the '-v' and run the latest.  Voila!  You're automatically picking up the latest version of the tooling from your trusted repository.
-
-# Usage
-
-Generally speaking, you will run your tools with a command of the form:
-
-    dbt [flags] -- <tool>  <tool args and flags>
-    
-Take special note of the `--`  That double dash separates the flags for `dbt` itself from those of the tool.  It can get confusing if you don't spot the double dash and grok it's meaning.
-
-Without it, any flags you try to run on `<tool>` will be consumed by `dbt` itself, and the result will probably not be what you intend.
-
-Of course, if your command has no flags itself, only positional arguments, you can run it straight without the double dash.  
 
 # Security
 
