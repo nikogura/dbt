@@ -10,6 +10,9 @@
         "name": "darwin/amd64"
       },
       {
+        "name": "darwin/arm64"
+      },
+      {
         "name": "linux/amd64"
       }
     ],
@@ -62,6 +65,12 @@
         "checksums": true
       },
       {
+        "src": "dbt_darwin_arm64",
+        "dst": "{{.Repository}}/{{.Version}}/darwin/arm64/dbt",
+        "sig": true,
+        "checksums": true
+      },
+      {
         "src": "dbt_linux_amd64",
         "dst": "{{.Repository}}/{{.Version}}/linux/amd64/dbt",
         "sig": true,
@@ -76,6 +85,12 @@
       {
         "src": "catalog_darwin_amd64",
         "dst": "{{.ToolRepository}}/catalog/{{.Version}}/darwin/amd64/catalog",
+        "sig": true,
+        "checksums": true
+      },
+      {
+        "src": "catalog_darwin_arm64",
+        "dst": "{{.ToolRepository}}/catalog/{{.Version}}/darwin/arm64/catalog",
         "sig": true,
         "checksums": true
       },
@@ -98,6 +113,12 @@
         "checksums": true
       },
       {
+        "src": "boilerplate_darwin_arm64",
+        "dst": "{{.ToolRepository}}/boilerplate/{{.Version}}/darwin/arm64/boilerplate",
+        "sig": true,
+        "checksums": true
+      },
+      {
         "src": "boilerplate_linux_amd64",
         "dst": "{{.ToolRepository}}/boilerplate/{{.Version}}/linux/amd64/boilerplate",
         "sig": true,
@@ -112,6 +133,12 @@
       {
         "src": "reposerver_darwin_amd64",
         "dst": "{{.ToolRepository}}/reposerver/{{.Version}}/darwin/amd64/reposerver",
+        "sig": true,
+        "checksums": true
+      },
+      {
+        "src": "reposerver_darwin_arm64",
+        "dst": "{{.ToolRepository}}/reposerver/{{.Version}}/darwin/arm64/reposerver",
         "sig": true,
         "checksums": true
       },

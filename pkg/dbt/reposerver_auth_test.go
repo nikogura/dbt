@@ -218,7 +218,7 @@ func TestRepoServerAuth(t *testing.T) {
 				t.Fatalf("Failed creating dir %q: %s", repoDir, err)
 			}
 
-			err = ioutil.WriteFile(idpFile, []byte(tc.AuthFile), 0644)
+			err = os.WriteFile(idpFile, []byte(tc.AuthFile), 0644)
 			if err != nil {
 				t.Fatalf("Failed creating get auth file %s: %s", idpFile, err)
 			}
@@ -248,7 +248,7 @@ func TestRepoServerAuth(t *testing.T) {
 				t.Fatalf("Failed to execute template for %s: %s", tc.Name, err)
 			}
 
-			err = ioutil.WriteFile(configFile, buf.Bytes(), 0644)
+			err = os.WriteFile(configFile, buf.Bytes(), 0644)
 			if err != nil {
 				t.Fatalf("Failed to write config file %s: %s", configFile, err)
 			}

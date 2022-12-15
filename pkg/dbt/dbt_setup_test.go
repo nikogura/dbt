@@ -25,7 +25,8 @@ import (
 	"github.com/johannesboyne/gofakes3/backend/s3mem"
 	"github.com/nikogura/gomason/pkg/gomason"
 	"github.com/phayes/freeport"
-	"io/ioutil"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"log"
 	"net/http/httptest"
 	"os"
@@ -73,7 +74,10 @@ var testFilesA map[string]*testFile
 var testFilesB map[string]*testFile
 
 func TestMain(m *testing.M) {
-	setUp()
+	err := setUp()
+	if err != nil {
+		log.Fatalf("Setup Failed: %s", err)
+	}
 
 	code := m.Run()
 
@@ -82,17 +86,19 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func setUp() {
-	dir, err := ioutil.TempDir("", "dbt")
+func setUp() (err error) {
+	dir, err := os.MkdirTemp("", "dbt")
 	if err != nil {
-		fmt.Printf("Error creating temp dir %q: %s\n", tmpDir, err)
-		os.Exit(1)
+		err = errors.Wrapf(err, "Error creating temp dir %q", tmpDir)
+		return err
 	}
 
 	NOPROGRESS = true
 
+	logrus.SetLevel(logrus.DebugLevel)
+
 	tmpDir = dir
-	homeDirRepoServer = fmt.Sprintf("%s/homedirReposerver", tmpDir)
+	homeDirRepoServer = fmt.Sprintf("%s/homeDirReposerver", tmpDir)
 	homeDirS3 = fmt.Sprintf("%s/homeDirS3", tmpDir)
 	sourceDirA = fmt.Sprintf("%s/sourceA", tmpDir)
 	sourceDirB = fmt.Sprintf("%s/sourceB", tmpDir)
@@ -108,8 +114,8 @@ func setUp() {
 
 	freePort, err := freeport.GetFreePort()
 	if err != nil {
-		log.Printf("Error getting a free port: %s", err)
-		os.Exit(1)
+		err = errors.Wrapf(err, "Error getting a free port")
+		return err
 	}
 
 	port = freePort
@@ -173,19 +179,22 @@ func setUp() {
 
 		_, err = s3Client.CreateBucket(cparams)
 		if err != nil {
-			log.Fatalf("Failed to create bucket %s: %s", dbtBucket, err)
+			err = errors.Wrapf(err, "Failed to create bucket %s", dbtBucket)
+			return err
 		}
 
 		cparams = &s3.CreateBucketInput{Bucket: aws.String(toolsBucket)}
 		_, err = s3Client.CreateBucket(cparams)
 		if err != nil {
-			log.Fatalf("Failed to create bucket %s: %s", toolsBucket, err)
+			err = errors.Wrapf(err, "Failed to create bucket %s", toolsBucket)
+			return err
 		}
 
 		// actually build the test repo
 		err = buildTestRepo()
 		if err != nil {
-			log.Fatalf("Error building test repo: %s", err)
+			err = errors.Wrapf(err, "Error building test repo")
+			return err
 		}
 
 		// Set up the repo server
@@ -224,34 +233,37 @@ func setUp() {
 		for _, c := range configs {
 			err = os.MkdirAll(c.homedir, 0755)
 			if err != nil {
-				log.Fatalf("Error generating fake home dir: %s", err)
+				err = errors.Wrapf(err, "Error generating fake home dir")
+				return err
 			}
 
 			err = GenerateDbtDir(c.homedir, true)
 			if err != nil {
-				log.Fatalf("Error generating dbt dir: %s", err)
+				err = errors.Wrapf(err, "Error generating dbt dir")
+				return err
 			}
 
 			configPath := fmt.Sprintf("%s/%s", c.homedir, ConfigDir)
 			fileName := fmt.Sprintf("%s/dbt.json", configPath)
 
-			err := ioutil.WriteFile(fileName, []byte(c.config), 0644)
+			err := os.WriteFile(fileName, []byte(c.config), 0644)
 			if err != nil {
-				log.Fatalf("Error writing config file to %s: %s", fileName, err)
+				err = errors.Wrapf(err, "Error writing config file to %s", fileName)
+				return err
 			}
 
 		}
 
 		setup = true
 	}
+	return err
 }
 
 func tearDown() {
+	testServer.Close()
 	if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
 		_ = os.Remove(tmpDir)
 	}
-
-	testServer.Close()
 }
 
 func testDbtConfigContents(port int) string {
@@ -302,18 +314,6 @@ func createTestFilesA(toolRoot string, version string, dbtRoot string) (testFile
 			Repo:     "dbt-tools",
 		},
 		{
-			Name:     "boilerplate_darwin_amd64",
-			FilePath: fmt.Sprintf("%s/boilerplate/%s/darwin/amd64/boilerplate", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "boilerplate_darwin_amd64.asc",
-			FilePath: fmt.Sprintf("%s/boilerplate/%s/darwin/amd64/boilerplate.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate.asc", version),
-			Repo:     "dbt-tools",
-		},
-		{
 			Name:     "boilerplate_linux_amd64",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/linux/amd64/boilerplate", version),
@@ -322,7 +322,7 @@ func createTestFilesA(toolRoot string, version string, dbtRoot string) (testFile
 		{
 			Name:     "boilerplate_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate.asc", version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/linux/amd64/boilerplate.asc", version),
 			Repo:     "dbt-tools",
 		},
 		{
@@ -338,18 +338,6 @@ func createTestFilesA(toolRoot string, version string, dbtRoot string) (testFile
 			Repo:     "dbt-tools",
 		},
 		{
-			Name:     "catalog_darwin_amd64",
-			FilePath: fmt.Sprintf("%s/catalog/%s/darwin/amd64/catalog", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/darwin/amd64/catalog", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "catalog_darwin_amd64.asc",
-			FilePath: fmt.Sprintf("%s/catalog/%s/darwin/amd64/catalog.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/darwin/amd64/catalog.asc", version),
-			Repo:     "dbt-tools",
-		},
-		{
 			Name:     "catalog_linux_amd64",
 			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog", version),
@@ -362,16 +350,28 @@ func createTestFilesA(toolRoot string, version string, dbtRoot string) (testFile
 			Repo:     "dbt-tools",
 		},
 		{
-			Name:     "dbt_darwin_amd64",
-			FilePath: fmt.Sprintf("%s/%s/darwin/amd64/dbt", dbtRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt/%s/darwin/amd64/dbt", version),
-			Repo:     "dbt",
+			Name:     "reposerver-description.txt",
+			FilePath: fmt.Sprintf("%s/reposerver/%s/description.txt", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/description.txt", version),
+			Repo:     "dbt-tools",
 		},
 		{
-			Name:     "dbt_darwin_amd64.asc",
-			FilePath: fmt.Sprintf("%s/%s/darwin/amd64/dbt.asc", dbtRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt/%s/darwin/amd64/dbt.asc", version),
-			Repo:     "dbt",
+			Name:     "reposerver-description.txt.asc",
+			FilePath: fmt.Sprintf("%s/reposerver/%s/description.txt.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/description.txt.asc", version),
+			Repo:     "dbt-tools",
+		},
+		{
+			Name:     "reposerver_linux_amd64",
+			FilePath: fmt.Sprintf("%s/reposerver/%s/linux/amd64/reposerver", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/linux/amd64/reposerver", version),
+			Repo:     "dbt-tools",
+		},
+		{
+			Name:     "reposerver_linux_amd64.asc",
+			FilePath: fmt.Sprintf("%s/reposerver/%s/linux/amd64/reposerver.asc", toolRoot, version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/linux/amd64/reposerver.asc", version),
+			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "dbt_linux_amd64",
@@ -435,18 +435,6 @@ func createTestFilesB(toolRoot string, version string, dbtRoot string) (testFile
 			Repo:     "dbt-tools",
 		},
 		{
-			Name:     "boilerplate_darwin_amd64",
-			FilePath: fmt.Sprintf("%s/boilerplate/%s/darwin/amd64/boilerplate", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "boilerplate_darwin_amd64.asc",
-			FilePath: fmt.Sprintf("%s/boilerplate/%s/darwin/amd64/boilerplate.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate.asc", version),
-			Repo:     "dbt-tools",
-		},
-		{
 			Name:     "boilerplate_linux_amd64",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/linux/amd64/boilerplate", version),
@@ -455,7 +443,7 @@ func createTestFilesB(toolRoot string, version string, dbtRoot string) (testFile
 		{
 			Name:     "boilerplate_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/darwin/amd64/boilerplate.asc", version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/linux/amd64/boilerplate.asc", version),
 			Repo:     "dbt-tools",
 		},
 		{
@@ -468,18 +456,6 @@ func createTestFilesB(toolRoot string, version string, dbtRoot string) (testFile
 			Name:     "catalog-description.txt.asc",
 			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt.asc", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "catalog_darwin_amd64",
-			FilePath: fmt.Sprintf("%s/catalog/%s/darwin/amd64/catalog", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/darwin/amd64/catalog", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "catalog_darwin_amd64.asc",
-			FilePath: fmt.Sprintf("%s/catalog/%s/darwin/amd64/catalog.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/darwin/amd64/catalog.asc", version),
 			Repo:     "dbt-tools",
 		},
 		{
@@ -507,18 +483,6 @@ func createTestFilesB(toolRoot string, version string, dbtRoot string) (testFile
 			Repo:     "dbt-tools",
 		},
 		{
-			Name:     "reposerver_darwin_amd64",
-			FilePath: fmt.Sprintf("%s/reposerver/%s/darwin/amd64/reposerver", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/darwin/amd64/reposerver", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "reposerver_darwin_amd64.asc",
-			FilePath: fmt.Sprintf("%s/reposerver/%s/darwin/amd64/reposerver.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/darwin/amd64/reposerver.asc", version),
-			Repo:     "dbt-tools",
-		},
-		{
 			Name:     "reposerver_linux_amd64",
 			FilePath: fmt.Sprintf("%s/reposerver/%s/linux/amd64/reposerver", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/linux/amd64/reposerver", version),
@@ -527,20 +491,8 @@ func createTestFilesB(toolRoot string, version string, dbtRoot string) (testFile
 		{
 			Name:     "reposerver_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/reposerver/%s/linux/amd64/reposerver.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/darwin/amd64/reposerver.asc", version),
+			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/linux/amd64/reposerver.asc", version),
 			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "dbt_darwin_amd64",
-			FilePath: fmt.Sprintf("%s/%s/darwin/amd64/dbt", dbtRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt/%s/darwin/amd64/dbt", version),
-			Repo:     "dbt",
-		},
-		{
-			Name:     "dbt_darwin_amd64.asc",
-			FilePath: fmt.Sprintf("%s/%s/darwin/amd64/dbt.asc", dbtRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt/%s/darwin/amd64/dbt.asc", version),
-			Repo:     "dbt",
 		},
 		{
 			Name:     "dbt_linux_amd64",
@@ -589,7 +541,7 @@ func createTestFilesB(toolRoot string, version string, dbtRoot string) (testFile
 	return testFiles
 }
 
-func createTestKeys(keyring string, trustdb string) {
+func createTestKeys(keyring string, trustdb string) (err error) {
 	// write gpg batch file
 	defaultKeyText := `%echo Generating a default key
 %no-protection
@@ -606,12 +558,14 @@ Expire-Date: 0
 
 	gpg, err := exec.LookPath("gpg")
 	if err != nil {
-		log.Fatalf("Failed to check if gpg is installed:%s", err)
+		err = errors.Wrapf(err, "Failed to check if gpg is installed")
+		return err
 	}
 	keyFile := filepath.Join(tmpDir, "testkey")
-	err = ioutil.WriteFile(keyFile, []byte(defaultKeyText), 0644)
+	err = os.WriteFile(keyFile, []byte(defaultKeyText), 0644)
 	if err != nil {
-		log.Fatalf("Error writing test key generation file: %s", err)
+		err = errors.Wrapf(err, "Error writing test key generation file")
+		return err
 	}
 
 	log.Printf("Keyring file: %s", keyring)
@@ -623,7 +577,8 @@ Expire-Date: 0
 	cmd := exec.Command(gpg, "--trustdb", trustdb, "--no-default-keyring", "--keyring", keyring, "--batch", "--generate-key", keyFile)
 	err = cmd.Run()
 	if err != nil {
-		log.Fatalf("****** Error creating test key: %s *****", err)
+		err = errors.Wrapf(err, "Error creating test key")
+		return err
 	}
 
 	// write out truststore
@@ -631,14 +586,16 @@ Expire-Date: 0
 
 	out, err := cmd.Output()
 	if err != nil {
-		log.Fatalf("Error exporting public key: %s", err)
+		err = errors.Wrapf(err, "Error exporting public key")
+		return err
 	}
 
 	trustfileContents = string(out)
 
-	err = ioutil.WriteFile(trustFile, out, 0644)
+	err = os.WriteFile(trustFile, out, 0644)
 	if err != nil {
-		log.Fatalf("Error writing truststore file %s: %s", trustFile, err)
+		err = errors.Wrapf(err, "Error writing truststore file %s", trustFile)
+		return err
 	}
 
 	s3Client := s3.New(s3Session)
@@ -650,41 +607,48 @@ Expire-Date: 0
 		Body:   bytes.NewReader(out),
 	})
 	if err != nil {
-		log.Fatalf("Failed to put truststore into fake s3: %s", err)
+		err = errors.Wrapf(err, "Failed to put truststore into fake s3")
+		return err
 	}
 
 	log.Printf("Done creating keyring and test keys")
 
+	return err
 }
 
-func buildSource(meta gomason.Metadata, version string, sourceDir string, testfiles map[string]*testFile) {
+func buildSource(meta gomason.Metadata, version string, sourceDir string, testfiles map[string]*testFile) (err error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		log.Fatalf("Failed to get current working directory: %s", err)
+		err = errors.Wrapf(err, "Failed to get current working directory")
+		return err
 	}
 
 	gm := gomason.Gomason{Config: gomason.UserConfig{}}
 
 	lang, err := gomason.GetByName(meta.GetLanguage())
 	if err != nil {
-		log.Fatalf("Invalid language: %v", err)
+		err = errors.Wrapf(err, "Invalid language")
+		return err
 	}
 
 	workDir, err := lang.CreateWorkDir(sourceDir)
 	if err != nil {
-		log.Fatalf("Failed to create ephemeral workDir: %s", err)
+		err = errors.Wrapf(err, "Failed to create ephemeral workDir")
+		return err
 	}
 
 	src := strings.TrimSuffix(cwd, "/dbt/pkg/dbt")
 	dst := fmt.Sprintf("%s/src/github.com/%s", workDir, TestPackageGroup)
 	err = os.MkdirAll(dst, 0755)
 	if err != nil {
-		log.Fatalf("Failed creating directory %s: %s", dst, err)
+		err = errors.Wrapf(err, "Failed creating directory %s", dst)
+		return err
 	}
 
 	err = DirCopy(src, dst)
 	if err != nil {
-		log.Fatalf("Failed copying directory %s to %s: %s", src, dst, err)
+		err = errors.Wrapf(err, "Failed copying directory %s to %s", src, dst)
+		return err
 	}
 
 	if version != "" {
@@ -693,17 +657,20 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 
 	err = lang.Build(workDir, meta, "")
 	if err != nil {
-		log.Fatalf("build failed: %s", err)
+		err = errors.Wrapf(err, "build failed")
+		return err
 	}
 
 	err = gm.HandleArtifacts(meta, workDir, cwd, true, false, true, "")
 	if err != nil {
-		log.Fatalf("signing failed: %s", err)
+		err = errors.Wrapf(err, "Artifact handling failed")
+		return err
 	}
 
-	err = gm.HandleExtras(meta, workDir, cwd, true, false)
+	err = gm.HandleExtras(meta, workDir, cwd, true, false, true)
 	if err != nil {
-		log.Fatalf("Extra artifact processing failed: %s", err)
+		err = errors.Wrapf(err, "Extra artifact processing failed")
+		return err
 	}
 
 	fmt.Printf("--- Moving %d Test Files into repository ---\n", len(testFilesB))
@@ -718,14 +685,16 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			err = os.MkdirAll(dir, 0755)
 			if err != nil {
-				log.Fatalf("Error creating dir %s: %s", dir, err)
+				err = errors.Wrapf(err, "Error creating dir %s", dir)
+				return err
 			}
 		}
 
 		// read the file we compiled
-		input, err := ioutil.ReadFile(src)
+		input, err := os.ReadFile(src)
 		if err != nil {
-			log.Fatalf("Failed to read file %s: %s", src, err)
+			err = errors.Wrapf(err, "Failed to read file %s", src)
+			return err
 		}
 
 		key := strings.TrimPrefix(f.UrlPath, fmt.Sprintf("/%s/", f.Repo))
@@ -737,7 +706,8 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 			Body:   bytes.NewReader(input),
 		})
 		if err != nil {
-			log.Fatalf("Failed to put %s into fake s3: %s", key, err)
+			err = errors.Wrapf(err, "Failed to put %s into fake s3", key)
+			return err
 		}
 
 		// verify it got into the fake s3
@@ -750,13 +720,15 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 
 		_, err = headSvc.HeadObject(headOptions)
 		if err != nil {
-			log.Fatalf("failed to get metadata for %s: %s", f.Name, err)
+			err = errors.Wrapf(err, "failed to get metadata for %s", f.Name)
+			return err
 		}
 
 		// make the directory paths in s3
 		dirs, err := DirsForURL(key)
 		if err != nil {
-			log.Fatalf("failed to parse dirs for %s", key)
+			err = errors.Wrapf(err, "failed to parse dirs for %s", key)
+			return err
 		}
 
 		// create the 'folders' (0 byte objects) in s3
@@ -778,36 +750,41 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 						Key:    aws.String(path),
 					})
 					if err != nil {
-						log.Fatalf("Failed to put %s into fake s3: %s", key, err)
+						err = errors.Wrapf(err, "Failed to put %s into fake s3", key)
+						return err
 					}
 				}
 			}
 		}
 
 		// write the file into place in the test repo
-		err = ioutil.WriteFile(f.FilePath, input, 0644)
+		err = os.WriteFile(f.FilePath, input, 0644)
 		if err != nil {
-			log.Fatalf("Failed to write file %s: %s", f.FilePath, err)
+			err = errors.Wrapf(err, "Failed to write file %s", f.FilePath)
+			return err
 		}
 
 		// clean up after ourselves
 		err = os.Remove(src)
 		if err != nil {
-			log.Fatalf("Failed to remove file %s: %s", src, err)
+			err = errors.Wrapf(err, "Failed to remove file %s", src)
+			return err
 		}
 
 		// checksum the file
 		checksum, err := FileSha256(f.FilePath)
 		if err != nil {
-			log.Fatalf("Failed to checksum file %s: %s", f.FilePath, err)
+			err = errors.Wrapf(err, "Failed to checksum file %s", f.FilePath)
+			return err
 		}
 
 		checksumFile := fmt.Sprintf("%s.sha256", f.FilePath)
 
 		// write the file's checksum into the test repo
-		err = ioutil.WriteFile(checksumFile, []byte(checksum), 0644)
+		err = os.WriteFile(checksumFile, []byte(checksum), 0644)
 		if err != nil {
-			log.Fatalf("Failed to write %s: %s", checksumFile, err)
+			err = errors.Wrapf(err, "Failed to write %s", checksumFile)
+			return err
 		}
 
 		// upload the checksum to the fake s3 endpoint
@@ -817,7 +794,8 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 			Body:   bytes.NewReader([]byte(checksum)),
 		})
 		if err != nil {
-			log.Fatalf("Failed to put %s into fake s3: %s", key, err)
+			err = errors.Wrapf(err, "Failed to put %s into fake s3", key)
+			return err
 		}
 
 		// verify it got into the fake s3
@@ -828,9 +806,12 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 
 		_, err = headSvc.HeadObject(headOptions)
 		if err != nil {
-			log.Fatalf("failed to get metadata for %s: %s", f.Name, err)
+			err = errors.Wrapf(err, "failed to get metadata for %s", f.Name)
+			return err
 		}
 	}
+
+	return err
 }
 
 func buildTestRepo() (err error) {
@@ -843,18 +824,35 @@ func buildTestRepo() (err error) {
 	fmt.Printf("Creating dbt repo root at %s\n", dbtRoot)
 	err = os.MkdirAll(dbtRoot, 0755)
 	if err != nil {
-		log.Fatalf("Error building %s: %s", dbtRoot, err)
+		err = errors.Wrapf(err, "Error building %s", dbtRoot)
+		return err
 	}
 
 	fmt.Printf("Creating tool repo root at %s\n", toolRoot)
 	err = os.MkdirAll(toolRoot, 0755)
 	if err != nil {
-		log.Fatalf("Error building %s: %s", toolRoot, err)
+		err = errors.Wrapf(err, "Error building %s", toolRoot)
+		return err
 	}
 
-	meta, err := gomason.ReadMetadata("../../metadata.json")
+	fmt.Printf("Building Current Source (3.3.4)")
+	currentMetadataFile := "testfixtures/metadata.3.3.4.json"
+
+	cwd, err := os.Getwd()
 	if err != nil {
-		log.Fatalf("couldn't read package information from metadata.json: %s", err)
+		err = errors.Wrapf(err, "error getting current working directory")
+		return err
+	}
+
+	_, err = os.Stat(currentMetadataFile)
+	if err != nil {
+		err = errors.Wrapf(err, "metadata %s not found in %s", currentMetadataFile, cwd)
+		return err
+	}
+	meta, err := gomason.ReadMetadata(currentMetadataFile)
+	if err != nil {
+		err = errors.Wrapf(err, "couldn't read package information from metadata.json")
+		return err
 	}
 
 	meta.Options = make(map[string]interface{})
@@ -865,15 +863,43 @@ func buildTestRepo() (err error) {
 		Email:   "tester@nikogura.com",
 	}
 
-	createTestKeys(keyring, trustdb)
+	err = createTestKeys(keyring, trustdb)
+	if err != nil {
+		err = errors.Wrapf(err, "failed creating test keys")
+		return err
+	}
 
-	buildSource(meta, "", sourceDirB, testFilesB)
+	err = buildSource(meta, "", sourceDirB, testFilesB)
+	if err != nil {
+		err = errors.Wrapf(err, "failed building source")
+		return err
+	}
 
-	oldMetadataFile := fmt.Sprintf("pkg/dbt/testfixtures/metadata.3.0.2.json")
+	err = os.Chdir(cwd)
+	if err != nil {
+		err = errors.Wrapf(err, "failed changing directory back to %s", cwd)
+		return err
+	}
+
+	cwd, err = os.Getwd()
+	if err != nil {
+		err = errors.Wrapf(err, "error getting current working directory")
+		return err
+	}
+
+	fmt.Printf("Building Old Source (3.0.2)")
+	oldMetadataFile := "testfixtures/metadata.3.0.2.json"
+
+	_, err = os.Stat(oldMetadataFile)
+	if err != nil {
+		err = errors.Wrapf(err, "metadata %s not found in %s", oldMetadataFile, cwd)
+		return err
+	}
 
 	oldMeta, err := gomason.ReadMetadata(oldMetadataFile)
 	if err != nil {
-		log.Fatalf("couldn't read package information from old metadatafile %s: %s", oldMetadataFile, err)
+		err = errors.Wrapf(err, "couldn't read package information from old metadatafile %s", oldMetadataFile)
+		return err
 	}
 
 	oldMeta.Options = make(map[string]interface{})
@@ -884,7 +910,11 @@ func buildTestRepo() (err error) {
 		Email:   "tester@nikogura.com",
 	}
 
-	buildSource(oldMeta, fmt.Sprintf("v%s", oldVersion), sourceDirA, testFilesA)
+	err = buildSource(oldMeta, fmt.Sprintf("v%s", oldVersion), sourceDirA, testFilesA)
+	if err != nil {
+		err = errors.Wrapf(err, "error building old source")
+		return err
+	}
 
 	return err
 }

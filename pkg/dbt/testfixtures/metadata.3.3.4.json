@@ -1,8 +1,9 @@
 {
-  "version": "3.0.2",
+  "version": "3.3.1",
   "package": "github.com/nikogura/dbt",
   "description": "Dynamic Binary Toolkit - A framework for running self-updating signed binaries from a central, trusted repository.",
   "repository": "http://localhost:8081/artifactory/dbt",
+  "tool-repository": "http://localhost:8081/artifactory/dbt-tools",
   "building": {
     "targets": [
       {
@@ -59,25 +60,25 @@
       },
       {
         "src": "catalog-description.txt",
-        "dst": "{{.Repository}}-tools/catalog/{{.Version}}/description.txt",
+        "dst": "{{.ToolRepository}}/catalog/{{.Version}}/description.txt",
         "sig": true,
         "checksums": true
       },
       {
         "src": "catalog_linux_amd64",
-        "dst": "{{.Repository}}-tools/catalog/{{.Version}}/linux/amd64/catalog",
+        "dst": "{{.ToolRepository}}/catalog/{{.Version}}/linux/amd64/catalog",
         "sig": true,
         "checksums": true
       },
       {
         "src": "boilerplate-description.txt",
-        "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/description.txt",
+        "dst": "{{.ToolRepository}}/boilerplate/{{.Version}}/description.txt",
         "sig": true,
         "checksums": true
       },
       {
         "src": "boilerplate_linux_amd64",
-        "dst": "{{.Repository}}-tools/boilerplate/{{.Version}}/linux/amd64/boilerplate",
+        "dst": "{{.ToolRepository}}/boilerplate/{{.Version}}/linux/amd64/boilerplate",
         "sig": true,
         "checksums": true
       },

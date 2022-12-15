@@ -22,7 +22,7 @@ func testDescription() string {
 func testAuthor() ToolAuthor {
 	return ToolAuthor{
 		Name:  "Test Author",
-		Email: "testauthor@foo.com",
+		Email: "tester@nikogura.com",
 	}
 }
 
@@ -35,9 +35,6 @@ func metadataContentsExample() string {
   "repository": "http://localhost:8081/artifactory/dbt-tools",
   "building": {
     "targets": [
-      {
-        "name": "darwin/amd64"
-      },
       {
         "name": "linux/amd64"
       }
@@ -60,12 +57,6 @@ func metadataContentsExample() string {
       {
         "src": "description.txt",
         "dst": "__REPOSITORY__/__TOOLNAME__/__VERSION__/description.txt",
-        "sig": true,
-        "checksums": false
-      },
-      {
-        "src": "testtool_darwin_amd64",
-        "dst": "__REPOSITORY__/__TOOLNAME__/__VERSION__/darwin/amd64/__TOOLNAME__",
         "sig": true,
         "checksums": false
       },
@@ -437,7 +428,7 @@ rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8
 
 func mainGoContentsExample() string {
 	return `
-// Copyright © 2021 Test Author <testauthor@foo.com>
+// Copyright © 2022 Test Author <tester@nikogura.com>
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -460,7 +451,7 @@ func main() {
 }
 
 func rootGoContentsExample() string {
-	return `// Copyright © 2021 Test Author <testauthor@foo.com>
+	return `// Copyright © 2022 Test Author <tester@nikogura.com>
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -738,7 +729,7 @@ APPENDIX: How to apply the Apache License to your work.
 	same "printed page" as the copyright notice for easier
 	identification within third-party archives.
 
-	Copyright 2021 Test Author
+	Copyright 2022 Test Author
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.

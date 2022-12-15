@@ -17,7 +17,6 @@ package dbt
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
 	"log"
 	"os"
 	"testing"
@@ -195,7 +194,7 @@ func TestFetchFile(t *testing.T) {
 
 	for _, tc := range inputs {
 		t.Run(tc.name, func(t *testing.T) {
-			toolName := "catalog_darwin_amd64"
+			toolName := "catalog_linux_amd64"
 			testFile := testFilesA[toolName]
 			fileUrl := testFile.TestUrl
 			fileName := fmt.Sprintf("%s/fetchfile", tc.homedir)
@@ -213,8 +212,8 @@ func TestFetchFile(t *testing.T) {
 			if err != nil {
 				t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
 			}
-			//
-			checksumBytes, err := ioutil.ReadFile(checksumFile)
+
+			checksumBytes, err := os.ReadFile(checksumFile)
 			if err != nil {
 				t.Errorf("Error reading checksumfile %s.sha256: %s\n", toolName, err)
 			}
@@ -255,7 +254,7 @@ func TestFetchFile(t *testing.T) {
 				t.Errorf("Failed to download truststore")
 			}
 
-			trustBytes, err := ioutil.ReadFile(trustStoreFile)
+			trustBytes, err := os.ReadFile(trustStoreFile)
 			if err != nil {
 				t.Errorf("Failed to read downloaded truststore: %s\n", err)
 			}
@@ -276,7 +275,7 @@ func TestFetchFile(t *testing.T) {
 				t.Errorf("Failed to download signature")
 			}
 
-			sigBytes, err := ioutil.ReadFile(sigFile)
+			sigBytes, err := os.ReadFile(sigFile)
 			if err != nil {
 				t.Errorf("Failed to read downloaded signature: %s\n", err)
 			}
@@ -361,11 +360,11 @@ func TestS3Url(t *testing.T) {
 			"",
 		},
 		{
-			"https://dbt-tools.s3.us-east-1.amazonaws.com/catalog/1.2.3/darwin/amd64/catalog",
+			"https://dbt-tools.s3.us-east-1.amazonaws.com/catalog/1.2.3/linux/amd64/catalog",
 			true,
 			"dbt-tools",
 			"us-east-1",
-			"catalog/1.2.3/darwin/amd64/catalog",
+			"catalog/1.2.3/linux/amd64/catalog",
 		},
 	}
 
@@ -390,23 +389,23 @@ func TestDirsForPath(t *testing.T) {
 	}{
 		{
 			"s3 reposerver url",
-			"https://foo.com/dbt-tools/catalog/1.2.3/darwin/amd64/catalog",
+			"https://foo.com/dbt-tools/catalog/1.2.3/linux/amd64/catalog",
 			[]string{
 				"dbt-tools",
 				"dbt-tools/catalog",
 				"dbt-tools/catalog/1.2.3",
-				"dbt-tools/catalog/1.2.3/darwin",
-				"dbt-tools/catalog/1.2.3/darwin/amd64",
+				"dbt-tools/catalog/1.2.3/linux",
+				"dbt-tools/catalog/1.2.3/linux/amd64",
 			},
 		},
 		{
 			"s3 catalog url",
-			"https://dbt-tools.s3.us-east-1.amazonaws.com/catalog/1.2.3/darwin/amd64/catalog",
+			"https://dbt-tools.s3.us-east-1.amazonaws.com/catalog/1.2.3/linux/amd64/catalog",
 			[]string{
 				"catalog",
 				"catalog/1.2.3",
-				"catalog/1.2.3/darwin",
-				"catalog/1.2.3/darwin/amd64",
+				"catalog/1.2.3/linux",
+				"catalog/1.2.3/linux/amd64",
 			},
 		},
 	}

@@ -35,9 +35,6 @@ var METADATA_TEMPLATE = `{
   "building": {
     "targets": [
       {
-        "name": "darwin/amd64"
-      },
-      {
         "name": "linux/amd64"
       }
     ],
@@ -59,12 +56,6 @@ var METADATA_TEMPLATE = `{
       {
         "src": "description.txt",
         "dst": "__REPOSITORY__/__TOOLNAME__/__VERSION__/description.txt",
-        "sig": true,
-        "checksums": false
-      },
-      {
-        "src": "{{.ToolName}}_darwin_amd64",
-        "dst": "__REPOSITORY__/__TOOLNAME__/__VERSION__/darwin/amd64/__TOOLNAME__",
         "sig": true,
         "checksums": false
       },
