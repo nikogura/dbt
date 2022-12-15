@@ -31,11 +31,16 @@ DBT gets out of the way and helps the user do what they should be doing all alon
 
 You absolutely can maintain some sort of device and server management software like Jamf or Chef or Puppet, and update all your OS packages all the time.  These solutions exist, and they're great - when they work well together.  Often they do not- or they're so heavy-handed your small agile shop can't maintain them well enough to stay out of the user's way.
 
-Another thing these tools all have in common is they work off a "push model".  The central administrator pushes out updates, and you use whatever you get.  Again this is great - when it works.  Be honest however, when's the last time you were required to update to the latest something and things stopped working?  This month?  This week?  Today.  Yeah.
+Another thing these tools all have in common is they work off a "push model".  The central administrator pushes out updates, and you use whatever you get.  Again this is great - when it works.  Be honest however, when's the last time you were required to update to the latest something and things stopped working?  This month?  This week?  Today?  Yeah.
 
 DBT in contrast works on a _pull model_.  The default is you get the latest version of whatever tool we're talking about.  You can, however, request a previous version instead.  So long as the old versions are available in your repository, the user can do whatever they need to do.  They're the user.  Tools exist to make user's lives easier/better - else what's the use?
 
-Once you set up your tool repository, `dbt` downloads and verifies the tools, automatically looking for and using the latest version - unless the user goes out of their way to use a previous version.  That's it.  That's the magic: Downloading and verifying in a fashion that gets out of the way of the user and lets them do their job.
+The "pull model" is a lot more respectful of your users.  There's incentive to use the latest versions, but if they need to go out of their way to use an older version, they can.
+
+
+Once you set up your tool repository, `dbt` downloads and verifies the tools, automatically looking for and using the latest version - unless the user goes out of their way to use a previous version.  
+
+That's it.  That's the magic: Downloading and verifying in a fashion that gets out of the way of the user and lets them do their job.
 
 # Overview
 
