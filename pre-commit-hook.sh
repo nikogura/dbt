@@ -7,8 +7,12 @@ COMMAND_VERSION=$(grep Version: cmd/dbt/cmd/root.go | grep -v version | awk '{pr
 
 CODE_VERSION=$(grep "VERSION ="  pkg/dbt/dbt.go | awk '{print $4}' | sed 's/"//g')
 
-if [[ ${METADATA_VERSION} != ${CODE_VERSION} || ${CODE_VESION} != ${COMMAND_VESION} ]]; then
+if [[ ${METADATA_VERSION} != "${CODE_VERSION}" || "${CODE_VESION}" != "${COMMAND_VESION}" || "${COMMAND_VERSION}" != "${METADATA_VERSION}" ]] ; then
   echo "Versions do not match!"
+  echo "Metadata: ${METADATA_VERSION}"
+  echo "Command:  ${COMMAND_VERSION}"
+  echo "Code:     ${CODE_VERSION}"
+
   echo "'VERSION' in cmd/dbt/cmd/root.go must match 'version' in metadata.json and in pkg/dbt/dbt.go"
   exit 1
 fi
