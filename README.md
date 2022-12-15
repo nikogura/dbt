@@ -17,7 +17,7 @@ A framework for self-updating binary tools.
 
 Imagine a set of tools that are always up-to-date, and always safe to use.  Imagine anyone in your organization being able to easily contribute to this tool chest with minimal preparation.  Imagine everything always _just working_, and getting out of your way so you can do your thing.  Sound like magic?
 
-What kind of tools you say?  Anything that can be compiled into a stand-alone binary.
+What kind of tools you say?  Anything that can be compiled into a single file.  Golang programs?  Yup.  Bash scripts?  Yessir.  Pyinstaller and pyoxidizer tools?  You bet.  As long as it's a single file, `dbt` can distribute it to your users painlessly.
 
 The `dbt` tool keeps ensures your tools are always up-to-date (unless you specify an older version), and it does the same for itself.
 
