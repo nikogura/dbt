@@ -218,6 +218,164 @@ I just build the tools.  You choose how to use them.
 ensure reliable delivery of the bullet to where you aimed the gun (in
 this case, Mr. Foot)." -- Terry Lambert, FreeBSD-Hackers mailing list.
 
+# Configuration
+
+Dbt uses a config file typically located in ~/.dbt/conf/dbt.json.  It's built by default by the shell installer when you build `dbt`.  The following data is for reference.
+
+An example dbt config file:
+
+        {
+          "dbt": {
+            "repository": "http://localhost:8081/dbt",
+            "truststore": "http://localhost:8081/dbt/truststore"
+          },
+          "tools": {
+            "repository": "http://localhost:8081/dbt-tools"
+          }
+          "username": "",
+          "password": "",
+          "usernamefunc": "echo $USERNAME",
+          "passwordfunc": "echo $PASSWORD"
+        }
+
+It contains sections for the ```dbt``` tool itself, as well as for the tools dbt will download and run.
+
+The individual sections are detailed below.
+
+## dbt
+
+This section applies to the ```dbt``` binary itself.  The ```dbt``` binary doesn't do much in and of itself beyond download , verify, and run tools, but this is where you set the degree of paranoia on the system by setting the truststore.
+
+It's also conceivable that ```dbt``` itself might need a higher level of paranoia than the tools.  It's all up to you.
+
+### repository
+
+Url of the trusted repository.
+
+### truststore
+
+Url of the truststore.  This file contains the public keys of the trusted authors of dbt binaries.  This can be a single ascii armored public key such as:
+
+        -----BEGIN PGP PUBLIC KEY BLOCK-----
+        
+        mQENBFowLigBCAC++pVrVRRM86Wo8V7XJsOmU2xtBBY5a8ktB1tdpEhzlPWQHObx
+        LINj79HE3lRlIFQmxnKcX3I15bzT3yo3XWLyVUsCDA1Mg9JoU2zJ+u3XftdNBg8J
+        eRlTiEwZYflxEYZFSyh3TZI2VZxxlINp/jOGG0dpAdKF3sfKxdTRb30lgDr+wIzv
+        oncrjX023UQDHoRZ3f+zPpnkubjhwH8jUHLiGsyKvu0XDB0c4y/6yG6vLUMQDuKX
+        bkzBtssdLLA6MTur9Q26dQV/DvuNZdHx17vwXSvf/JMKdWcX80fsAJD644KW9DOg
+        pgLqtBa4Tfutt3S8ueIHDnPZBKFL0u+Q61xvABEBAAG0HERCVCBUZXN0IFN1aXRl
+        IDxkYnRAZGJ0LmNvbT6JAVQEEwEIAD4WIQTdbDzq2B9JD2WAtKLOaEY1/aXTHwUC
+        WjAuKAIbAwUJA8JnAAULCQgHAgYVCAkKCwIEFgIDAQIeAQIXgAAKCRDOaEY1/aXT
+        H52LCACYqQnVmJRarckqh1//FUFFpXlTcwWV2zGr3CEFRs0BrWEQD7giehFpKoTL
+        JOJJSFd4xcbo/9wMXpJ16soK83o48laxkj+2LDUfDylnTVpVI6zVvAseqnt5nbrA
+        CWes75FeIHtQ6woDy7K3RHUORNZ+K37MaH3Wmp1TzwY/vATQyWc9qUebGitxWuVD
+        RdtTEcq6WniDWAJ5FqhHZ3TV/hK7QPTi1gaHG+yJZeXuajsNo6CLrfJy6H6itEfi
+        XKOns2fiGE/pPxjJpfdTOQipFmw68FuNo8i/A0Nc//d43ejcrqAb9fAKOOTZrpw+
+        MoqMsFm6V8j+ZN+oKHKSPaD4i6iNuQENBFowLigBCADKSSCJNCY0vPVz8RaCy/uJ
+        byiZ4dkEUIFkE4TKFCulG8QUMdfczUtYfuUH4ir5vNsG2vxHqDo7W0CBZ1nZjVW9
+        uUy0TrNrVEsPDcMEqn827oK/pqQmlPq6wxGr6qfrMeAnQKKyQpYA0bwWDxwJ6BBb
+        0Lw/YyulbLyoCEUPm4Usn+WA8xvUxoWYj/pjg773OLyoznETQiabieNpTmkgad6x
+        0mH1mbjT0r0RCR0ZUqL1tjGUAfIEr58AVKvP4vZT8jw4quma2QFKLrSswF/bCXqr
+        K/Eqm+S2lDcOUlY35/fZrBt9Mmr8dF00KYWeND0NE0HFB1cpK5bhHKqMSuwOlrbn
+        ABEBAAGJATwEGAEIACYWIQTdbDzq2B9JD2WAtKLOaEY1/aXTHwUCWjAuKAIbDAUJ
+        A8JnAAAKCRDOaEY1/aXTH63LB/4qt+H+3HNEvaRgigod+srkxyT/nQH1tLSHQtht
+        fukuCgNY7J1y/qGroZxZbB6HSJi//64CH0bV0P06nNoDJt2lPJxKA8nuhxiFEZkf
+        ACqtJB4W6CUUIZws9YSxVuV84gHZ4g1eQ6mO99R/4jCbhGCebxr0IgPxkulao9Z+
+        jjb+fdwRkztLKL5GLpiPnR9TuLPxVTB9rnuXsHlGdT4rUXDUKGVdI+wimjjurwvw
+        vAh3MTVCC0qvQq4V1T1yTCYZ+J7p5wrt1UsBCtYKJfKTeAZN9T7Ji3LVr4jUG2Gn
+        zHBlhCAdlhsz+4TN+d04QprL2RW86TsIebptwxUscjqJ8lXO
+        =b72A
+        -----END PGP PUBLIC KEY BLOCK-----
+
+The file can consist of multiple public keys such as:
+
+        -----BEGIN PGP PUBLIC KEY BLOCK-----
+        
+        mQENBFowLigBCAC++pVrVRRM86Wo8V7XJsOmU2xtBBY5a8ktB1tdpEhzlPWQHObx
+        LINj79HE3lRlIFQmxnKcX3I15bzT3yo3XWLyVUsCDA1Mg9JoU2zJ+u3XftdNBg8J
+        eRlTiEwZYflxEYZFSyh3TZI2VZxxlINp/jOGG0dpAdKF3sfKxdTRb30lgDr+wIzv
+        oncrjX023UQDHoRZ3f+zPpnkubjhwH8jUHLiGsyKvu0XDB0c4y/6yG6vLUMQDuKX
+        bkzBtssdLLA6MTur9Q26dQV/DvuNZdHx17vwXSvf/JMKdWcX80fsAJD644KW9DOg
+        pgLqtBa4Tfutt3S8ueIHDnPZBKFL0u+Q61xvABEBAAG0HERCVCBUZXN0IFN1aXRl
+        IDxkYnRAZGJ0LmNvbT6JAVQEEwEIAD4WIQTdbDzq2B9JD2WAtKLOaEY1/aXTHwUC
+        WjAuKAIbAwUJA8JnAAULCQgHAgYVCAkKCwIEFgIDAQIeAQIXgAAKCRDOaEY1/aXT
+        H52LCACYqQnVmJRarckqh1//FUFFpXlTcwWV2zGr3CEFRs0BrWEQD7giehFpKoTL
+        JOJJSFd4xcbo/9wMXpJ16soK83o48laxkj+2LDUfDylnTVpVI6zVvAseqnt5nbrA
+        CWes75FeIHtQ6woDy7K3RHUORNZ+K37MaH3Wmp1TzwY/vATQyWc9qUebGitxWuVD
+        RdtTEcq6WniDWAJ5FqhHZ3TV/hK7QPTi1gaHG+yJZeXuajsNo6CLrfJy6H6itEfi
+        XKOns2fiGE/pPxjJpfdTOQipFmw68FuNo8i/A0Nc//d43ejcrqAb9fAKOOTZrpw+
+        MoqMsFm6V8j+ZN+oKHKSPaD4i6iNuQENBFowLigBCADKSSCJNCY0vPVz8RaCy/uJ
+        byiZ4dkEUIFkE4TKFCulG8QUMdfczUtYfuUH4ir5vNsG2vxHqDo7W0CBZ1nZjVW9
+        uUy0TrNrVEsPDcMEqn827oK/pqQmlPq6wxGr6qfrMeAnQKKyQpYA0bwWDxwJ6BBb
+        0Lw/YyulbLyoCEUPm4Usn+WA8xvUxoWYj/pjg773OLyoznETQiabieNpTmkgad6x
+        0mH1mbjT0r0RCR0ZUqL1tjGUAfIEr58AVKvP4vZT8jw4quma2QFKLrSswF/bCXqr
+        K/Eqm+S2lDcOUlY35/fZrBt9Mmr8dF00KYWeND0NE0HFB1cpK5bhHKqMSuwOlrbn
+        ABEBAAGJATwEGAEIACYWIQTdbDzq2B9JD2WAtKLOaEY1/aXTHwUCWjAuKAIbDAUJ
+        A8JnAAAKCRDOaEY1/aXTH63LB/4qt+H+3HNEvaRgigod+srkxyT/nQH1tLSHQtht
+        fukuCgNY7J1y/qGroZxZbB6HSJi//64CH0bV0P06nNoDJt2lPJxKA8nuhxiFEZkf
+        ACqtJB4W6CUUIZws9YSxVuV84gHZ4g1eQ6mO99R/4jCbhGCebxr0IgPxkulao9Z+
+        jjb+fdwRkztLKL5GLpiPnR9TuLPxVTB9rnuXsHlGdT4rUXDUKGVdI+wimjjurwvw
+        vAh3MTVCC0qvQq4V1T1yTCYZ+J7p5wrt1UsBCtYKJfKTeAZN9T7Ji3LVr4jUG2Gn
+        zHBlhCAdlhsz+4TN+d04QprL2RW86TsIebptwxUscjqJ8lXO
+        =b72A
+        -----END PGP PUBLIC KEY BLOCK-----
+        -----BEGIN PGP PUBLIC KEY BLOCK-----
+        
+        mQENBFpAPGYBCACtRHQZMgHhmETN6X6MCkP7H88jVBSTwhMoZgk0vl6BWK832Uvi
+        SMGiZ63uiPkzoUwOtFhexE0QYgKvGPLTm7RWK2aPmsQOk1o+ksFElsRJxT7LzPEM
+        g2ci5qAs7q9H8uEntEqfxb9Yn6yiUOLyw6nCrKc9bJN2dCEszpciZoz7AN1ScU+8
+        QM3mBw1ToWUB3AMVkd7jJCVloeYprQbqc7pkJBDy9wAISlNRMeLz0PnEuBIrrz8Z
+        An1QcqX0PQVWVqNb/duMK5ZszWGK0owfdeSeQiSLK9kvywwo9KZ5qs8XkCUvldZg
+        Qv+5mFKK4/+IVReKlnfMvGKRwrGi1oin1mWXABEBAAG0HURCVCBUZXN0IFN1aXRl
+        IDxkYnQyQGRidC5jb20+iQFUBBMBCAA+FiEESN604MD5N5baHiTBzGsmLbfIHwUF
+        AlpAPGYCGwMFCQPCZwAFCwkIBwIGFQgJCgsCBBYCAwECHgECF4AACgkQzGsmLbfI
+        HwX7sQf+Pt6uy3ZZGWZRldGR4qKT/qUCEAc/AG0b2sSlwDt79tEIkprmhMlvNgqF
+        DnK5MmAJjZVeR9urWeYeXYk3CH+ZOcR2AOr/15+1LKzkmmVfWGTagQPUFIKkaBdi
+        7ymM2wFCvYWG149X1w/ThZ1ZRSCmpuyHiheW/WAE9P1LFTHI+feIjB7Iflmnxkwq
+        tPxYxsc07IU0ZIs5+uuerTLlj8gS8acIeGkpNM97m+CiMoL4RLMyt1qFp/lFbbv1
+        Td6Dn6vzNL1ZcYGNQ/SHfLTdcnM9GSA5IA1+RyVWb8npFG/sKdPgHMSYOusbdncP
+        70qxf+aa/xvZbTvniXtgmhrqog6DJLkBDQRaQDxmAQgA3s4IfL2wUwRN0aCKFeuW
+        yOEgNdMuIS9ZKA+f8/s+VXoLtJQ32gZpqCEl2ESOggJx7+ThAhf4F/SDnEdRHZeJ
+        IhUnRmzzQPSrhWo9UWDff6cooO1CiSGDSRBgAT8RvZib3OnRWSe67s0webpytUiO
+        +y4gt0FtEhXC9kdJ1DsjzJGVyXFYR9pOTV3xjfGKBhHH/6c6kYr1UL2boy8t3IZP
+        jyhBHrp3EgxYV7g96ncAVXha91mZ6IisGyXtsOL5qEwPPJCKD2QTKwkJ4S2qqcAR
+        8n7agRD8Cn2HESgPezXeg2uoaStcHzhNhF/o/71j2oj5c2u5HkchAzj3l+XHQIrs
+        VwARAQABiQE8BBgBCAAmFiEESN604MD5N5baHiTBzGsmLbfIHwUFAlpAPGYCGwwF
+        CQPCZwAACgkQzGsmLbfIHwVwjAf9GWR6LdtoEXYVRUSSB2ccl2IeRiwcaEZl/96A
+        I2hFX+SCqBVnwJN4jgvhPlCF6PXylkjZKUczrAaizjuU2ZuAt6ONDkEc0R5Glt7j
+        dgyl/51WEdBbYeLuVfONtAOBqzs3iRrK8WHnoV+SYQy5aT4kTPTDVzrz/EBDF7KQ
+        jqZ4J0i6qsp2DiOxhPn/xVk/iaTRDvtvsA37Qw0mqRlf6xSSLQabroNtJENmf7Cc
+        f51a/98jWbflcGLSg/BG2K4hba7ZNKIgKYrS+SKqx5YeE70y/rbjQcJ0ai09Fojc
+        hxfIreyexqK3w7pLJFaTbs4ykxWvQZyF0s7h60THq9g76lTjLQ==
+        =KIOK
+        -----END PGP PUBLIC KEY BLOCK-----
+
+There's nothing magical about this file.  It's just the keys you've decided to trust, concatenated together.  Comments after an `-----END PGP PUBLIC KEY BLOCK-----` or before an `-----BEGIN PGP PUBLIC KEY BLOCK---` are ignored, and can be quite useful for humans trying to maintain this file.
+
+## tools
+
+This section is for the tools ```dbt``` downloads, verifies, and runs for you.
+
+### repository
+
+Url of the repo where the tools are stored.  This is where tools are found, and where the tool ```catalog``` looks for tools.
+
+## username
+
+Username if basic auth is used on repos.  (Optional)
+
+## password
+
+Password if basic auth is used on repos. (Optional)
+
+## usernamefunc
+
+Shell function to retrieive username.
+
+## passwordfunc
+
+Shell funciton to retrieve password.
+
 # Repository Support
 
 The dbt `reposerver` tool is written entirely in golang.  All the internal tests work off an instance of the dbt reposerver.  See [Reposerver](#reposerver) for more details on how to run it.
@@ -287,62 +445,6 @@ Output:
     Use "catalog [command] --help" for more information about a command.
 
 ---
-
-## Boilerplate
-
-A tool for generating tool boilerplate.  You could do it by hand, but why? 
-
-Command: `dbt boilerplate gen`
-
-Output:
-
-    Enter a name for your new tool: fargle
-    Enter a go package for your new tool: github.com/nikogura/fargle
-    Enter a short, one line description for your new tool: Do cool stuff
-    Enter your name: Nik Ogura
-    Enter  your email address: nik.ogura@gmail.com
-    Enter the dbt tool repository url for your new tool (where compiled tools will be published): https://niks-cool-dbt-repo.com/tools
-    Creating /home/nik/fargle/pkg/fargle
-    Creating /home/nik/fargle/templates
-    Creating /home/nik/fargle/cmd
-    Writing /home/nik/fargle/.gitignore
-    Writing /home/nik/fargle/pre-commit-hook.sh
-    Writing /home/nik/fargle/templates/description.tmpl
-    Writing /home/nik/fargle/metadata.json
-    Writing /home/nik/fargle/LICENSE
-    Writing /home/nik/fargle/go.mod
-    Writing /home/nik/fargle/main.go
-    Writing /home/nik/fargle/cmd/root.go
-    Writing /home/nik/fargle/pkg/fargle/fargle.go
-    Writing /home/nik/fargle/README.md
-
-The code generated by the `boilerplate` tool will compile, and publish via `gomason` provided you have `metadata.json` wired up to a repo you can write to.  After that it's up to you.
-
-### Boilerplate Help
-
-Command: `dbt boilerplate help`
-
-Output: 
-
-    DBT tool for creating DBT tools.
-    
-    Sure, a DBT tool is just a signed go binary.  You can create 'em any old way.
-    
-    Sometimes, however, you have better things to do with your time, and just want to get something working hence DBT boilerplate.
-    
-    Usage:
-      boilerplate [command]
-    
-    Available Commands:
-      gen         Creates a new DBT tool.
-      help        Help about any command
-    
-    Flags:
-      -h, --help   help for boilerplate
-    
-    Use "boilerplate [command] --help" for more information about a command.
-
---- 
 
 ## Reposerver
 
@@ -487,257 +589,61 @@ These examples use the HTTPPRoxy ingress from [projectcontour](https://projectco
 
 ---
 
-## Customization of Boilerplate Templates
+## Boilerplate
 
-The above is fine if you want `dbt` straight out of the box.  If you want to modify the `boilerplate` templates, you'll need to do some extra work.
+This tool uses a templated file system to help generate templated projects.
+Each of the folders in this directory contain a layout for a specific type of
+project to generate.  Each folder name starts with an underscore (_) to prevent go tools from treating them as actual golang project files.
 
-The variables that are overridable are:
+Within a given project, all items are templatized; folders and files.
 
-* GITIGNORE_TEMPLATE produces `.gitignore`.
+### Project Types
+#### [Cobra](pkg/boilerplate/project_templates/_cobraProject)
+This project is used to generate tools using the [cobra](https://github.com/spf13/cobra) command line framework.
 
-* METATADATA_TEMPLATE produces `metadata.json`.
+#### [Gin Server](pkg/boilerplate/project_templates/_ginProject)
+This project is used to generate a basic server service with a Gin routed server
 
-* PREHOOOK_TEMPLATE produces `pre-commit-hook.sh`.
+### Adding a new Project
+#### Make a project folder
+First step is to creat a new "projects" folder in the [project_templates](pkg/boilerplate/project_templates) directory. Under this
+created directory you can create any number of templated file structures that will become the basic of your
+new destination project.
 
-* GOMODULE_TEMPLATE produces `go.mod`.
+For example, under a project you might create both a templated service and web GUI application which require
+separate templating schemes.
 
-* MAINGO_TEMPLATE produces `main.go`.
 
-* ROOTGO_TEMPLATE produces `cmd/root.go`.
+NB: Your directory name needs to start with an underscore ("_").  This will ensure the golang tools ignore it.  If you don't follow this rule, things like `go mod` will throw errors on the template syntax.
 
-* LICENSE_TEMPLATE produces `LICENSE`.
+NB: Only single folder projects have been attempted at the time of this writing.
 
-* EMPTYGO_TEMPLATE produces `pkg/<tool name>/<tool name>.go`.
+#### Add project to [projects.go](pkg/boilerplate/projects.go)
+Create a go:embed FS to hold your project structure
+```shell script
+go:embed project_templates/_cobraProject/*
+var myNewProject embed.FS
+```
 
-* DESCRIPTION_TEMPLATE produces `templates/description.tmpl`.
+Add the project to each function in this file.
 
-* README_TEMPLATE produces `README.md`.
-    
+#### Add new prompt types
+If adding new template variables, they should be added to the [prompt.go](../prompt.go) file. This
+includes the prompt questions as well as any validations to perform on a given answer.
 
-To customise `boilerplate` templates:
+#### Make params structure
+Create a struct that holds all of the variables your application requires to run
+```
+type DockerParams struct {
+   	DockerRegistry    string
+   	DockerProject     string
+   	ProjectName       string
+    ...
+```
 
-1. Fork the repo.
+#### Done
+After this your new project will be available for generation at the top level of the application
 
-1. Change the `metadata.json` file to reflect your own repository setup and preferences.  You need to change the `repository`, `tool-repository`, and `package` lines.
 
-1. Install `gomason` via `go get github.com/nikogura/gomason`.
-
-1. Create new versions of the boilerplate files.
-
-1. Base64 encode your boilerplate files, and export them into ENV vars.  This is crude, but it's the only way I have found to date where you can inject YOUR code as variables into MY code.
-
-1. Add your template overrides by adding 'ldflags' lines to each build target in `metadata.json`.  eg:
-
-    `"ldflags": "-X github.com/nikogura/dbt/pkg/dbt.METADATA_TEMPLATE=${METADATA_TEMPLATE}"`
-
-    Don't forget to commit and push.  Remember `gomason` will pull from the remote repo before building.  It never sees what's in your local clone.  It pulls a fresh clone every time it runs.  By design it's a 'clean room' for your code.
-
-1. Publish via `gomason publish -s`.  A couple of examples that work well:
-
-    1. From a shell run:
-    
-        `METADATA_TEMPLATE=$(cat metadata.tmpl | base64) gomason publish -vs`
-
-    1. From a Makefile:
-    
-        ```
-        .EXPORT_ALL_VARIABLES:
-    
-        METADATA_TEMPLATE = $(shell cat metadata.tmpl | base64)
-    
-        publish:
-            @gomason publish -vs
-        ```
-
-    You have to skip the tests, since _my_ tests run against _my_ package, which is `github.com/nikogura/dbt`.  They won't run against your forked package unless you laborously go through my code and remove all references to my package.  (That's certainly possible too, though annoying.)
-
-1. Run the installer you built. It'll be found in `<repo>/install_dbt.sh`.  
-
-    With an HTTP reposerver like Artifactory or DBT's internal server, you can install this script via `curl https://your.repo.host/path/to/install_dbt.sh | bash`.  
-  
-    If you're using S3 as your backend, you will have to do it in 2 steps: 
-
-    1. `aws s3 cp s3://<your bucket>/install_dbt.sh install_dbt.sh`.  
-    
-    2. `bash install_dbt.sh`.  
-
-    This 2 step is forced by the aws cli not being able to feed a downloaded object directly to bash.  (Or at least, I haven't figured out how to make it do so - yet!)
-
-1. Verify installation by running: `dbt catalog list` .
-
-The details of what all is supported in `metadata.json` can be found in [https://github.com/nikogura/gomason](https://github.com/nikogura/gomason).  
-
-If you run into trouble, run `gomason publish -v` to see what went wrong.  It's wordy, but fairly precise about what it's trying to do.  Typically errors stem from either bad perms in your repository, or typos in `metadata.json`.
-
-If your `metadata.json` has the following:
-
-    "repository": "http://localhost:8081/artifactory/dbt"
-    
-Then you should see a file `http://localhost:8081/artifactory/dbt/install_dbt.sh`, which you can run with:
-
-        bash -c "$(curl http://localhost:8081/artifactory/dbt/install_dbt.sh)" 
-        
-And voila!  Your DBT is now installed.
-
-You will, however need to populate the `truststore` file, which by default, with the above config would be located at `http://localhost:8081/artifactory/dbt/truststore`.  This file contains the PEM encoded public keys of the entities you trust to create DBT binaries.  You can edit this file by hand, it's just a bunch of PEM data squashed together.
-
-_AUTHOR'S NOTE: When I personally maintain an internal fork, I set up a clone of the fork with 2 upstreams: 'origin' is my internal fork, and 'upstream' which is the public github.com/nikogura/dbt.  Then I make all my internal changes as required, and when upstream changes, do a `git pull upstream ...`.  Usually the only changes/conflicts are in the `metadata.json`. To maintain private boilerplate templates I put something like: `export VARIABLE_NAME=$(cat file | base64)` in a Makefile or my CI script and let the machine do the tedious parts.  It's crude, but I can only work with what golang gives me.  The goal is to allow any user to run `dbt boilerplate gen` locally and get my organization's templates._
-
-# Configuration
-
-Dbt uses a config file typically located in ~/.dbt/conf/dbt.json
-
-An example dbt config file:
-
-        {
-          "dbt": {
-            "repository": "http://localhost:8081/dbt",
-            "truststore": "http://localhost:8081/dbt/truststore"
-          },
-          "tools": {
-            "repository": "http://localhost:8081/dbt-tools"
-          }
-          "username": "",
-          "password": "",
-          "usernamefunc": "echo $USERNAME",
-          "passwordfunc": "echo $PASSWORD"
-        }
-        
-It contains sections for the ```dbt``` tool itself, as well as for the tools dbt will download and run.
-
-The individual sections are detailed below.
-
-## dbt
-
-This section applies to the ```dbt``` binary itself.  The ```dbt``` binary doesn't do much in and of itself beyond download , verify, and run tools, but this is where you set the degree of paranoia on the system by setting the truststore.
-
-It's also conceivable that ```dbt``` itself might need a higher level of paranoia than the tools.  It's all up to you.
-
-### repository
-
-Url of the trusted repository.
-
-### truststore
-
-Url of the truststore.  This file contains the public keys of the trusted authors of dbt binaries.  This can be a single ascii armored public key such as:
-
-        -----BEGIN PGP PUBLIC KEY BLOCK-----
-        
-        mQENBFowLigBCAC++pVrVRRM86Wo8V7XJsOmU2xtBBY5a8ktB1tdpEhzlPWQHObx
-        LINj79HE3lRlIFQmxnKcX3I15bzT3yo3XWLyVUsCDA1Mg9JoU2zJ+u3XftdNBg8J
-        eRlTiEwZYflxEYZFSyh3TZI2VZxxlINp/jOGG0dpAdKF3sfKxdTRb30lgDr+wIzv
-        oncrjX023UQDHoRZ3f+zPpnkubjhwH8jUHLiGsyKvu0XDB0c4y/6yG6vLUMQDuKX
-        bkzBtssdLLA6MTur9Q26dQV/DvuNZdHx17vwXSvf/JMKdWcX80fsAJD644KW9DOg
-        pgLqtBa4Tfutt3S8ueIHDnPZBKFL0u+Q61xvABEBAAG0HERCVCBUZXN0IFN1aXRl
-        IDxkYnRAZGJ0LmNvbT6JAVQEEwEIAD4WIQTdbDzq2B9JD2WAtKLOaEY1/aXTHwUC
-        WjAuKAIbAwUJA8JnAAULCQgHAgYVCAkKCwIEFgIDAQIeAQIXgAAKCRDOaEY1/aXT
-        H52LCACYqQnVmJRarckqh1//FUFFpXlTcwWV2zGr3CEFRs0BrWEQD7giehFpKoTL
-        JOJJSFd4xcbo/9wMXpJ16soK83o48laxkj+2LDUfDylnTVpVI6zVvAseqnt5nbrA
-        CWes75FeIHtQ6woDy7K3RHUORNZ+K37MaH3Wmp1TzwY/vATQyWc9qUebGitxWuVD
-        RdtTEcq6WniDWAJ5FqhHZ3TV/hK7QPTi1gaHG+yJZeXuajsNo6CLrfJy6H6itEfi
-        XKOns2fiGE/pPxjJpfdTOQipFmw68FuNo8i/A0Nc//d43ejcrqAb9fAKOOTZrpw+
-        MoqMsFm6V8j+ZN+oKHKSPaD4i6iNuQENBFowLigBCADKSSCJNCY0vPVz8RaCy/uJ
-        byiZ4dkEUIFkE4TKFCulG8QUMdfczUtYfuUH4ir5vNsG2vxHqDo7W0CBZ1nZjVW9
-        uUy0TrNrVEsPDcMEqn827oK/pqQmlPq6wxGr6qfrMeAnQKKyQpYA0bwWDxwJ6BBb
-        0Lw/YyulbLyoCEUPm4Usn+WA8xvUxoWYj/pjg773OLyoznETQiabieNpTmkgad6x
-        0mH1mbjT0r0RCR0ZUqL1tjGUAfIEr58AVKvP4vZT8jw4quma2QFKLrSswF/bCXqr
-        K/Eqm+S2lDcOUlY35/fZrBt9Mmr8dF00KYWeND0NE0HFB1cpK5bhHKqMSuwOlrbn
-        ABEBAAGJATwEGAEIACYWIQTdbDzq2B9JD2WAtKLOaEY1/aXTHwUCWjAuKAIbDAUJ
-        A8JnAAAKCRDOaEY1/aXTH63LB/4qt+H+3HNEvaRgigod+srkxyT/nQH1tLSHQtht
-        fukuCgNY7J1y/qGroZxZbB6HSJi//64CH0bV0P06nNoDJt2lPJxKA8nuhxiFEZkf
-        ACqtJB4W6CUUIZws9YSxVuV84gHZ4g1eQ6mO99R/4jCbhGCebxr0IgPxkulao9Z+
-        jjb+fdwRkztLKL5GLpiPnR9TuLPxVTB9rnuXsHlGdT4rUXDUKGVdI+wimjjurwvw
-        vAh3MTVCC0qvQq4V1T1yTCYZ+J7p5wrt1UsBCtYKJfKTeAZN9T7Ji3LVr4jUG2Gn
-        zHBlhCAdlhsz+4TN+d04QprL2RW86TsIebptwxUscjqJ8lXO
-        =b72A
-        -----END PGP PUBLIC KEY BLOCK-----
-        
-The file can consist of multiple public keys such as:
-
-        -----BEGIN PGP PUBLIC KEY BLOCK-----
-        
-        mQENBFowLigBCAC++pVrVRRM86Wo8V7XJsOmU2xtBBY5a8ktB1tdpEhzlPWQHObx
-        LINj79HE3lRlIFQmxnKcX3I15bzT3yo3XWLyVUsCDA1Mg9JoU2zJ+u3XftdNBg8J
-        eRlTiEwZYflxEYZFSyh3TZI2VZxxlINp/jOGG0dpAdKF3sfKxdTRb30lgDr+wIzv
-        oncrjX023UQDHoRZ3f+zPpnkubjhwH8jUHLiGsyKvu0XDB0c4y/6yG6vLUMQDuKX
-        bkzBtssdLLA6MTur9Q26dQV/DvuNZdHx17vwXSvf/JMKdWcX80fsAJD644KW9DOg
-        pgLqtBa4Tfutt3S8ueIHDnPZBKFL0u+Q61xvABEBAAG0HERCVCBUZXN0IFN1aXRl
-        IDxkYnRAZGJ0LmNvbT6JAVQEEwEIAD4WIQTdbDzq2B9JD2WAtKLOaEY1/aXTHwUC
-        WjAuKAIbAwUJA8JnAAULCQgHAgYVCAkKCwIEFgIDAQIeAQIXgAAKCRDOaEY1/aXT
-        H52LCACYqQnVmJRarckqh1//FUFFpXlTcwWV2zGr3CEFRs0BrWEQD7giehFpKoTL
-        JOJJSFd4xcbo/9wMXpJ16soK83o48laxkj+2LDUfDylnTVpVI6zVvAseqnt5nbrA
-        CWes75FeIHtQ6woDy7K3RHUORNZ+K37MaH3Wmp1TzwY/vATQyWc9qUebGitxWuVD
-        RdtTEcq6WniDWAJ5FqhHZ3TV/hK7QPTi1gaHG+yJZeXuajsNo6CLrfJy6H6itEfi
-        XKOns2fiGE/pPxjJpfdTOQipFmw68FuNo8i/A0Nc//d43ejcrqAb9fAKOOTZrpw+
-        MoqMsFm6V8j+ZN+oKHKSPaD4i6iNuQENBFowLigBCADKSSCJNCY0vPVz8RaCy/uJ
-        byiZ4dkEUIFkE4TKFCulG8QUMdfczUtYfuUH4ir5vNsG2vxHqDo7W0CBZ1nZjVW9
-        uUy0TrNrVEsPDcMEqn827oK/pqQmlPq6wxGr6qfrMeAnQKKyQpYA0bwWDxwJ6BBb
-        0Lw/YyulbLyoCEUPm4Usn+WA8xvUxoWYj/pjg773OLyoznETQiabieNpTmkgad6x
-        0mH1mbjT0r0RCR0ZUqL1tjGUAfIEr58AVKvP4vZT8jw4quma2QFKLrSswF/bCXqr
-        K/Eqm+S2lDcOUlY35/fZrBt9Mmr8dF00KYWeND0NE0HFB1cpK5bhHKqMSuwOlrbn
-        ABEBAAGJATwEGAEIACYWIQTdbDzq2B9JD2WAtKLOaEY1/aXTHwUCWjAuKAIbDAUJ
-        A8JnAAAKCRDOaEY1/aXTH63LB/4qt+H+3HNEvaRgigod+srkxyT/nQH1tLSHQtht
-        fukuCgNY7J1y/qGroZxZbB6HSJi//64CH0bV0P06nNoDJt2lPJxKA8nuhxiFEZkf
-        ACqtJB4W6CUUIZws9YSxVuV84gHZ4g1eQ6mO99R/4jCbhGCebxr0IgPxkulao9Z+
-        jjb+fdwRkztLKL5GLpiPnR9TuLPxVTB9rnuXsHlGdT4rUXDUKGVdI+wimjjurwvw
-        vAh3MTVCC0qvQq4V1T1yTCYZ+J7p5wrt1UsBCtYKJfKTeAZN9T7Ji3LVr4jUG2Gn
-        zHBlhCAdlhsz+4TN+d04QprL2RW86TsIebptwxUscjqJ8lXO
-        =b72A
-        -----END PGP PUBLIC KEY BLOCK-----
-        -----BEGIN PGP PUBLIC KEY BLOCK-----
-        
-        mQENBFpAPGYBCACtRHQZMgHhmETN6X6MCkP7H88jVBSTwhMoZgk0vl6BWK832Uvi
-        SMGiZ63uiPkzoUwOtFhexE0QYgKvGPLTm7RWK2aPmsQOk1o+ksFElsRJxT7LzPEM
-        g2ci5qAs7q9H8uEntEqfxb9Yn6yiUOLyw6nCrKc9bJN2dCEszpciZoz7AN1ScU+8
-        QM3mBw1ToWUB3AMVkd7jJCVloeYprQbqc7pkJBDy9wAISlNRMeLz0PnEuBIrrz8Z
-        An1QcqX0PQVWVqNb/duMK5ZszWGK0owfdeSeQiSLK9kvywwo9KZ5qs8XkCUvldZg
-        Qv+5mFKK4/+IVReKlnfMvGKRwrGi1oin1mWXABEBAAG0HURCVCBUZXN0IFN1aXRl
-        IDxkYnQyQGRidC5jb20+iQFUBBMBCAA+FiEESN604MD5N5baHiTBzGsmLbfIHwUF
-        AlpAPGYCGwMFCQPCZwAFCwkIBwIGFQgJCgsCBBYCAwECHgECF4AACgkQzGsmLbfI
-        HwX7sQf+Pt6uy3ZZGWZRldGR4qKT/qUCEAc/AG0b2sSlwDt79tEIkprmhMlvNgqF
-        DnK5MmAJjZVeR9urWeYeXYk3CH+ZOcR2AOr/15+1LKzkmmVfWGTagQPUFIKkaBdi
-        7ymM2wFCvYWG149X1w/ThZ1ZRSCmpuyHiheW/WAE9P1LFTHI+feIjB7Iflmnxkwq
-        tPxYxsc07IU0ZIs5+uuerTLlj8gS8acIeGkpNM97m+CiMoL4RLMyt1qFp/lFbbv1
-        Td6Dn6vzNL1ZcYGNQ/SHfLTdcnM9GSA5IA1+RyVWb8npFG/sKdPgHMSYOusbdncP
-        70qxf+aa/xvZbTvniXtgmhrqog6DJLkBDQRaQDxmAQgA3s4IfL2wUwRN0aCKFeuW
-        yOEgNdMuIS9ZKA+f8/s+VXoLtJQ32gZpqCEl2ESOggJx7+ThAhf4F/SDnEdRHZeJ
-        IhUnRmzzQPSrhWo9UWDff6cooO1CiSGDSRBgAT8RvZib3OnRWSe67s0webpytUiO
-        +y4gt0FtEhXC9kdJ1DsjzJGVyXFYR9pOTV3xjfGKBhHH/6c6kYr1UL2boy8t3IZP
-        jyhBHrp3EgxYV7g96ncAVXha91mZ6IisGyXtsOL5qEwPPJCKD2QTKwkJ4S2qqcAR
-        8n7agRD8Cn2HESgPezXeg2uoaStcHzhNhF/o/71j2oj5c2u5HkchAzj3l+XHQIrs
-        VwARAQABiQE8BBgBCAAmFiEESN604MD5N5baHiTBzGsmLbfIHwUFAlpAPGYCGwwF
-        CQPCZwAACgkQzGsmLbfIHwVwjAf9GWR6LdtoEXYVRUSSB2ccl2IeRiwcaEZl/96A
-        I2hFX+SCqBVnwJN4jgvhPlCF6PXylkjZKUczrAaizjuU2ZuAt6ONDkEc0R5Glt7j
-        dgyl/51WEdBbYeLuVfONtAOBqzs3iRrK8WHnoV+SYQy5aT4kTPTDVzrz/EBDF7KQ
-        jqZ4J0i6qsp2DiOxhPn/xVk/iaTRDvtvsA37Qw0mqRlf6xSSLQabroNtJENmf7Cc
-        f51a/98jWbflcGLSg/BG2K4hba7ZNKIgKYrS+SKqx5YeE70y/rbjQcJ0ai09Fojc
-        hxfIreyexqK3w7pLJFaTbs4ykxWvQZyF0s7h60THq9g76lTjLQ==
-        =KIOK
-        -----END PGP PUBLIC KEY BLOCK-----
-        
-There's nothing magical about this file.  It's just the keys you've decided to trust, concatenated together.  Comments after an `-----END PGP PUBLIC KEY BLOCK-----` or before an `-----BEGIN PGP PUBLIC KEY BLOCK---` are ignored, and can be quite useful for humans trying to maintain this file.
-
-## tools
-
-This section is for the tools ```dbt``` downloads, verifies, and runs for you.
-
-### repository
-
-Url of the repo where the tools are stored.  This is where tools are found, and where the tool ```catalog``` looks for tools.
-
-## username
-
-Username if basic auth is used on repos.  (Optional)
-
-## password
-
-Password if basic auth is used on repos. (Optional)
-
-## usernamefunc
-
-Shell function to retrieive username.
-
-## passwordfunc
-
-Shell funciton to retrieve password.
+--- 
 
