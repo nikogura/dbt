@@ -17,13 +17,13 @@ A framework for self-updating, signed tools.
 
 Imagine a set of tools that are always up-to-date, and always safe to use.  Imagine anyone in your organization being able to easily contribute to this tool chest with minimal preparation.  Imagine everything always _just working_, and getting out of your way so you can do your thing.  Sound like magic?
 
-What kind of tools you say?  Anything that can be compiled into a single file.  Golang programs?  Yup.  Bash scripts?  Yessir.  Pyinstaller and pyoxidizer tools?  You bet.  As long as it's a single file, `dbt` can distribute it to your users painlessly.
+What kind of tools you say?  Anything that can be compiled into a single file.  Golang programs?  Yup.  Bash scripts?  Yessir.  Pyinstaller and pyoxidizer tools?  You bet.  As long as it's a single file, `dbt` can distribute it to your users painlessly, *and* _securely_.
 
 The `dbt` tool keeps ensures your tools are always up-to-date (unless you specify an older version), and it does the same for itself.
 
 DBT is basically just a downloader and verifier for executable files.  That's it.  That's all it does.
 
-Say you have a program binary that people use to do their jobs.  How do you distribute it?  How do people stay up to date?  How do they get bug fixes and new versions?
+Say you have a program that people use to do their jobs.  How do you distribute it?  How do people stay up to date?  How do they get bug fixes and new versions?
 
 There are a bazillion ways of solving this problem.  At some level, `dbt` is just one more method.  Why is this better than the others?  User Experience.  
 
