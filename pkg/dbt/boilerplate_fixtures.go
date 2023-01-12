@@ -428,7 +428,7 @@ rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8
 
 func mainGoContentsExample() string {
 	return `
-// Copyright © 2022 Test Author <tester@nikogura.com>
+// Copyright © 2023 Test Author <tester@nikogura.com>
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -451,7 +451,7 @@ func main() {
 }
 
 func rootGoContentsExample() string {
-	return `// Copyright © 2022 Test Author <tester@nikogura.com>
+	return `// Copyright © 2023 Test Author <tester@nikogura.com>
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -729,7 +729,7 @@ APPENDIX: How to apply the Apache License to your work.
 	same "printed page" as the copyright notice for easier
 	identification within third-party archives.
 
-	Copyright 2022 Test Author
+	Copyright 2023 Test Author
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.

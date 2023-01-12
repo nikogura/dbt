@@ -533,7 +533,7 @@ func (dbt *DBT) FindLatestVersion(toolName string) (latest string, err error) {
 }
 
 // DefaultSession creates a default AWS session from local config path.  Hooks directly into credentials if present, or Credentials Provider if configured.
-func DefaultSession() (awssession *session.Session, err error) {
+func DefaultSession(s3meta *S3Meta) (awssession *session.Session, err error) {
 	if os.Getenv(AWS_ID_ENV_VAR) == "" && os.Getenv(AWS_SECRET_ENV_VAR) == "" {
 		_ = os.Setenv("AWS_SDK_LOAD_CONFIG", "true")
 	}
@@ -543,9 +543,9 @@ func DefaultSession() (awssession *session.Session, err error) {
 		log.Fatalf("Failed to create aws session")
 	}
 
-	// For some reason this doesn't get picked up automatically, but we'll set it if it's present in the environment.
-	if os.Getenv(AWS_REGION_ENV_VAR) != "" {
-		awssession.Config.Region = aws.String(os.Getenv(AWS_REGION_ENV_VAR))
+	// Set the s3 region based on the s3metadata derived from the dbt config.
+	if s3meta != nil {
+		awssession.Config.Region = &s3meta.Region
 	}
 
 	return awssession, err
