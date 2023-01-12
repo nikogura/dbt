@@ -15,10 +15,15 @@
 package cmd
 
 import (
-	"github.com/nikogura/dbt/pkg/dbt"
+	"github.com/nikogura/dbt/pkg/boilerplate"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"log"
+	"os"
 )
+
+var projectType string
+var destDir string
 
 // genCmd represents the create command
 var genCmd = &cobra.Command{
@@ -33,38 +38,48 @@ Then it will generate a basic, working tool for you that will compile and publis
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		commandName, err := dbt.PromptForToolName()
-		if err != nil {
-			log.Fatalf("Error getting tool name: %s", err)
+		if projectType == "" {
+			if len(args) > 0 {
+				projectType = args[0]
+			}
 		}
 
-		packageName, err := dbt.PromptForToolPackage()
-		if err != nil {
-			log.Fatalf("Error getting tool package: %s", err)
+		if destDir == "" {
+			cwd, err := os.Getwd()
+			if err != nil {
+				log.Fatalf("failed getting current working directory")
+			}
+
+			destDir = cwd
 		}
 
-		packageDescription, err := dbt.PromptForToolDescription()
-		if err != nil {
-			log.Fatalf("Error getting tool description: %s", err)
+		if !boilerplate.IsValidProjectType(projectType) {
+			log.Fatalf("invalid project type: %q. Valid project types are: %s", projectType, boilerplate.ValidProjectTypes())
 		}
 
-		author, err := dbt.PromptForToolAuthor()
+		data, err := boilerplate.PromptsForProject(projectType)
 		if err != nil {
-			log.Fatalf("Eror getting tool author: %s", err)
+			log.Fatalf("prompts processing error: %v", err)
 		}
 
-		repository, err := dbt.PromptForToolRepo()
+		datamap, err := data.AsMap()
 		if err != nil {
-			log.Fatalf("Eror getting tool repository: %s", err)
+			log.Fatalf("failed converting project data to map")
 		}
 
-		err = dbt.WriteConfigFiles(commandName, packageName, packageDescription, author, repository)
+		wr, err := boilerplate.NewTmplWriter(afero.NewOsFs(), projectType, datamap)
 		if err != nil {
-			log.Fatalf("Error generating boilerplate files: %s", err)
+			log.Fatalf("failed to create template writer: %v", err)
+		}
+
+		if err = wr.BuildProject(destDir); err != nil {
+			log.Fatalf("failed to create templated project: %v", err)
 		}
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(genCmd)
+	genCmd.Flags().StringVarP(&projectType, "type", "t", "cobra", "Project Type")
+	genCmd.Flags().StringVarP(&destDir, "dest-dir", "d", "", "Destination Directory (Defaults to CWD")
 }
