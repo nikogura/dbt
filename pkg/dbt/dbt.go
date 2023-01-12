@@ -96,7 +96,7 @@ func NewDbt(homedir string) (dbt *DBT, err error) {
 		Logger:  log.New(os.Stderr, "", 0),
 	}
 
-	ok, _ := S3Url(config.Dbt.Repo)
+	ok, s3meta := S3Url(config.Dbt.Repo)
 	if err != nil {
 		err = errors.Wrapf(err, "failed checking to see if repo url is in s3")
 		return dbt, err
@@ -104,7 +104,7 @@ func NewDbt(homedir string) (dbt *DBT, err error) {
 
 	if ok {
 		if dbt.S3Session == nil {
-			s3Session, err := DefaultSession()
+			s3Session, err := DefaultSession(&s3meta)
 			if err != nil {
 				err = errors.Wrapf(err, "failed to create s3 session")
 				return dbt, err

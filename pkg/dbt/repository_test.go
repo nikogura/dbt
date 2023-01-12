@@ -338,7 +338,7 @@ func TestFindLatestVersion(t *testing.T) {
 }
 
 func TestDefaultSession(t *testing.T) {
-	_, err := DefaultSession()
+	_, err := DefaultSession(nil)
 	if err != nil {
 		t.Errorf("Failed to get an AWS Session")
 	}
