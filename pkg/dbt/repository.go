@@ -453,6 +453,8 @@ func (dbt *DBT) VerifyFileSignature(homedir string, filePath string) (success bo
 
 	defer truststore.Close()
 
+	dbt.VerboseOutput("Verifying signature of %q against trusted keys in %q", filePath, truststoreFileName)
+
 	// openpgp.CheckArmoredDetatchedSignature doesn't actually check multiple certs, so we have to split the truststore file
 	// and check each cert individually
 
@@ -500,6 +502,7 @@ func (dbt *DBT) VerifyFileSignature(homedir string, filePath string) (success bo
 
 		entity, _ := openpgp.CheckArmoredDetachedSignature(entities, target, signature)
 		if entity != nil {
+			dbt.VerboseOutput("  Pass!")
 			return true, nil
 		}
 	}
