@@ -1,4 +1,5 @@
 {
+  "name": "dbt",
   "version": "3.4.1",
   "package": "github.com/nikogura/dbt",
   "description": "Dynamic Binary Toolkit - A framework for running self-updating signed binaries from a central, trusted repository.",
