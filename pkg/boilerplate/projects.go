@@ -12,6 +12,7 @@ package boilerplate
 import (
 	"embed"
 	"fmt"
+	"github.com/fatih/color"
 	"log"
 	"os"
 )
@@ -36,7 +37,10 @@ func GetProjectFs(projType string) (embed.FS, string, error) {
 
 // ValidProjectTypes  Lists the valid project types.
 func ValidProjectTypes() []string {
-	return []string{"cobra", "gin"}
+	return []string{
+		"cobra",
+		"gin",
+	}
 }
 
 // IsValidProjectType  Returns true or false depending on whether the project is a supported type.
@@ -56,7 +60,7 @@ func PromptsForProject(proj string) (data PromptValues, err error) {
 		for {
 			err = CobraCliToolParamsFromPrompts(data, os.Stdin)
 			if err != nil {
-				fmt.Printf("%s\n", err)
+				fmt.Printf(color.RedString("%s\n", err))
 			} else {
 				break
 			}

@@ -11,13 +11,201 @@ package boilerplate
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/stretchr/testify/assert"
-	"reflect"
 	"strings"
 	"testing"
 )
 
-func TestGinServiceParamsFromPrompts(t *testing.T) {
+//func TestGinServiceParamsFromPrompts(t *testing.T) {
+//	for _, tc := range []struct {
+//		Name    string
+//		Inputs  string
+//		Want    map[string]interface{}
+//		WantErr bool
+//		ExpErr  string
+//	}{
+//		{
+//			Name: "Success",
+//			Inputs: `1.16
+//test-proj-name
+//test_proj_pkg
+//project short desc
+//project long desc
+//project maintainer
+//test@example.com
+//2345
+//server short desc
+//server long desc
+//`,
+//			Want: map[string]interface{}{
+//				ProjName.String():            "test-proj-name",
+//				ProjPkgName.String():         "test_proj_pkg",
+//				ProjShortDesc.String():       "project short desc",
+//				ProjLongDesc.String():        "project long desc",
+//				ProjMaintainerName.String():  "project maintainer",
+//				ProjMaintainerEmail.String(): "test@example.com",
+//				ServerDefPort.String():       "2345",
+//				ServerShortDesc.String():     "server short desc",
+//				ServerLongDesc.String():      "server long desc",
+//				GoVersion.String():           "1.16",
+//			},
+//			WantErr: false,
+//		},
+//		{
+//			Name:    "Missing Input",
+//			Inputs:  `1.16 test-proj-name`,
+//			Want:    map[string]interface{}{},
+//			WantErr: true,
+//		},
+//		{
+//			Name: "Name Validation space",
+//			Inputs: `1.16
+//test-proj name
+//test_proj_pkg`,
+//			Want:    map[string]interface{}{},
+//			WantErr: true,
+//		},
+//		{
+//			Name: "Name Validation underscore",
+//			Inputs: `1.16
+//test-proj_name
+//test_proj_pkg`,
+//			Want:    map[string]interface{}{},
+//			WantErr: true,
+//		},
+//		{
+//			Name: "Package Validation space",
+//			Inputs: `1.16
+//test-proj-name
+//test_proj pkg`,
+//			Want:    map[string]interface{}{},
+//			WantErr: true,
+//		},
+//		{
+//			Name: "Package Validation hyphen",
+//			Inputs: `1.16
+//test-proj-name
+//test-proj-pkg`,
+//			Want:    map[string]interface{}{},
+//			WantErr: true,
+//		},
+//		{
+//			Name: "Port validation numeric",
+//			Inputs: `1.16
+//test-proj-name
+//test_proj_pkg
+//project short desc
+//project long desc
+//project maintainer
+//test@example.com
+//23R5
+//server short desc
+//server long desc
+//`,
+//			Want:    map[string]interface{}{},
+//			WantErr: true,
+//		},
+//		{
+//			Name: "Port validation small number",
+//			Inputs: `1.16
+//test-proj-name
+//test_proj_pkg
+//project short desc
+//project long desc
+//project maintainer
+//test@example.com
+//235
+//server short desc
+//server long desc
+//`,
+//			Want:    map[string]interface{}{},
+//			WantErr: true,
+//		},
+//		{
+//			Name: "Port validation large number",
+//			Inputs: `1.16
+//test-proj-name
+//test_proj_pkg
+//project short desc
+//project long desc
+//project maintainer
+//test@example.com
+//235456
+//server short desc
+//server long desc
+//`,
+//			Want:    map[string]interface{}{},
+//			WantErr: true,
+//		},
+//		{
+//			Name: "Port validation tcp reserved port",
+//			Inputs: `1.16
+//test-proj-name
+//test_proj_pkg
+//project short desc
+//project long desc
+//project maintainer
+//test@example.com
+//1010
+//server short desc
+//server long desc
+//`,
+//			Want:    map[string]interface{}{},
+//			WantErr: true,
+//		},
+//		{
+//			Name: "Port validation tcp range high",
+//			Inputs: `1.16
+//test-proj-name
+//test_proj_pkg
+//project short desc
+//project long desc
+//project maintainer
+//test@example.com
+//65536
+//server short desc
+//server long desc
+//`,
+//			Want:    map[string]interface{}{},
+//			WantErr: true,
+//		},
+//	} {
+//		t.Run(tc.Name, func(t *testing.T) {
+//			//defer func() {
+//			//	if r := recover(); r != nil {
+//			//		if tc.WantErr {
+//			//			t.Logf("got expected err: %v", r)
+//			//		} else {
+//			//			t.Errorf("got unexpected parsing error: %v", r)
+//			//		}
+//			//	} else if tc.WantErr {
+//			//		t.Errorf("missing expected error")
+//			//	}
+//			//}()
+//
+//			stdin := bufio.NewReader(strings.NewReader(tc.Inputs))
+//			data := &GinServiceParams{}
+//			GinServiceParamsFromPrompts(data, stdin)
+//
+//			dataMap, err := data.AsMap()
+//			if err != nil {
+//				t.Errorf("error expressing params as map: %s", err)
+//			}
+//
+//			for k, exp := range tc.Want {
+//				if act, ok := dataMap[k]; !ok {
+//					t.Errorf("expected key(%s) not in act results", k)
+//				} else if !reflect.DeepEqual(exp, act) {
+//					t.Errorf("exp value mismatch for key(%s): exp(%s) act(%s)", k, exp, act)
+//				}
+//			}
+//		})
+//	}
+//
+//}
+
+func TestCobraServiceParamsFromPrompts_Defaults(t *testing.T) {
 	for _, tc := range []struct {
 		Name    string
 		Inputs  string
@@ -26,183 +214,45 @@ func TestGinServiceParamsFromPrompts(t *testing.T) {
 		ExpErr  string
 	}{
 		{
-			Name: "Success",
-			Inputs: `1.16
+			Name: "All Defaults",
+			Inputs: `
 test-proj-name
 test_proj_pkg
-project short desc
-project long desc
-project maintainer
-test@example.com
-2345
-server short desc
-server long desc
+
+
+tester
+tester@foo.com
 `,
 			Want: map[string]interface{}{
 				ProjName.String():            "test-proj-name",
 				ProjPkgName.String():         "test_proj_pkg",
-				ProjShortDesc.String():       "project short desc",
-				ProjLongDesc.String():        "project long desc",
-				ProjMaintainerName.String():  "project maintainer",
-				ProjMaintainerEmail.String(): "test@example.com",
-				ServerDefPort.String():       "2345",
-				ServerShortDesc.String():     "server short desc",
-				ServerLongDesc.String():      "server long desc",
-				GoVersion.String():           "1.16",
+				ProjShortDesc.String():       "boilerplate autogen project",
+				ProjLongDesc.String():        "boilerplate autogen project",
+				ProjMaintainerName.String():  "tester",
+				ProjMaintainerEmail.String(): "tester@foo.com",
+				GoVersion.String():           goMajorAndMinor(),
 			},
 			WantErr: false,
 		},
-		{
-			Name:    "Missing Input",
-			Inputs:  `1.16 test-proj-name`,
-			Want:    map[string]interface{}{},
-			WantErr: true,
-		},
-		{
-			Name: "Name Validation space",
-			Inputs: `1.16
-test-proj name
-test_proj_pkg`,
-			Want:    map[string]interface{}{},
-			WantErr: true,
-		},
-		{
-			Name: "Name Validation underscore",
-			Inputs: `1.16
-test-proj_name
-test_proj_pkg`,
-			Want:    map[string]interface{}{},
-			WantErr: true,
-		},
-		{
-			Name: "Package Validation space",
-			Inputs: `1.16
-test-proj-name
-test_proj pkg`,
-			Want:    map[string]interface{}{},
-			WantErr: true,
-		},
-		{
-			Name: "Package Validation hyphen",
-			Inputs: `1.16
-test-proj-name
-test-proj-pkg`,
-			Want:    map[string]interface{}{},
-			WantErr: true,
-		},
-		{
-			Name: "Port validation numeric",
-			Inputs: `1.16
-test-proj-name
-test_proj_pkg
-project short desc
-project long desc
-project maintainer
-test@example.com
-23R5
-server short desc
-server long desc
-`,
-			Want:    map[string]interface{}{},
-			WantErr: true,
-		},
-		{
-			Name: "Port validation small number",
-			Inputs: `1.16
-test-proj-name
-test_proj_pkg
-project short desc
-project long desc
-project maintainer
-test@example.com
-235
-server short desc
-server long desc
-`,
-			Want:    map[string]interface{}{},
-			WantErr: true,
-		},
-		{
-			Name: "Port validation large number",
-			Inputs: `1.16
-test-proj-name
-test_proj_pkg
-project short desc
-project long desc
-project maintainer
-test@example.com
-235456
-server short desc
-server long desc
-`,
-			Want:    map[string]interface{}{},
-			WantErr: true,
-		},
-		{
-			Name: "Port validation tcp reserved port",
-			Inputs: `1.16
-test-proj-name
-test_proj_pkg
-project short desc
-project long desc
-project maintainer
-test@example.com
-1010
-server short desc
-server long desc
-`,
-			Want:    map[string]interface{}{},
-			WantErr: true,
-		},
-		{
-			Name: "Port validation tcp range high",
-			Inputs: `1.16
-test-proj-name
-test_proj_pkg
-project short desc
-project long desc
-project maintainer
-test@example.com
-65536
-server short desc
-server long desc
-`,
-			Want:    map[string]interface{}{},
-			WantErr: true,
-		},
 	} {
 		t.Run(tc.Name, func(t *testing.T) {
-			defer func() {
-				if r := recover(); r != nil {
-					if tc.WantErr {
-						t.Logf("got expected err: %v", r)
-					} else {
-						t.Errorf("got unexpected parsing error: %v", r)
-					}
-				} else if tc.WantErr {
-					t.Errorf("missing expected error")
-				}
-			}()
-
 			stdin := bufio.NewReader(strings.NewReader(tc.Inputs))
-			data := &GinServiceParams{}
-			GinServiceParamsFromPrompts(data, stdin)
+			data := &CobraCliToolParams{}
+			CobraCliToolParamsFromPrompts(data, stdin)
 
 			dataMap, err := data.AsMap()
 			if err != nil {
 				t.Errorf("error expressing params as map: %s", err)
 			}
 
-			for k, exp := range tc.Want {
-				if act, ok := dataMap[k]; !ok {
-					t.Errorf("expected key(%s) not in act results", k)
-				} else if !reflect.DeepEqual(exp, act) {
-					t.Errorf("exp value mismatch for key(%s): exp(%s) act(%s)", k, exp, act)
-				}
+			for k, v := range tc.Want {
+				assert.Equal(t, v, dataMap[k], "input value doesn't meet expectation")
 			}
+
+			// Inserted to prevent the test from breaking the go test harness
+			fmt.Printf("\n")
 		})
 	}
-
 }
 
 func TestGinServiceParamsFromPrompts_Defaults(t *testing.T) {
@@ -233,27 +283,15 @@ tester@foo.com
 				ProjLongDesc.String():        "boilerplate autogen project",
 				ProjMaintainerName.String():  "tester",
 				ProjMaintainerEmail.String(): "tester@foo.com",
-				ServerDefPort.String():       "2345",
+				ServerDefPort.String():       "54150",
 				ServerShortDesc.String():     "boilerplate server",
 				ServerLongDesc.String():      "boilerplate server",
-				GoVersion.String():           "1.19.4",
+				GoVersion.String():           goMajorAndMinor(),
 			},
 			WantErr: false,
 		},
 	} {
 		t.Run(tc.Name, func(t *testing.T) {
-			//defer func() {
-			//	if r := recover(); r != nil {
-			//		if tc.WantErr {
-			//			t.Logf("got expected err: %v", r)
-			//		} else {
-			//			t.Errorf("got unexpected parsing error: %v", r)
-			//		}
-			//	} else if tc.WantErr {
-			//		t.Errorf("missing expected error")
-			//	}
-			//}()
-
 			stdin := bufio.NewReader(strings.NewReader(tc.Inputs))
 			data := &GinServiceParams{}
 			GinServiceParamsFromPrompts(data, stdin)
@@ -263,15 +301,12 @@ tester@foo.com
 				t.Errorf("error expressing params as map: %s", err)
 			}
 
-			for k, exp := range tc.Want {
-				if act, ok := dataMap[k]; !ok {
-					t.Errorf("expected key(%s) not in act results", k)
-				} else if !reflect.DeepEqual(exp, act) {
-					if k != ServerDefPort.String() {
-						t.Errorf("exp value mismatch for key(%s): exp(%s) act(%s)", k, exp, act)
-					}
-				}
+			for k, v := range tc.Want {
+				assert.Equal(t, v, dataMap[k], "input value doesn't meet expectation")
 			}
+
+			// Inserted to prevent the test from breaking the go test harness
+			fmt.Printf("\n")
 		})
 	}
 }

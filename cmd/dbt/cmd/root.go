@@ -40,7 +40,7 @@ Run 'dbt -- catalog list' to see a list of what tools are available in your repo
 
 `,
 	Example: "dbt -- catalog list",
-	Version: "3.4.2",
+	Version: "3.5.0",
 	Run:     Run,
 }
 

@@ -4,7 +4,7 @@ require (
 	github.com/abbot/go-http-auth v0.4.0
 	github.com/aws/aws-sdk-go v1.44.160
 	github.com/davecgh/go-spew v1.1.1
-	github.com/fatih/color v1.10.0 // indirect
+	github.com/fatih/color v1.14.1 // indirect
 	github.com/gorilla/mux v1.8.0
 	github.com/johannesboyne/gofakes3 v0.0.0-20200218152459-de0855a40bc1
 	github.com/keybase/go-crypto v0.0.0-20200123153347-de78d2cb44f4

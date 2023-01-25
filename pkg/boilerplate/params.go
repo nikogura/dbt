@@ -54,13 +54,13 @@ var nameValidations = []PromptValidation{
 		IsValid: func(val string) bool {
 			return !strings.ContainsRune(val, ' ')
 		},
-		InvalidMsg: "Cannot contain a space",
+		InvalidMsg: "Error: Tool name cannot contain a space",
 	},
 	{
 		IsValid: func(val string) bool {
 			return !strings.ContainsRune(val, '_')
 		},
-		InvalidMsg: "Cannot contain an underscore",
+		InvalidMsg: "Error: Tool name cannot contain an underscore",
 	},
 }
 
@@ -69,13 +69,13 @@ var pkgValidations = []PromptValidation{
 		IsValid: func(val string) bool {
 			return !strings.ContainsRune(val, ' ')
 		},
-		InvalidMsg: "Cannot contain a space",
+		InvalidMsg: "Error: Go package cannot contain a space",
 	},
 	{
 		IsValid: func(val string) bool {
 			return !strings.ContainsRune(val, '-')
 		},
-		InvalidMsg: "Cannot contain a hyphen",
+		InvalidMsg: "Error: Go package cannot contain a hyphen",
 	},
 }
 
@@ -85,7 +85,7 @@ var envPrefix = []PromptValidation{
 			isAlphaCap := regexp.MustCompile(`^[A-Z]+$`).MatchString
 			return isAlphaCap(val)
 		},
-		InvalidMsg: "Must contain capitalized letters only",
+		InvalidMsg: "Error: Must contain capitalized letters only",
 	},
 }
 
@@ -95,7 +95,7 @@ var emailValidation = []PromptValidation{
 			_, err := mail.ParseAddress(val)
 			return err == nil
 		},
-		InvalidMsg: "Must be a valid email address.",
+		InvalidMsg: "Error: Email must be a valid email address.",
 	},
 }
 
@@ -105,20 +105,20 @@ var portValidation = []PromptValidation{
 			isNumeric := regexp.MustCompile(`^[0-9]+$`).MatchString
 			return isNumeric(val)
 		},
-		InvalidMsg: "Must contain numeric digits only",
+		InvalidMsg: "Error: Port must contain numeric digits only",
 	},
 	{
 		IsValid: func(val string) bool {
 			return len(val) >= 4 && len(val) <= 5
 		},
-		InvalidMsg: "Must be a 4 or 5 digit number",
+		InvalidMsg: "Error: Port must be a 4 or 5 digit number",
 	},
 	{
 		IsValid: func(val string) bool {
 			port, err := strconv.Atoi(val)
 			return err == nil && port >= 1025 && port <= 65535
 		},
-		InvalidMsg: "Must be in range 1025-65535",
+		InvalidMsg: "Error: Port must be in range 1025-65535",
 	},
 }
 

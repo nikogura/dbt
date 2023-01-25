@@ -1,4 +1,5 @@
-// +build exclude {{.ProjectName}}
+//go:build exclude || ignore
+// +build exclude ignore
 
 package cmd
 
