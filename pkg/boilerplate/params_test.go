@@ -11,6 +11,7 @@ package boilerplate
 
 import (
 	"bufio"
+	"github.com/stretchr/testify/assert"
 	"reflect"
 	"strings"
 	"testing"
@@ -273,5 +274,10 @@ tester@foo.com
 			}
 		})
 	}
+}
 
+func TestGoMajorAndMinor(t *testing.T) {
+	version := goMajorAndMinor()
+
+	assert.True(t, version != "", "Go version not generating")
 }

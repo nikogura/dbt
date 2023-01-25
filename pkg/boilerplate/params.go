@@ -10,6 +10,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 package boilerplate
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"io"
 	"net/mail"
@@ -124,7 +125,7 @@ var portValidation = []PromptValidation{
 func commonPromptMessaging() map[ParamPrompt]Prompt {
 	return map[ParamPrompt]Prompt{
 		ProjName: {
-			PromptMsg:    "Enter the git repo name for your new tool.",
+			PromptMsg:    "Enter a name for your new tool.",
 			InputFailMsg: "failed to read project name",
 			Validations:  nameValidations,
 		},
@@ -157,9 +158,15 @@ func commonPromptMessaging() map[ParamPrompt]Prompt {
 		GoVersion: {
 			PromptMsg:    "Enter a golang semver.",
 			InputFailMsg: "failed to read project description",
-			DefaultValue: strings.TrimLeft(runtime.Version(), "go"),
+			DefaultValue: goMajorAndMinor(),
 		},
 	}
+}
+
+func goMajorAndMinor() (goMajMin string) {
+	parts := strings.Split(strings.TrimLeft(runtime.Version(), "go"), ".")
+	goMajMin = fmt.Sprintf("%s.%s", parts[0], parts[1])
+	return goMajMin
 }
 
 func paramsFromPrompts(r io.Reader, prompts map[ParamPrompt]Prompt, pvals PromptValues) (err error) {

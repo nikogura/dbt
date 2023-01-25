@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/nikogura/dbt/pkg/boilerplate"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
@@ -57,6 +58,8 @@ Then it will generate a basic, working tool for you that will compile and publis
 			log.Fatalf("invalid project type: %q. Valid project types are: %s", projectType, boilerplate.ValidProjectTypes())
 		}
 
+		fmt.Printf("Creating new project of type %q\n", projectType)
+
 		data, err := boilerplate.PromptsForProject(projectType)
 		if err != nil {
 			log.Fatalf("prompts processing error: %v", err)
@@ -75,6 +78,9 @@ Then it will generate a basic, working tool for you that will compile and publis
 		if err = wr.BuildProject(destDir); err != nil {
 			log.Fatalf("failed to create templated project: %v", err)
 		}
+
+		fmt.Printf("New project created in ./%s\n", datamap["ProjectName"])
+
 	},
 }
 

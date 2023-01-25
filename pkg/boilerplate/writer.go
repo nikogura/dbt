@@ -224,7 +224,7 @@ func (w TmplWriter) GetFilePaths(root string) ([]FilePath, error) {
 func (w TmplWriter) fixGoModTemplPaths() {
 	for i := range w.FilePaths {
 		fp := w.FilePaths[i]
-		if fp.TemplName == "go.mod_" {
+		if fp.TemplName == "go.mod_" || fp.TemplName == "go.sum_" {
 			fp.TemplPath = fp.TemplPath[:len(fp.TemplPath)-1]
 			fp.TemplName = fp.TemplName[:len(fp.TemplName)-1]
 		}
