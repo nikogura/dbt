@@ -2,7 +2,7 @@ module github.com/nikogura/dbt
 
 require (
 	github.com/abbot/go-http-auth v0.4.0
-	github.com/aws/aws-sdk-go v1.44.160
+	github.com/aws/aws-sdk-go v1.44.186
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.14.1 // indirect
 	github.com/gorilla/mux v1.8.0
@@ -11,7 +11,7 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/nikogura/gomason v0.0.0-20221215010003-d0c605f26c25
+	github.com/nikogura/gomason v0.0.0-20230124185400-8debbedb60bf
 	github.com/orion-labs/jwt-ssh-agent-go v0.0.0-20200108200620-50a51684897c
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/pkg/errors v0.9.1
@@ -22,6 +22,7 @@ require (
 	github.com/stretchr/testify v1.8.1
 	golang.org/x/crypto v0.4.0 // indirect
 	golang.org/x/net v0.4.0
+	golang.org/x/sys v0.4.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.25
 )

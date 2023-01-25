@@ -655,19 +655,19 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 		_ = lang.Checkout(workDir, meta, version)
 	}
 
-	err = lang.Build(workDir, meta, "")
+	err = lang.Build(workDir, meta, "", false)
 	if err != nil {
 		err = errors.Wrapf(err, "build failed")
 		return err
 	}
 
-	err = gm.HandleArtifacts(meta, workDir, cwd, true, false, true, "")
+	err = gm.HandleArtifacts(meta, workDir, cwd, true, false, true, "", false)
 	if err != nil {
 		err = errors.Wrapf(err, "Artifact handling failed")
 		return err
 	}
 
-	err = gm.HandleExtras(meta, workDir, cwd, true, false, true)
+	err = gm.HandleExtras(meta, workDir, cwd, true, false, true, false)
 	if err != nil {
 		err = errors.Wrapf(err, "Extra artifact processing failed")
 		return err
