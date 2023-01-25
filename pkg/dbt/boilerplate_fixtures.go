@@ -58,17 +58,15 @@ func metadataContentsExample() string {
         "src": "description.txt",
         "dst": "__REPOSITORY__/__TOOLNAME__/__VERSION__/description.txt",
         "sig": true,
-        "checksums": false
+        "checksums": true
       },
       {
         "src": "testtool_linux_amd64",
         "dst": "__REPOSITORY__/__TOOLNAME__/__VERSION__/linux/amd64/__TOOLNAME__",
         "sig": true,
-        "checksums": false
+        "checksums": true
       }
-    ],
-    "usernamefunc": "echo -n $PUBLISH_USERNAME",
-    "passwordfunc": "echo -n $PUBLISH_PASSWORD"
+    ]
   }
 }`
 }
