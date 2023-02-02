@@ -11,6 +11,7 @@ package boilerplate
 
 import (
 	"fmt"
+	"github.com/nikogura/dbt/pkg/dbt"
 	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
 	"io"
@@ -193,7 +194,7 @@ func commonPromptMessaging() map[ParamPrompt]Prompt {
 			PromptMsg:    "Enter your DBT Repository URL.",
 			InputFailMsg: "failed to read dbt repo url",
 			Validations:  urlValidation,
-			DefaultValue: "",
+			DefaultValue: installedDbtRepo(),
 		},
 		ProjectVersion: {
 			PromptMsg:    "Enter a semantic version.",
@@ -202,6 +203,22 @@ func commonPromptMessaging() map[ParamPrompt]Prompt {
 			DefaultValue: "0.1.0",
 		},
 	}
+}
+
+func installedDbtRepo() (repoUrl string) {
+	homedir, err := dbt.GetHomeDir()
+	if err != nil {
+		err = errors.Wrapf(err, "failed to discover user homedir")
+	}
+
+	config, err := dbt.LoadDbtConfig(homedir, false)
+	if err != nil {
+		err = errors.Wrapf(err, "failed loading dbt config")
+		//fmt.Printf("error: %s\n", err)
+	}
+
+	repoUrl = config.Tools.Repo
+	return repoUrl
 }
 
 func goMajorAndMinor() (goMajMin string) {

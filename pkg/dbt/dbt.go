@@ -135,7 +135,7 @@ func LoadDbtConfig(homedir string, verbose bool) (config Config, err error) {
 	logger := log.New(os.Stderr, "", 0)
 
 	if verbose {
-		logger.Printf("Creating DBT directory in %s/.dbt", homedir)
+		logger.Printf("Looking for dbt config in %s/.dbt", homedir)
 	}
 
 	filePath := fmt.Sprintf("%s/%s", homedir, ConfigFilePath)
@@ -144,7 +144,7 @@ func LoadDbtConfig(homedir string, verbose bool) (config Config, err error) {
 		logger.Printf("Loading config from %s", filePath)
 	}
 
-	mdBytes, err := ioutil.ReadFile(filePath)
+	mdBytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return config, err
 	}
