@@ -1,4 +1,4 @@
-// Copyright © 2022 {{.MaintainerName}} <{{.MaintainerEmail}}>
+// Copyright © {{.CopyrightYear}} {{.MaintainerName}} <{{.MaintainerEmail}}>
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -14,18 +14,9 @@
 package main
 
 import (
-	"github.com/{{.ProjectName}}/cmd"
-	"log"
-)
-import (
-	"os"
+	"{{.ProjectPackage}}/cmd"
 )
 
 func main() {
-	root := cmd.NewRootCommand()
-	if err := root.Execute(); err != nil {
-		log.Fatalf("root command exited with error: %v", err)
-		os.Exit(1)
-		return
-	}
+	cmd.Execute()
 }

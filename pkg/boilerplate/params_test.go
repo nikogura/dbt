@@ -215,10 +215,12 @@ func TestCobraServiceParamsFromPrompts_Defaults(t *testing.T) {
 	}{
 		{
 			Name: "All Defaults",
-			Inputs: `
-test-proj-name
+			Inputs: `test-proj-name
+
 test_proj_pkg
 
+
+https://dbt
 
 tester
 tester@foo.com
@@ -231,6 +233,8 @@ tester@foo.com
 				ProjMaintainerName.String():  "tester",
 				ProjMaintainerEmail.String(): "tester@foo.com",
 				GoVersion.String():           goMajorAndMinor(),
+				ProjectVersion.String():      "0.1.0",
+				DbtRepo.String():             "https://dbt",
 			},
 			WantErr: false,
 		},
@@ -239,62 +243,6 @@ tester@foo.com
 			stdin := bufio.NewReader(strings.NewReader(tc.Inputs))
 			data := &CobraCliToolParams{}
 			CobraCliToolParamsFromPrompts(data, stdin)
-
-			dataMap, err := data.AsMap()
-			if err != nil {
-				t.Errorf("error expressing params as map: %s", err)
-			}
-
-			for k, v := range tc.Want {
-				assert.Equal(t, v, dataMap[k], "input value doesn't meet expectation")
-			}
-
-			// Inserted to prevent the test from breaking the go test harness
-			fmt.Printf("\n")
-		})
-	}
-}
-
-func TestGinServiceParamsFromPrompts_Defaults(t *testing.T) {
-	for _, tc := range []struct {
-		Name    string
-		Inputs  string
-		Want    map[string]interface{}
-		WantErr bool
-		ExpErr  string
-	}{
-		{
-			Name: "All Defaults",
-			Inputs: `
-test-proj-name
-test_proj_pkg
-
-
-tester
-tester@foo.com
-
-
-
-`,
-			Want: map[string]interface{}{
-				ProjName.String():            "test-proj-name",
-				ProjPkgName.String():         "test_proj_pkg",
-				ProjShortDesc.String():       "boilerplate autogen project",
-				ProjLongDesc.String():        "boilerplate autogen project",
-				ProjMaintainerName.String():  "tester",
-				ProjMaintainerEmail.String(): "tester@foo.com",
-				ServerDefPort.String():       "54150",
-				ServerShortDesc.String():     "boilerplate server",
-				ServerLongDesc.String():      "boilerplate server",
-				GoVersion.String():           goMajorAndMinor(),
-			},
-			WantErr: false,
-		},
-	} {
-		t.Run(tc.Name, func(t *testing.T) {
-			stdin := bufio.NewReader(strings.NewReader(tc.Inputs))
-			data := &GinServiceParams{}
-			GinServiceParamsFromPrompts(data, stdin)
 
 			dataMap, err := data.AsMap()
 			if err != nil {

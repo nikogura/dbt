@@ -601,9 +601,6 @@ Within a given project, all items are templatized; folders and files.
 #### [Cobra](pkg/boilerplate/project_templates/_cobraProject)
 This project is used to generate tools using the [cobra](https://github.com/spf13/cobra) command line framework.
 
-#### [Gin Server](pkg/boilerplate/project_templates/_ginProject)
-This project is used to generate a basic server service with a Gin routed server
-
 ### Adding a new Project
 #### Make a project folder
 First step is to creat a new "projects" folder in the [project_templates](pkg/boilerplate/project_templates) directory. Under this
@@ -633,6 +630,7 @@ includes the prompt questions as well as any validations to perform on a given a
 
 #### Make params structure
 Create a struct that holds all of the variables your application requires to run
+
 ```
 type DockerParams struct {
    	DockerRegistry    string
@@ -643,7 +641,6 @@ type DockerParams struct {
 
 #### Done
 After this your new project will be available for generation at the top level of the application
-
 
 --- 
 

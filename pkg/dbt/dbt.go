@@ -49,7 +49,7 @@ const ConfigFilePath = ConfigDir + "/dbt.json"
 const TruststorePath = TrustDir + "/truststore"
 
 // VERSION DBT's version
-const VERSION = "3.5.1"
+const VERSION = "3.6.0"
 
 // DBT the dbt object itself
 type DBT struct {

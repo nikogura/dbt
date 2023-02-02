@@ -23,17 +23,21 @@ type CobraCliToolParams struct {
 	MaintainerName   string
 	MaintainerEmail  string
 	GolangVersion    string
+	DbtRepo          string
+	ProjectVersion   string
 }
 
 func (cp *CobraCliToolParams) Values() map[ParamPrompt]*string {
 	return map[ParamPrompt]*string{
+		GoVersion:           &cp.GolangVersion,
 		ProjName:            &cp.ProjectName,
 		ProjPkgName:         &cp.ProjectPackage,
 		ProjShortDesc:       &cp.ProjectShortDesc,
 		ProjLongDesc:        &cp.ProjectLongDesc,
 		ProjMaintainerName:  &cp.MaintainerName,
 		ProjMaintainerEmail: &cp.MaintainerEmail,
-		GoVersion:           &cp.GolangVersion,
+		DbtRepo:             &cp.DbtRepo,
+		ProjectVersion:      &cp.ProjectVersion,
 	}
 }
 

@@ -12,8 +12,10 @@ package boilerplate
 import (
 	"fmt"
 	"github.com/pkg/errors"
+	"golang.org/x/mod/semver"
 	"io"
 	"net/mail"
+	"net/url"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -38,6 +40,8 @@ const (
 	ServerLongDesc      ParamPrompt = "ServerLongDesc"
 	OwnerName           ParamPrompt = "OwnerName"
 	OwnerEmail          ParamPrompt = "OwnerEmail"
+	DbtRepo             ParamPrompt = "DbtRepo"
+	ProjectVersion      ParamPrompt = "ProjectVersion"
 )
 
 func (p ParamPrompt) String() string {
@@ -122,6 +126,31 @@ var portValidation = []PromptValidation{
 	},
 }
 
+var urlValidation = []PromptValidation{
+	{
+		IsValid: func(val string) bool {
+			u, err := url.ParseRequestURI(val)
+			return err == nil && u != nil
+		},
+		InvalidMsg: "Error: DBT URL must be a valid URL",
+	},
+}
+
+var semVerValidation = []PromptValidation{
+	{
+		IsValid: func(val string) bool {
+			ok := semver.IsValid(val)
+
+			if !ok {
+				val = fmt.Sprintf("v%s", val)
+			}
+
+			return semver.IsValid(val)
+		},
+		InvalidMsg: "Error: Version must be a valid semantic version.",
+	},
+}
+
 func commonPromptMessaging() map[ParamPrompt]Prompt {
 	return map[ParamPrompt]Prompt{
 		ProjName: {
@@ -160,6 +189,18 @@ func commonPromptMessaging() map[ParamPrompt]Prompt {
 			InputFailMsg: "failed to read project description",
 			DefaultValue: goMajorAndMinor(),
 		},
+		DbtRepo: {
+			PromptMsg:    "Enter your DBT Repository URL.",
+			InputFailMsg: "failed to read dbt repo url",
+			Validations:  urlValidation,
+			DefaultValue: "",
+		},
+		ProjectVersion: {
+			PromptMsg:    "Enter a semantic version.",
+			InputFailMsg: "failed to read semantic version",
+			Validations:  semVerValidation,
+			DefaultValue: "0.1.0",
+		},
 	}
 }
 
@@ -172,11 +213,13 @@ func goMajorAndMinor() (goMajMin string) {
 func paramsFromPrompts(r io.Reader, prompts map[ParamPrompt]Prompt, pvals PromptValues) (err error) {
 	values := pvals.Values()
 	for _, p := range []ParamPrompt{
-		GoVersion,
 		ProjName,
+		GoVersion,
 		ProjPkgName,
 		ProjShortDesc,
 		ProjLongDesc,
+		DbtRepo,
+		ProjectVersion,
 		ProjMaintainerName,
 		ProjMaintainerEmail,
 		ServerDefPort,

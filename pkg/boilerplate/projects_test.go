@@ -14,13 +14,7 @@ func TestGetProjectFs(t *testing.T) {
 		WantErr bool
 	}{
 		{
-			Name:    "Valid Gin Project",
-			Input:   "gin",
-			Want:    ginProject,
-			WantErr: false,
-		},
-		{
-			Name:    "Valid Cobra CLI",
+			Name:    "Valid Cobra Project",
 			Input:   "cobra",
 			Want:    cobraProject,
 			WantErr: false,

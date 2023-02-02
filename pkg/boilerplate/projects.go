@@ -20,16 +20,11 @@ import (
 //go:embed project_templates/_cobraProject/*
 var cobraProject embed.FS
 
-//go:embed project_templates/_ginProject/*
-var ginProject embed.FS
-
 // GetProjectFs  Gets the embedded file system for the project of this type.
 func GetProjectFs(projType string) (embed.FS, string, error) {
 	switch projType {
 	case "cobra":
 		return cobraProject, "project_templates/_cobraProject", nil
-	case "gin":
-		return ginProject, "project_templates/_ginProject", nil
 	}
 
 	return embed.FS{}, "", fmt.Errorf("failed to detect embeded package: %s", projType)
@@ -39,14 +34,13 @@ func GetProjectFs(projType string) (embed.FS, string, error) {
 func ValidProjectTypes() []string {
 	return []string{
 		"cobra",
-		"gin",
 	}
 }
 
 // IsValidProjectType  Returns true or false depending on whether the project is a supported type.
 func IsValidProjectType(v string) bool {
 	switch v {
-	case "cobra", "gin":
+	case "cobra":
 		return true
 	}
 	return false
@@ -64,20 +58,6 @@ func PromptsForProject(proj string) (data PromptValues, err error) {
 			} else {
 				break
 			}
-		}
-
-		return data, err
-	case "gin":
-		data := &GinServiceParams{}
-
-		for {
-			err = GinServiceParamsFromPrompts(data, os.Stdin)
-			if err != nil {
-				fmt.Printf("%s\n", err)
-			} else {
-				break
-			}
-
 		}
 
 		return data, err

@@ -28,19 +28,18 @@ func TestNewTmplWriter_BuildProject(t *testing.T) {
 		ExpError bool
 	}{
 		{
-			Name:     "Basic Gin Project",
-			ProjType: "gin",
-			Params: MapOnly(GinServiceParams{
-				ProjectName:       "test-proj-github-name",
-				ProjectPackage:    "test_proj_pkg",
-				ProjectShortDesc:  "proj short",
-				ProjectLongDesc:   "proj long",
-				MaintainerName:    "test",
-				MaintainerEmail:   "test@example.com",
-				DefaultServerPort: "7465",
-				ServerShortDesc:   "svr short",
-				ServerLongDesc:    "svr long",
-				GolangVersion:     "1.16",
+			Name:     "Cobra Project",
+			ProjType: "cobra",
+			Params: MapOnly(CobraCliToolParams{
+				ProjectName:      "test-proj-github-name",
+				ProjectPackage:   "test_proj_pkg",
+				ProjectShortDesc: "proj short",
+				ProjectLongDesc:  "proj long",
+				MaintainerName:   "test",
+				MaintainerEmail:  "test@example.com",
+				DbtRepo:          "https://dbt",
+				ProjectVersion:   "0.1.0",
+				GolangVersion:    "1.16",
 			}.AsMap()),
 			ExpStat: []string{
 				"test-proj-github-name",

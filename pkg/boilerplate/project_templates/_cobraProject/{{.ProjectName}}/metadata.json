@@ -1,14 +1,16 @@
 {
   "name": "{{.ProjectName}}",
-  "version": "0.1.0",
-  "package": "github.com/{{.ProjectName}}",
+  "version": "{{.ProjectVersion}}",
+  "package": "{{.ProjectPackage}}",
   "description": "{{.ProjectShortDesc}}",
-  "repository": "http://localhost:8081/dbt",
-  "tool-repository": "http://localhost:8081/dbt-tools",
+  "repository": "{{.DbtRepo}}",
   "building": {
     "targets": [
       {
         "name": "darwin/amd64"
+      },
+      {
+        "name": "darwin/arm64"
       },
       {
         "name": "linux/amd64"
@@ -31,21 +33,27 @@
     "targets": [
       {
         "src": "description.txt",
-        "dst": "{{.Repository}}/{{.Name}}/{{.Version}}/description.txt",
+        "dst": "{{.DbtRepo}}/{{.ProjectName}}/{{.ProjectVersion}}/description.txt",
         "sig": true,
-        "checksums": false
+        "checksums": true
       },
       {
         "src": "{{.ProjectName}}_darwin_amd64",
-        "dst": "{{.Repository}}/{{.Name}}/{{.Version}}/darwin/amd64/{{.Name}}",
+        "dst": "{{.DbtRepo}}/{{.ProjectName}}/{{.ProjectVersion}}/darwin/amd64/{{.ProjectName}}",
         "sig": true,
-        "checksums": false
+        "checksums": true
+      },
+      {
+        "src": "{{.ProjectName}}_darwin_arm64",
+        "dst": "{{.DbtRepo}}/{{.ProjectName}}/{{.ProjectVersion}}/darwin/arm64/{{.ProjectName}}",
+        "sig": true,
+        "checksums": true
       },
       {
         "src": "{{.ProjectName}}_linux_amd64",
-        "dst": "{{.Repository}}/{{.Name}}/{{.Version}}/linux/amd64/{{.Name}}",
+        "dst": "{{.DbtRepo}}/{{.ProjectName}}/{{.ProjectVersion}}/linux/amd64/{{.ProjectName}}",
         "sig": true,
-        "checksums": false
+        "checksums": true
       }
     ]
   }
