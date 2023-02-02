@@ -33,25 +33,25 @@
     "targets": [
       {
         "src": "description.txt",
-        "dst": "{{.DbtRepo}}/{{.ProjectName}}/{{.ProjectVersion}}/description.txt",
+        "dst": "{{`{{.Repository}}/{{.Name}}/{{.Version}}/description.txt`}}",
         "sig": true,
         "checksums": true
       },
       {
-        "src": "{{.ProjectName}}_darwin_amd64",
-        "dst": "{{.DbtRepo}}/{{.ProjectName}}/{{.ProjectVersion}}/darwin/amd64/{{.ProjectName}}",
+        "src": "{{`{{.Name}}_darwin_amd64`}}",
+        "dst": "{{`{{.Repository}}/{{.Name}}/{{.Version}}/darwin/amd64/{{.Name}}`}}",
         "sig": true,
         "checksums": true
       },
       {
-        "src": "{{.ProjectName}}_darwin_arm64",
-        "dst": "{{.DbtRepo}}/{{.ProjectName}}/{{.ProjectVersion}}/darwin/arm64/{{.ProjectName}}",
+        "src": "{{`{{.Name}}_darwin_arm64`}}",
+        "dst": "{{`{{.Repository}}/{{.Name}}/{{.Version}}/darwin/arm64/{{.Name}}`}}",
         "sig": true,
         "checksums": true
       },
       {
-        "src": "{{.ProjectName}}_linux_amd64",
-        "dst": "{{.DbtRepo}}/{{.ProjectName}}/{{.ProjectVersion}}/linux/amd64/{{.ProjectName}}",
+        "src": "{{`{{.Name}}_linux_amd64`}}",
+        "dst": "{{`{{.Repository}}/{{.Name}}/{{.Version}}/linux/amd64/{{.Name}}`}}",
         "sig": true,
         "checksums": true
       }
