@@ -38,19 +38,19 @@
         "checksums": true
       },
       {
-        "src": "{{`{{.Name}}_darwin_amd64`}}",
+        "src": "{{.ProjectName}}_darwin_amd64",
         "dst": "{{`{{.Repository}}/{{.Name}}/{{.Version}}/darwin/amd64/{{.Name}}`}}",
         "sig": true,
         "checksums": true
       },
       {
-        "src": "{{`{{.Name}}_darwin_arm64`}}",
+        "src": "{{.ProjectName}}_darwin_arm64",
         "dst": "{{`{{.Repository}}/{{.Name}}/{{.Version}}/darwin/arm64/{{.Name}}`}}",
         "sig": true,
         "checksums": true
       },
       {
-        "src": "{{`{{.Name}}_linux_amd64`}}",
+        "src": "{{.ProjectName}}_linux_amd64",
         "dst": "{{`{{.Repository}}/{{.Name}}/{{.Version}}/linux/amd64/{{.Name}}`}}",
         "sig": true,
         "checksums": true
