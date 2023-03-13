@@ -1,6 +1,6 @@
 # DBT  *Dynamic Binary Toolkit* 
 
-A framework for self-updating, signed tools.
+A delivery system for self-updating, signed tools.
 
 [![Current Release](https://img.shields.io/github/release/nikogura/dbt.svg)](https://img.shields.io/github/release/nikogura/dbt.svg)
 
