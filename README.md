@@ -19,8 +19,27 @@ Imagine a set of tools that are always up-to-date, and always safe to use.  Imag
 
 What kind of tools you say?  Anything that can be compiled into a single file.  Golang programs?  Yup.  Bash scripts?  Yessir.  Pyinstaller and pyoxidizer tools?  You bet.  As long as it's a single file, `dbt` can distribute it to your users painlessly, *and* _securely_, with best-in-class UX.
 
+## The Don'ts of Software Distribution
 
-## How it Works
+Delivering software to users is a common problem.  At some level, every company, every software author has to do it.  
+
+Users of your software, it must be said, _just want to use it_.  They're rarely concerned by the details of how they obtain your offering.  They just want to get it, and move on with thier day.
+
+While you certainly _can_ distribute your software any old way, there are a great number of bad patterns in this space, such as:
+
+* You shouldn't need to be a professional developer with a tested, reliable, build system to use a tool.  You also shouldn't have to be a mechanic to drive a car.  Sometimes you just want to start the engine, and go down the road.
+ 
+* You shouldn't need to be a security expert to stay safe online.
+
+* You shouldn't run old or out ot date software - unless you have a strong reason to do so, in which case, you shouldn't be prevented from doing so.
+
+* Your company shouldn't need a large staff, or expensive, complicated, MDM software to distribute and maintain your apps, tools, or programs.
+
+Software is really just bits.  Distribution of software really comes down to finding the right bits, and getting them into place.  Whether you assemble them onsite, or load them from an App Store, it's all the same.  What are the right bits?  Can I trust these bits?  Do I have them?  How do I get them?  Ok, now I have them, how do I run them?  That's all there is.
+
+`dbt` distills these actions down to their core, and makes it all happen for you - securely, transparently, quickly - and lets you get on with your day.
+
+## How DBT Works
 
 DBT is basically just a downloader and verifier for executable files.  That's it.  That's all it does.  
 
