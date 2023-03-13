@@ -42,7 +42,7 @@ Say you have a program that people use to do their jobs.  How do you distribute 
 
 There are a bazillion ways of solving this problem.  At some level, `dbt` is just one more method.  Why is this better than the others?  User Experience.
 
-DBT gets out of the way and helps the user do what they should be doing all along, but usually don't have time to do - that is: verify the integrity and authorship of the tools they use in their daily life.
+DBT gets out of the way and helps the user do what they really should do, but usually don't have time to do - that is: stay up to date, while still verifying the integrity and authorship of the tools they use in their daily life.
 
 ## Pull Model
 
