@@ -26,7 +26,7 @@ DBT is basically just a downloader and verifier for executable files.  That's it
 
 The tools themselves are unaltered by `dbt`.  The 'magic' works by leveraging the same low-level system calls used to load _every other program_ on your computer.  The same system calls that allow your machine to boot at all, let you run a mail client, and look at pictures of cute cats is available to your own internal tooling with very little setup.  Once installed, `dbt` does it for you.
 
-What's more, you're not adding any dependency - other than your people getting used to _amazing_ UX.  Tour tools are unaltered.  Running a tool via `dbt` is exactly the same as running it by itself.  Indeed, the author is, to date, unaware of a means of differentiating a process running via `dbt` and one ran bare, on its own.
+What's more, you're not adding any dependency - other than your people getting used to _amazing_ UX.  Your tools are unaltered.  Running a tool via `dbt` is exactly the same as running it by itself.  Indeed, the author is, to date, unaware of a means of differentiating a process running via `dbt` and one ran bare, on its own.
 
 ## Always Up To Date
 
