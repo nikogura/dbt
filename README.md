@@ -17,28 +17,42 @@ A delivery system for self-updating, signed tools.
 
 Imagine a set of tools that are always up-to-date, and always safe to use.  Imagine anyone in your organization being able to easily contribute to this tool chest with minimal preparation.  Imagine everything always _just working_, and getting out of your way so you can do your thing. What's more, your tools are unmodified, unchanged, unaltered.  Sound like magic?
 
-What kind of tools you say?  Anything that can be compiled into a single file.  Golang programs?  Yup.  Bash scripts?  Yessir.  Pyinstaller and pyoxidizer tools?  You bet.  As long as it's a single file, `dbt` can distribute it to your users painlessly, *and* _securely_.
+What kind of tools you say?  Anything that can be compiled into a single file.  Golang programs?  Yup.  Bash scripts?  Yessir.  Pyinstaller and pyoxidizer tools?  You bet.  As long as it's a single file, `dbt` can distribute it to your users painlessly, *and* _securely_, with best-in-class UX.
 
-The `dbt` tool keeps ensures your tools are always up-to-date (unless you specify an older version), and it does the same for itself.
+
+## How it Works
 
 DBT is basically just a downloader and verifier for executable files.  That's it.  That's all it does.  
 
-The tools themselves are unaltered by `dbt`.  You're not adding any dependency - other than your people getting used to _amazing_ UX.  To be fair, once people have used `dbt` it can be hard to convince them to go back.
+The tools themselves are unaltered by `dbt`.  The 'magic' works by leveraging the same low-level system calls used to load _every other program_ on your computer.  The same system calls that allow your machine to boot at all, let you run a mail client, and look at pictures of cute cats is available to your own internal tooling with very little setup.  Once installed, `dbt` does it for you.
+
+What's more, you're not adding any dependency - other than your people getting used to _amazing_ UX.  Again, your tools are unaltered.  Running a tool via `dbt` is exactly the same as running it by itself.  Indeed, the author is, to date, unaware of a means of differentiating a process running via `dbt` and one ran bare, on its own.
+
+## Always Up To Date
+
+By default, the `dbt` tool keeps ensures your tools are always up-to-date.  When run normally, `dbt` will automatically download and verify the latest version of a tool before running it.  However, if you _need_ and older version, simply specify it, and `dbt` will do the same for the version you want.
+
+By preferring the latest version, the majority of users will automatically upgrade.  It's only the ones who have a special limitation in mind, and go out of their way to keep using an older version.
+
+This stay up to date and upgrade in place mechanism applies to `dbt` itself, too.  Yes.  You read that right.  `dbt` upgrades itself, on the fly, in place, transparently and securely.  Your users will see it happening - we're not hiding anything, but they don't need to care.
+
+## Use Case
 
 Say you have a program that people use to do their jobs.  How do you distribute it?  How do people stay up to date?  How do they get bug fixes and new versions?
 
-There are a bazillion ways of solving this problem.  At some level, `dbt` is just one more method.  Why is this better than the others?  User Experience.  
+There are a bazillion ways of solving this problem.  At some level, `dbt` is just one more method.  Why is this better than the others?  User Experience.
 
 DBT gets out of the way and helps the user do what they should be doing all along, but usually don't have time to do - that is: verify the integrity and authorship of the tools they use in their daily life.
 
+## Pull Model
+
 You absolutely can maintain some sort of device and server management software like Jamf or Chef or Puppet, and update all your OS packages all the time.  These solutions exist, and they're great - when they work well together.  Often they do not- or they're so heavy-handed your small agile shop can't maintain them well enough to stay out of the user's way.
 
-Another thing these tools all have in common is they work off a "push model".  The central administrator pushes out updates, and you use whatever you get.  Again this is great - when it works.  Be honest however, when's the last time you were required to update to the latest something and things stopped working?  This month?  This week?  Today?  Yeah.
+Most tools of this type work off a "push model".  The central administrator pushes out updates, and you use whatever you get.  This can be great - when it works.  Be honest however, when's the last time you were required to update to the latest something and things stopped working?  This month?  This week?  Today?  Yeah. Me too.  
 
 DBT in contrast works on a _pull model_.  The default is you get the latest version of whatever tool we're talking about.  You can, however, request a previous version instead.  So long as the old versions are available in your repository, the user can do whatever they need to do.  They're the user.  Tools exist to make user's lives easier/better - else what's the use?
 
 The pull model is a lot more respectful of your users.  There's incentive to use the latest versions.  That's what happens if they do nothing.  However if they need to go out of their way to use an older version, they can.
-
 
 Once you set up your tool repository, `dbt` downloads and verifies the tools, automatically looking for and using the latest version - unless the user goes out of their way to use a previous version.  
 
@@ -48,11 +62,11 @@ That's it.  That's the magic: Downloading and verifying in a fashion that gets o
 
 To use `dbt`, you need the following
 
-* A repository your users can reach.
+* A repository your users can reach.  This can be S3, Artifactory, the built in `reposerver`, or any WebDAV enabled HTTP server.
 
-* The `dbt` binary installed locally
+* The `dbt` binary and its config file installed locally.
 
-* Crypto keys for code signing
+* Crypto keys for code signing.
 
 That's it!  
 
