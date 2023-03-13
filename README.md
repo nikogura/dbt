@@ -32,7 +32,7 @@ What's more, you're not adding any dependency - other than your people getting u
 
 By default, the `dbt` tool keeps ensures your tools are always up-to-date.  When run normally, `dbt` will automatically download and verify the latest version of a tool before running it.  However, if you _need_ and older version, simply specify it, and `dbt` will do the same for the version you want.
 
-By preferring the latest version, the majority of users will automatically upgrade.  It's only the ones who have a special limitation in mind, and go out of their way to keep using an older version.
+By preferring the latest version, the majority of users will automatically upgrade.  It's only the ones who have a special limitation in mind, and go out of their way that will keep using an older version.  When they're ready to upgrade, they simply stop working so hard and voila!
 
 This stay up to date and upgrade in place mechanism applies to `dbt` itself, too.  Yes.  You read that right.  `dbt` upgrades itself, on the fly, in place, transparently and securely.  Your users will see it happening - we're not hiding anything, but they don't need to care.
 
