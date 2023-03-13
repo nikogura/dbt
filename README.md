@@ -15,13 +15,15 @@ A delivery system for self-updating, signed tools.
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)  
 
 
-Imagine a set of tools that are always up-to-date, and always safe to use.  Imagine anyone in your organization being able to easily contribute to this tool chest with minimal preparation.  Imagine everything always _just working_, and getting out of your way so you can do your thing.  Sound like magic?
+Imagine a set of tools that are always up-to-date, and always safe to use.  Imagine anyone in your organization being able to easily contribute to this tool chest with minimal preparation.  Imagine everything always _just working_, and getting out of your way so you can do your thing. What's more, your tools are unmodified, unchanged, unaltered.  Sound like magic?
 
 What kind of tools you say?  Anything that can be compiled into a single file.  Golang programs?  Yup.  Bash scripts?  Yessir.  Pyinstaller and pyoxidizer tools?  You bet.  As long as it's a single file, `dbt` can distribute it to your users painlessly, *and* _securely_.
 
 The `dbt` tool keeps ensures your tools are always up-to-date (unless you specify an older version), and it does the same for itself.
 
-DBT is basically just a downloader and verifier for executable files.  That's it.  That's all it does.
+DBT is basically just a downloader and verifier for executable files.  That's it.  That's all it does.  
+
+The tools themselves are unaltered by `dbt`.  You're not adding any dependency - other than your people getting used to _amazing_ UX.  To be fair, once people have used `dbt` it can be hard to convince them to go back.
 
 Say you have a program that people use to do their jobs.  How do you distribute it?  How do people stay up to date?  How do they get bug fixes and new versions?
 
