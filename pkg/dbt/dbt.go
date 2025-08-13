@@ -313,7 +313,7 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 
 	dbt.VerboseOutput("  Temp Dir: %s", tmpDir)
 
-	//defer os.RemoveAll(tmpDir)
+	defer os.RemoveAll(tmpDir)
 
 	newBinaryFile := fmt.Sprintf("%s/dbt", tmpDir)
 

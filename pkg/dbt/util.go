@@ -368,7 +368,8 @@ func (dbt *DBT) AuthHeaders(r *http.Request) (err error) {
 	// Don't try to sign a token if we don't actually have a public key
 	if pubkey != "" {
 		// use username and pubkey to set Token header
-		token, err := agentjwt.SignedJwtToken(domain, username, pubkey)
+		// Note: Updated for jwt-ssh-agent-go upgrade - subject should be username, audience should be domain
+		token, err := agentjwt.SignedJwtToken(username, domain, pubkey)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to sign JWT token")
 			return err

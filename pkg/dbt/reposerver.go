@@ -341,6 +341,7 @@ func CheckPubkeyAuth(w http.ResponseWriter, r *http.Request, audience string, pu
 	if err != nil {
 		log.Errorf("Error parsing token: %s", err)
 		w.WriteHeader(http.StatusBadRequest)
+		return username
 	}
 
 	if !token.Valid {
@@ -432,6 +433,7 @@ func (d *DBTRepoServer) PutHandlerPubkeyFile(w http.ResponseWriter, r *http.Requ
 	if !token.Valid {
 		log.Info("Auth Failed")
 		w.WriteHeader(http.StatusUnauthorized)
+		return
 	}
 
 	log.Infof("Subject %s successfully authenticated", subject)
@@ -472,7 +474,7 @@ func (d *DBTRepoServer) PutHandlerPubkeyFunc(w http.ResponseWriter, r *http.Requ
 	}
 
 	//Parse the token, which includes setting up it's internals so it can be verified.
-	subject, token, err := agentjwt.VerifyToken(tokenString, []string{domain}, d.PubkeyFromFilePut, logAdapter)
+	subject, token, err := agentjwt.VerifyToken(tokenString, []string{domain}, d.PubkeysFromFuncPut, logAdapter)
 	if err != nil {
 		log.Errorf("Error: %s", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -482,6 +484,7 @@ func (d *DBTRepoServer) PutHandlerPubkeyFunc(w http.ResponseWriter, r *http.Requ
 	if !token.Valid {
 		log.Info("Auth Failed")
 		w.WriteHeader(http.StatusUnauthorized)
+		return
 	}
 
 	log.Infof("Subject %s successfully authenticated", subject)

@@ -31,8 +31,10 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -74,14 +76,25 @@ var testFilesA map[string]*testFile
 var testFilesB map[string]*testFile
 
 func TestMain(m *testing.M) {
+	// Set up signal handler to ensure cleanup on timeout/interrupt
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		log.Println("Received interrupt signal, cleaning up...")
+		tearDown()
+		os.Exit(1)
+	}()
+
+	// Ensure cleanup happens even if TestMain exits early
+	defer tearDown()
+
 	err := setUp()
 	if err != nil {
 		log.Fatalf("Setup Failed: %s", err)
 	}
 
 	code := m.Run()
-
-	tearDown()
 
 	os.Exit(code)
 }
@@ -262,14 +275,9 @@ func setUp() (err error) {
 func tearDown() {
 	testServer.Close()
 	if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
-		_ = os.Remove(tmpDir)
-	}
-
-	_, err := os.Stat(tmpDir)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			err = os.RemoveAll(tmpDir)
-			log.Fatalf("cleanup failed: %s", err)
+		err = os.RemoveAll(tmpDir)
+		if err != nil {
+			log.Printf("cleanup failed: %s", err)
 		}
 	}
 }
