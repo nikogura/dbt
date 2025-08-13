@@ -8,7 +8,7 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"html/template"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -241,7 +241,7 @@ func TestRepoServerAuth(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			fmt.Printf("Testing %s auth\n", tc.Name)
 			// setup temp dir
-			tmpDir, err := ioutil.TempDir("", "dbt")
+			tmpDir, err := os.MkdirTemp("", "dbt")
 			if err != nil {
 				t.Fatalf("Error creating temp dir %q: %s\n", tmpDir, err)
 			}
@@ -249,6 +249,14 @@ func TestRepoServerAuth(t *testing.T) {
 			// Ensure cleanup even if test fails or times out
 			t.Cleanup(func() {
 				if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
+					// Fix permissions using bulk chmod commands for better performance on large directories
+					// Make all directories writable and executable by owner
+					chmodDirCmd := exec.Command("find", tmpDir, "-type", "d", "-exec", "chmod", "u+rwx", "{}", "+")
+					_ = chmodDirCmd.Run() // Ignore errors, try to continue
+					
+					// Make all files readable and writable by owner (especially for Go module cache read-only files)
+					chmodFileCmd := exec.Command("find", tmpDir, "-type", "f", "-exec", "chmod", "u+rw", "{}", "+")
+					_ = chmodFileCmd.Run() // Ignore errors, try to continue
 					_ = os.RemoveAll(tmpDir)
 				}
 			})
@@ -290,13 +298,10 @@ func TestRepoServerAuth(t *testing.T) {
 				// Parse agent output to get SSH_AUTH_SOCK and SSH_AGENT_PID
 				agentEnv := string(agentOut)
 				for _, line := range strings.Split(agentEnv, "\n") {
-					if strings.HasPrefix(line, "SSH_AUTH_SOCK=") {
-						sockPath := strings.TrimPrefix(line, "SSH_AUTH_SOCK=")
+					if sockPath, found := strings.CutPrefix(line, "SSH_AUTH_SOCK="); found {
 						sockPath = strings.TrimSuffix(sockPath, "; export SSH_AUTH_SOCK;")
 						os.Setenv("SSH_AUTH_SOCK", sockPath)
-					}
-					if strings.HasPrefix(line, "SSH_AGENT_PID=") {
-						pidStr := strings.TrimPrefix(line, "SSH_AGENT_PID=")
+					} else if pidStr, found := strings.CutPrefix(line, "SSH_AGENT_PID="); found {
 						pidStr = strings.TrimSuffix(pidStr, "; export SSH_AGENT_PID;")
 						agentPID = pidStr
 						os.Setenv("SSH_AGENT_PID", pidStr)
@@ -514,7 +519,7 @@ func TestRepoServerAuth(t *testing.T) {
 					// verify file contents
 					defer resp.Body.Close()
 
-					fileBytes, err := ioutil.ReadAll(resp.Body)
+					fileBytes, err := io.ReadAll(resp.Body)
 					if err != nil {
 						t.Errorf("Failed reading file contents: %s", err)
 					}

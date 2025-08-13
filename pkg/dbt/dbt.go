@@ -20,7 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/mitchellh/go-homedir"
 	"github.com/pkg/errors"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -252,7 +252,7 @@ func (dbt *DBT) FetchTrustStore(homedir string) (err error) {
 	if resp != nil {
 		defer resp.Body.Close()
 
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		bodyBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to read truststore contents")
 			return err
@@ -263,7 +263,7 @@ func (dbt *DBT) FetchTrustStore(homedir string) (err error) {
 		// don't write anything if we have an empty string
 		if keytext != "" {
 			filePath := fmt.Sprintf("%s/%s", homedir, TruststorePath)
-			err = ioutil.WriteFile(filePath, []byte(keytext), 0644)
+			err = os.WriteFile(filePath, []byte(keytext), 0644)
 			if err != nil {
 				err = errors.Wrapf(err, "failed to write trust file")
 				return err
@@ -305,7 +305,7 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 // UpgradeInPlace upgraded dbt in place
 func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 	dbt.VerboseOutput("Attempting upgrade in place")
-	tmpDir, err := ioutil.TempDir("", "dbt")
+	tmpDir, err := os.MkdirTemp("", "dbt")
 	if err != nil {
 		err = errors.Wrap(err, "failed to create temp dir")
 		return err
@@ -350,7 +350,7 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 		// So instead we read the file, write the file to a temp file, and then rename.
 		newBinaryTempFile := fmt.Sprintf("%s.new", binaryPath)
 
-		b, err := ioutil.ReadFile(newBinaryFile)
+		b, err := os.ReadFile(newBinaryFile)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to read new binary file %s", newBinaryFile)
 			return err
@@ -358,7 +358,7 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 
 		dbt.VerboseOutput("  Writing to %s", newBinaryTempFile)
 
-		err = ioutil.WriteFile(newBinaryTempFile, b, 0755)
+		err = os.WriteFile(newBinaryTempFile, b, 0755)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to write new binary temp file %s", newBinaryTempFile)
 			return err
@@ -508,7 +508,7 @@ func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 
 	dbt.VerboseOutput("Verifying %q", localPath)
 
-	checksumBytes, err := ioutil.ReadFile(localChecksumPath)
+	checksumBytes, err := os.ReadFile(localChecksumPath)
 	if err != nil {
 		err = errors.Wrap(err, "error reading local checksum file")
 		return err
