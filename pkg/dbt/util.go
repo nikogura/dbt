@@ -402,4 +402,3 @@ func ExtractDomain(urlLikeString string) (domain string, err error) {
 
 	return domain, err
 }
-

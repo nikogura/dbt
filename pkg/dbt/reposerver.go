@@ -269,7 +269,7 @@ func (d *DBTRepoServer) PubkeyFromFileGet(subject string) (pubkeys []string, err
 		return pubkeys, err
 	}
 
-	pubkeys = make([]string,0)
+	pubkeys = make([]string, 0)
 
 	for _, u := range idpFile.GetUsers {
 		if u.Username == subject {
@@ -389,7 +389,6 @@ func (d *DBTRepoServer) CheckPubkeysGetFunc(wrapped http.HandlerFunc) http.Handl
 		// TODO: what do we do with this error?
 	}
 
-
 	return Wrap(func(w http.ResponseWriter, ar *AuthenticatedRequest) {
 		ar.Header.Set("X-Authenticated-Username", ar.Username)
 		wrapped(w, &ar.Request)
@@ -414,7 +413,7 @@ func (d *DBTRepoServer) PutHandlerPubkeyFile(w http.ResponseWriter, r *http.Requ
 	domain, err := ExtractDomain(d.Address)
 	if err != nil {
 		err = errors.Wrapf(err, "failed extracting domain from configured dbt repo url %s", d.Address)
-		return 
+		return
 	}
 
 	// Wrap the logrus logger so we can use it in our retrieval func
@@ -464,7 +463,7 @@ func (d *DBTRepoServer) PutHandlerPubkeyFunc(w http.ResponseWriter, r *http.Requ
 	domain, err := ExtractDomain(d.Address)
 	if err != nil {
 		err = errors.Wrapf(err, "failed extracting domain from configured dbt repo url %s", d.Address)
-		return 
+		return
 	}
 
 	// Wrap the logrus logger so we can use it in our retrieval func

@@ -264,7 +264,7 @@ func tearDown() {
 	if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
 		_ = os.Remove(tmpDir)
 	}
-	
+
 	_, err := os.Stat(tmpDir)
 	if err != nil {
 		if !os.IsNotExist(err) {
