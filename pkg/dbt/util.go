@@ -23,7 +23,6 @@ import (
 	"github.com/nikogura/jwt-ssh-agent-go/pkg/agentjwt"
 	"github.com/pkg/errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -134,7 +133,7 @@ func Spaceship(a int, b int) int {
 // FileSha256 returns the hex encoded Sha256 checksum for the given file
 func FileSha256(fileName string) (checksum string, err error) {
 	hasher := sha256.New()
-	checksumBytes, err := ioutil.ReadFile(fileName)
+	checksumBytes, err := os.ReadFile(fileName)
 
 	if err != nil {
 		return checksum, err
@@ -154,7 +153,7 @@ func FileSha256(fileName string) (checksum string, err error) {
 // FileSha1 returns the hex encoded Sha1 checksum for the given file
 func FileSha1(fileName string) (checksum string, err error) {
 	hasher := sha1.New()
-	checksumBytes, err := ioutil.ReadFile(fileName)
+	checksumBytes, err := os.ReadFile(fileName)
 
 	if err != nil {
 		return checksum, err
@@ -200,7 +199,7 @@ func FileCopy(src, dst string) error {
 // DirCopy copies a whole directory recursively
 func DirCopy(src string, dst string) error {
 	var err error
-	var fds []os.FileInfo
+	var fds []os.DirEntry
 	var srcinfo os.FileInfo
 
 	if srcinfo, err = os.Stat(src); err != nil {
@@ -211,7 +210,7 @@ func DirCopy(src string, dst string) error {
 		return err
 	}
 
-	if fds, err = ioutil.ReadDir(src); err != nil {
+	if fds, err = os.ReadDir(src); err != nil {
 		return err
 	}
 	for _, fd := range fds {
@@ -248,7 +247,7 @@ func GetFunc(shellCommand string) (result string, err error) {
 		return result, err
 	}
 
-	stdoutBytes, err := ioutil.ReadAll(stdout)
+	stdoutBytes, err := io.ReadAll(stdout)
 	if err != nil {
 		err = errors.Wrapf(err, "error reading stdout from func")
 		return result, err
@@ -285,7 +284,7 @@ func GetFuncUsername(shellCommand string, username string) (result []string, err
 		return result, err
 	}
 
-	stdoutBytes, err := ioutil.ReadAll(stdout)
+	stdoutBytes, err := io.ReadAll(stdout)
 	if err != nil {
 		err = errors.Wrapf(err, "error reading stdout from func")
 		return result, err
@@ -339,7 +338,7 @@ func (dbt *DBT) AuthHeaders(r *http.Request) (err error) {
 
 	// read pubkey from file
 	if dbt.Config.PubkeyPath != "" {
-		b, err := ioutil.ReadFile(dbt.Config.PubkeyPath)
+		b, err := os.ReadFile(dbt.Config.PubkeyPath)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to read public key from file %s", dbt.Config.PubkeyPath)
 			return err
