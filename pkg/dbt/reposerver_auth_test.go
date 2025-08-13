@@ -253,7 +253,7 @@ func TestRepoServerAuth(t *testing.T) {
 					// Make all directories writable and executable by owner
 					chmodDirCmd := exec.Command("find", tmpDir, "-type", "d", "-exec", "chmod", "u+rwx", "{}", "+")
 					_ = chmodDirCmd.Run() // Ignore errors, try to continue
-					
+
 					// Make all files readable and writable by owner (especially for Go module cache read-only files)
 					chmodFileCmd := exec.Command("find", tmpDir, "-type", "f", "-exec", "chmod", "u+rw", "{}", "+")
 					_ = chmodFileCmd.Run() // Ignore errors, try to continue
