@@ -109,14 +109,14 @@ func TestToolVersionExists(t *testing.T) {
 			}
 
 			if !ok {
-				fmt.Println(fmt.Sprintf("Tool %q version %q does not exist in repo %s", toolName, VERSION, tc.obj.Config.Tools.Repo))
+				fmt.Printf("Tool %q version %q does not exist in repo %s", toolName, VERSION, tc.obj.Config.Tools.Repo)
 				t.Fail()
 			}
 
 			ok, _ = tc.obj.ToolVersionExists("foo", "0.0.0")
 
 			if ok {
-				fmt.Println(fmt.Sprintf("Nonexistant tool version %q shows existing in repo.", "0.0.0"))
+				fmt.Printf("Nonexistant tool version %q shows existing in repo.\n", "0.0.0")
 				t.Fail()
 			}
 
@@ -156,7 +156,7 @@ func TestFetchToolVersions(t *testing.T) {
 
 			versions, err := tc.obj.FetchToolVersions(toolName)
 			if err != nil {
-				fmt.Println(fmt.Sprintf("Error searching for versions of tool %q in repo %q", toolName, tc.obj.Config.Tools.Repo))
+				fmt.Printf("Error searching for versions of tool %q in repo %q\n", toolName, tc.obj.Config.Tools.Repo)
 			}
 
 			assert.True(t, len(versions) == 2, "ListCatalog of versions should have 2 elements.")
@@ -220,7 +220,7 @@ func TestFetchFile(t *testing.T) {
 
 			success, err := tc.obj.VerifyFileChecksum(fileName, string(checksumBytes))
 			if err != nil {
-				t.Errorf(fmt.Sprintf("Error checksumming test file: %s", err))
+				t.Errorf("Error checksumming test file: %s", err)
 			}
 
 			assert.True(t, success, "Checksum of downloaded file matches expectations.")

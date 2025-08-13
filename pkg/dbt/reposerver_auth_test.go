@@ -4,16 +4,59 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/nikogura/gomason/pkg/gomason"
-	"github.com/orion-labs/jwt-ssh-agent-go/pkg/agentjwt"
+	"github.com/nikogura/jwt-ssh-agent-go/pkg/agentjwt"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"html/template"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 )
+
+// testKeyPair holds a generated SSH key pair
+type testKeyPair struct {
+	publicKey  string
+	privateKey string
+	keyPath    string
+}
+
+// generateTestKeyPair creates a fresh SSH key pair for testing
+func generateTestKeyPair(t *testing.T, tmpDir string) *testKeyPair {
+	keyPath := fmt.Sprintf("%s/test_key_%d", tmpDir, time.Now().UnixNano())
+	pubKeyPath := keyPath + ".pub"
+
+	// Generate SSH key pair
+	cmd := exec.Command("ssh-keygen", "-t", "rsa", "-b", "3072", "-f", keyPath, "-N", "", "-C", "dbttester@infradel.org")
+	err := cmd.Run()
+	if err != nil {
+		t.Fatalf("Failed to generate SSH key: %s", err)
+	}
+
+	// Read public key
+	pubKeyBytes, err := os.ReadFile(pubKeyPath)
+	if err != nil {
+		t.Fatalf("Failed to read generated public key: %s", err)
+	}
+	publicKey := strings.TrimSpace(string(pubKeyBytes))
+
+	// Read private key
+	privKeyBytes, err := os.ReadFile(keyPath)
+	if err != nil {
+		t.Fatalf("Failed to read generated private key: %s", err)
+	}
+	privateKey := string(privKeyBytes)
+
+	return &testKeyPair{
+		publicKey:  publicKey,
+		privateKey: privateKey,
+		keyPath:    keyPath,
+	}
+}
 
 func TestRepoServerAuth(t *testing.T) {
 	type testfile struct {
@@ -101,20 +144,20 @@ func TestRepoServerAuth(t *testing.T) {
   "getUsers": [
     {
       "username": "nik",
-      "publickey": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org"
+      "publickey": "{{GENERATED_PUBLIC_KEY}}"
     }
   ],
   "putUsers": [
     {
       "username": "nik",
-      "publickey": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org"
+      "publickey": "{{GENERATED_PUBLIC_KEY}}"
     }
   ]
 }
 `,
 			authinfo{
 				user:       "nik",
-				credential: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org",
+				credential: "{{GENERATED_PUBLIC_KEY}}",
 			},
 			[]testfile{
 				{
@@ -133,7 +176,7 @@ func TestRepoServerAuth(t *testing.T) {
 			"pubkey",
 			authinfo{
 				user:       "nik",
-				credential: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org",
+				credential: "{{GENERATED_PUBLIC_KEY}}",
 			},
 		},
 		{
@@ -157,20 +200,20 @@ func TestRepoServerAuth(t *testing.T) {
   "getUsers": [
     {
       "username": "nik",
-      "publickey": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org"
+      "publickey": "{{GENERATED_PUBLIC_KEY}}"
     }
   ],
   "putUsers": [
     {
       "username": "nik",
-      "publickey": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org"
+      "publickey": "{{GENERATED_PUBLIC_KEY}}"
     }
   ]
 }
 `,
 			authinfo{
 				user:       "nik",
-				credential: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org",
+				credential: "{{GENERATED_PUBLIC_KEY}}",
 			},
 			[]testfile{
 				{
@@ -189,7 +232,7 @@ func TestRepoServerAuth(t *testing.T) {
 			"pubkey",
 			authinfo{
 				user:       "nik",
-				credential: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC6jJu0QdJfhaa8d1EH33/ee8p1JgS885g8P+s4DWbuCYdYITcuHtRq+DqgEeZGBGtocQcv2CFpzHS2K3JZzB8000tz/SOgZHT1ywqCBkaA0HObBR2cpgkC2qUmQT0WFz6/+yOF22KAqKoIRNucwTKPgQGpYeWD13ALMEvh7q1Z1HmIMKdeMCo6ziBkPiMGAbPpKqzjpUbKXaT+PkE37ouCs3YygZv6UtcTzCEsY4CIpuB45FjLKhAhA26wPVsKBSUiJCMwLhN46jDDhJ8BFSv0nUYVBT/+4nriaMeMtKO9lZ6VzHnIYzGmSWH1OWxWdRA1AixJmk2RSWlAq9yIBRJk9Tdc457j7em0hohdCGEeGyb1VuSoiEiHScnPeWsLYjc/kJIBL40vTQRyiNCT+M+7p6BlT9aTBuXsv9Njw2K60u+ekoAOE4+wlKKYNrEj09yYvdl9hVrI1bNg22JsXTYqOe4TT7Cki47cYF9QwwXPZbTBRmdDX6ftOhwBzas2mAs= dbttester@infradel.org",
+				credential: "{{GENERATED_PUBLIC_KEY}}",
 			},
 		},
 	}
@@ -202,6 +245,13 @@ func TestRepoServerAuth(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error creating temp dir %q: %s\n", tmpDir, err)
 			}
+
+			// Ensure cleanup even if test fails or times out
+			t.Cleanup(func() {
+				if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
+					_ = os.RemoveAll(tmpDir)
+				}
+			})
 
 			// get free port
 			port, err := freeport.GetFreePort()
@@ -218,12 +268,103 @@ func TestRepoServerAuth(t *testing.T) {
 				t.Fatalf("Failed creating dir %q: %s", repoDir, err)
 			}
 
-			err = os.WriteFile(idpFile, []byte(tc.AuthFile), 0644)
-			if err != nil {
-				t.Fatalf("Failed creating get auth file %s: %s", idpFile, err)
-			}
+			// Handle pubkey authentication tests with fresh key generation
+			var oldSSHAuthSock string
+			var agentPID string
+			var testKeys *testKeyPair
 
-			// TODO start ssh agent if necessary?
+			if strings.HasPrefix(tc.Name, "pubkey") {
+				// Save current SSH_AUTH_SOCK
+				oldSSHAuthSock = os.Getenv("SSH_AUTH_SOCK")
+
+				// Generate fresh SSH key pair
+				testKeys = generateTestKeyPair(t, tmpDir)
+
+				// Start SSH agent
+				agentCmd := exec.Command("ssh-agent", "-s")
+				agentOut, err := agentCmd.Output()
+				if err != nil {
+					t.Fatalf("Failed to start SSH agent: %s", err)
+				}
+
+				// Parse agent output to get SSH_AUTH_SOCK and SSH_AGENT_PID
+				agentEnv := string(agentOut)
+				for _, line := range strings.Split(agentEnv, "\n") {
+					if strings.HasPrefix(line, "SSH_AUTH_SOCK=") {
+						sockPath := strings.TrimPrefix(line, "SSH_AUTH_SOCK=")
+						sockPath = strings.TrimSuffix(sockPath, "; export SSH_AUTH_SOCK;")
+						os.Setenv("SSH_AUTH_SOCK", sockPath)
+					}
+					if strings.HasPrefix(line, "SSH_AGENT_PID=") {
+						pidStr := strings.TrimPrefix(line, "SSH_AGENT_PID=")
+						pidStr = strings.TrimSuffix(pidStr, "; export SSH_AGENT_PID;")
+						agentPID = pidStr
+						os.Setenv("SSH_AGENT_PID", pidStr)
+					}
+				}
+
+				// Add key to agent
+				addKeyCmd := exec.Command("ssh-add", testKeys.keyPath)
+				err = addKeyCmd.Run()
+				if err != nil {
+					t.Fatalf("Failed to add key to SSH agent: %s", err)
+				}
+
+				// Update test case credentials to use generated key
+				tc.AuthPut.credential = testKeys.publicKey
+				tc.AuthGet.credential = testKeys.publicKey
+
+				// Update config template for pubkey-func tests (replace idpFunc commands with simple echo)
+				if strings.Contains(tc.Name, "func") {
+					newEchoCmd := "echo '" + testKeys.publicKey + "'"
+
+					// Replace any idpFunc value with the new echo command
+					re := regexp.MustCompile(`"idpFunc":\s*"[^"]*"`)
+					tc.ConfigTemplate = re.ReplaceAllString(tc.ConfigTemplate, `"idpFunc": "`+newEchoCmd+`"`)
+				}
+
+				// Replace placeholders in auth file
+				updatedAuthFile := strings.ReplaceAll(tc.AuthFile, "{{GENERATED_PUBLIC_KEY}}", testKeys.publicKey)
+
+				// Write updated auth file
+				err = os.WriteFile(idpFile, []byte(updatedAuthFile), 0644)
+				if err != nil {
+					t.Fatalf("Failed creating auth file with generated key %s: %s", idpFile, err)
+				}
+
+				// Cleanup function to kill SSH agent and restore environment
+				cleanupSSH := func() {
+					// Kill the SSH agent process if we started one
+					if agentPID != "" {
+						killCmd := exec.Command("kill", agentPID)
+						_ = killCmd.Run() // Ignore errors as process might already be dead
+					}
+
+					// Restore original SSH_AUTH_SOCK
+					if oldSSHAuthSock != "" {
+						os.Setenv("SSH_AUTH_SOCK", oldSSHAuthSock)
+					} else {
+						os.Unsetenv("SSH_AUTH_SOCK")
+					}
+					os.Unsetenv("SSH_AGENT_PID")
+
+					// Clean up key files
+					if testKeys != nil {
+						_ = os.Remove(testKeys.keyPath)
+						_ = os.Remove(testKeys.keyPath + ".pub")
+					}
+				}
+
+				// Register cleanup with both defer (for normal completion) and t.Cleanup (for timeouts/panics)
+				defer cleanupSSH()
+				t.Cleanup(cleanupSSH)
+			} else {
+				// For non-pubkey tests, write auth file as is
+				err = os.WriteFile(idpFile, []byte(tc.AuthFile), 0644)
+				if err != nil {
+					t.Fatalf("Failed creating get auth file %s: %s", idpFile, err)
+				}
+			}
 
 			// write config file
 			tmplData := struct {
@@ -291,7 +432,8 @@ func TestRepoServerAuth(t *testing.T) {
 					case "pubkey":
 						fmt.Printf("Pubkey Authed Request.\n")
 						// use username and pubkey to set Token header
-						token, err := agentjwt.SignedJwtToken(tc.AuthPut.user, tc.AuthPut.credential)
+						// Note: parameter order may be different in upgraded jwt-ssh-agent-go
+						token, err := agentjwt.SignedJwtToken(tc.AuthPut.user, "127.0.0.1", tc.AuthPut.credential)
 						if err != nil {
 							t.Errorf("failed to sign JWT token: %s", err)
 						}
@@ -344,7 +486,8 @@ func TestRepoServerAuth(t *testing.T) {
 						case "pubkey":
 							fmt.Printf("Pubkey Authed Request.\n")
 							// use username and pubkey to set Token header
-							token, err := agentjwt.SignedJwtToken(tc.AuthGet.user, tc.AuthGet.credential)
+							// Note: parameter order may be different in upgraded jwt-ssh-agent-go
+							token, err := agentjwt.SignedJwtToken(tc.AuthGet.user, "127.0.0.1", tc.AuthGet.credential)
 							if err != nil {
 								t.Errorf("failed to sign JWT token: %s", err)
 							}
@@ -381,11 +524,6 @@ func TestRepoServerAuth(t *testing.T) {
 
 					assert.Equal(t, expected, actual, "retrieved file contents do not meet expectations.")
 				}
-			}
-
-			// cleanup
-			if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
-				_ = os.Remove(tmpDir)
 			}
 		})
 	}

@@ -31,8 +31,10 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -74,6 +76,19 @@ var testFilesA map[string]*testFile
 var testFilesB map[string]*testFile
 
 func TestMain(m *testing.M) {
+	// Set up signal handler to ensure cleanup on timeout/interrupt
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		log.Println("Received interrupt signal, cleaning up...")
+		tearDown()
+		os.Exit(1)
+	}()
+
+	// Ensure cleanup happens even if TestMain exits early
+	defer tearDown()
+
 	err := setUp()
 	if err != nil {
 		log.Fatalf("Setup Failed: %s", err)
@@ -81,15 +96,13 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	tearDown()
-
 	os.Exit(code)
 }
 
 func setUp() (err error) {
 	dir, err := os.MkdirTemp("", "dbt")
 	if err != nil {
-		err = errors.Wrapf(err, "Error creating temp dir %q", tmpDir)
+		err = errors.Wrapf(err, "Error creating temp dir %q", dir)
 		return err
 	}
 
@@ -262,7 +275,10 @@ func setUp() (err error) {
 func tearDown() {
 	testServer.Close()
 	if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
-		_ = os.Remove(tmpDir)
+		err = os.RemoveAll(tmpDir)
+		if err != nil {
+			log.Printf("cleanup failed: %s", err)
+		}
 	}
 }
 
@@ -546,8 +562,8 @@ func createTestKeys(keyring string, trustdb string) (err error) {
 	defaultKeyText := `%echo Generating a default key
 %no-protection
 %transient-key
-Key-Type: default
-Subkey-Type: default
+Key-Type: RSA
+Subkey-Type: RSA
 Name-Real: Gomason Tester
 Name-Comment: with no passphrase
 Name-Email: tester@nikogura.com
@@ -855,7 +871,7 @@ func buildTestRepo() (err error) {
 		return err
 	}
 
-	meta.Options = make(map[string]interface{})
+	meta.Options = make(map[string]any)
 	meta.Options["keyring"] = keyring
 	meta.Options["trustdb"] = trustdb
 	meta.SignInfo = gomason.SignInfo{
@@ -902,7 +918,7 @@ func buildTestRepo() (err error) {
 		return err
 	}
 
-	oldMeta.Options = make(map[string]interface{})
+	oldMeta.Options = make(map[string]any)
 	oldMeta.Options["keyring"] = keyring
 	oldMeta.Options["trustdb"] = trustdb
 	oldMeta.SignInfo = gomason.SignInfo{

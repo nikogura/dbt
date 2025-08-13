@@ -3,18 +3,19 @@ package dbt
 import (
 	"encoding/json"
 	"fmt"
-	auth "github.com/abbot/go-http-auth"
-	"github.com/gorilla/mux"
-	"github.com/nikogura/gomason/pkg/gomason"
-	"github.com/orion-labs/jwt-ssh-agent-go/pkg/agentjwt"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+
+	auth "github.com/abbot/go-http-auth"
+	"github.com/gorilla/mux"
+	"github.com/nikogura/gomason/pkg/gomason"
+	"github.com/nikogura/jwt-ssh-agent-go/pkg/agentjwt"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // AUTH_BASIC_HTPASSWD config flag for basic auth
@@ -56,7 +57,7 @@ type AuthOpts struct {
 
 // NewRepoServer creates a new DBTRepoServer object from the config file provided.
 func NewRepoServer(configFilePath string) (server *DBTRepoServer, err error) {
-	c, err := ioutil.ReadFile(configFilePath)
+	c, err := os.ReadFile(configFilePath)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to read config file %q", configFilePath)
 		return server, err
@@ -153,7 +154,7 @@ func (d *DBTRepoServer) HandlePut(path string, body io.ReadCloser, md5sum string
 		}
 	}
 
-	fileBytes, err := ioutil.ReadAll(body)
+	fileBytes, err := io.ReadAll(body)
 
 	// Checksum bytes
 	md5Actual, sha1Actual, sha256Actual, err := gomason.AllChecksumsForBytes(fileBytes)
@@ -185,7 +186,7 @@ func (d *DBTRepoServer) HandlePut(path string, body io.ReadCloser, md5sum string
 	}
 
 	// write file to filesystem.
-	err = ioutil.WriteFile(filePath, fileBytes, 0644)
+	err = os.WriteFile(filePath, fileBytes, 0644)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to write %s", filePath)
 	}
@@ -221,7 +222,7 @@ type PubkeyIdpFile struct {
 
 // LoadPubkeyIdpFile Loads a public key IDP JSON file.
 func LoadPubkeyIdpFile(filePath string) (pkidp PubkeyIdpFile, err error) {
-	fileData, err := ioutil.ReadFile(filePath)
+	fileData, err := os.ReadFile(filePath)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to read idp file %s", filePath)
 		return pkidp, err
@@ -237,16 +238,18 @@ func LoadPubkeyIdpFile(filePath string) (pkidp PubkeyIdpFile, err error) {
 }
 
 // PubkeyFromFilePut takes a subject name, and pulls the corresponding pubkey out of the identity provider file for puts
-func (d *DBTRepoServer) PubkeyFromFilePut(subject string) (pubkeys string, err error) {
+func (d *DBTRepoServer) PubkeyFromFilePut(subject string) (pubkeys []string, err error) {
 	idpFile, err := LoadPubkeyIdpFile(d.AuthOptsPut.IdpFile)
 	if err != nil {
 		err = errors.Wrapf(err, "failed loading PUT IDP file%s", d.AuthOptsPut.IdpFile)
 		return pubkeys, err
 	}
 
+	pubkeys = make([]string, 0)
+
 	for _, u := range idpFile.PutUsers {
 		if u.Username == subject {
-			pubkeys = u.AuthorizedKey
+			pubkeys = append(pubkeys, u.AuthorizedKey)
 			log.Printf("Returning put key %q\n", pubkeys)
 			return pubkeys, err
 		}
@@ -258,16 +261,18 @@ func (d *DBTRepoServer) PubkeyFromFilePut(subject string) (pubkeys string, err e
 }
 
 // PubkeyFromFileGet takes a subject name, and pulls the corresponding pubkey out of the identity provider file for puts
-func (d *DBTRepoServer) PubkeyFromFileGet(subject string) (pubkeys string, err error) {
+func (d *DBTRepoServer) PubkeyFromFileGet(subject string) (pubkeys []string, err error) {
 	idpFile, err := LoadPubkeyIdpFile(d.AuthOptsGet.IdpFile)
 	if err != nil {
 		err = errors.Wrapf(err, "failed loading GET IDP file%s", d.AuthOptsGet.IdpFile)
 		return pubkeys, err
 	}
 
+	pubkeys = make([]string, 0)
+
 	for _, u := range idpFile.GetUsers {
 		if u.Username == subject {
-			pubkeys = u.AuthorizedKey
+			pubkeys = append(pubkeys, u.AuthorizedKey)
 			log.Printf("Returning get key %q\n", pubkeys)
 			return pubkeys, err
 		}
@@ -278,19 +283,19 @@ func (d *DBTRepoServer) PubkeyFromFileGet(subject string) (pubkeys string, err e
 }
 
 // PubkeyFromFuncPut takes a subject name, and runs the configured function to return the corresponding public key
-func (d *DBTRepoServer) PubkeysFromFuncPut(subject string) (pubkey string, err error) {
+func (d *DBTRepoServer) PubkeysFromFuncPut(subject string) (pubkeys []string, err error) {
 
-	pubkey, err = GetFuncUsername(d.AuthOptsPut.IdpFunc, subject)
+	pubkeys, err = GetFuncUsername(d.AuthOptsPut.IdpFunc, subject)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get password from shell function %q", d.AuthOptsPut.IdpFunc)
-		return pubkey, err
+		return pubkeys, err
 	}
 
-	return pubkey, err
+	return pubkeys, err
 }
 
 // PubkeyFromFuncGet takes a subject name, and runs the configured function to return the corresponding public key
-func (d *DBTRepoServer) PubkeysFromFuncGet(subject string) (pubkey string, err error) {
+func (d *DBTRepoServer) PubkeysFromFuncGet(subject string) (pubkey []string, err error) {
 
 	pubkey, err = GetFuncUsername(d.AuthOptsGet.IdpFunc, subject)
 	if err != nil {
@@ -316,7 +321,7 @@ type AuthenticatedRequest struct {
 }
 
 // CheckPubkeyAuth Function that actually checks the Token sent by the client in the headers.
-func CheckPubkeyAuth(w http.ResponseWriter, r *http.Request, pubkeyRetrievalFunc func(subject string) (pubkeys string, err error)) (username string) {
+func CheckPubkeyAuth(w http.ResponseWriter, r *http.Request, audience string, pubkeyRetrievalFunc func(subject string) (pubkeys []string, err error)) (username string) {
 	tokenString := r.Header.Get("Token")
 
 	if tokenString == "" {
@@ -325,10 +330,13 @@ func CheckPubkeyAuth(w http.ResponseWriter, r *http.Request, pubkeyRetrievalFunc
 		return username
 	}
 
-	// TODO sanity check username?
+	// Wrap the logrus logger so we can use it in our retrieval func
+	logAdapter := &LogrusAdapter{
+		logger: logrus.New(),
+	}
 
 	//Parse the token, which includes setting up it's internals so it can be verified.
-	subject, token, err := agentjwt.ParsePubkeySignedToken(tokenString, pubkeyRetrievalFunc)
+	subject, token, err := agentjwt.VerifyToken(tokenString, []string{audience}, pubkeyRetrievalFunc, logAdapter)
 	if err != nil {
 		log.Errorf("Error parsing token: %s", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -348,9 +356,9 @@ func CheckPubkeyAuth(w http.ResponseWriter, r *http.Request, pubkeyRetrievalFunc
 }
 
 // Wrap returns an http.HandlerFunc which wraps AuthenticatedHandlerFunc
-func Wrap(wrapped AuthenticatedHandlerFunc, pubkeyRetrievalFunc func(subject string) (pubkeys string, err error)) http.HandlerFunc {
+func Wrap(wrapped AuthenticatedHandlerFunc, audience string, pubkeyRetrievalFunc func(subject string) (pubkeys []string, err error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if username := CheckPubkeyAuth(w, r, pubkeyRetrievalFunc); username != "" {
+		if username := CheckPubkeyAuth(w, r, audience, pubkeyRetrievalFunc); username != "" {
 			ar := &AuthenticatedRequest{Request: *r, Username: username}
 			wrapped(w, ar)
 		}
@@ -359,18 +367,32 @@ func Wrap(wrapped AuthenticatedHandlerFunc, pubkeyRetrievalFunc func(subject str
 
 // CheckPubkeysGetFile Checks the pubkey signature in the JWT token against a public key found in a htpasswd like file and if things check out, passes things along to the provided handler.
 func (d *DBTRepoServer) CheckPubkeysGetFile(wrapped http.HandlerFunc) http.HandlerFunc {
+	// Extract the domain from the repo server
+	domain, err := ExtractDomain(d.Address)
+	if err != nil {
+		err = errors.Wrapf(err, "failed extracting domain from configured dbt repo url %s", d.Address)
+		// TODO: what do we do with this error?
+	}
+
 	return Wrap(func(w http.ResponseWriter, ar *AuthenticatedRequest) {
 		ar.Header.Set("X-Authenticated-Username", ar.Username)
 		wrapped(w, &ar.Request)
-	}, d.PubkeyFromFileGet)
+	}, domain, d.PubkeyFromFileGet)
 }
 
 // CheckPubkeysGetFunc Checks the pubkey signature in the JWT token against a public key produced from a function and if things check out, passes things along to the provided handler.
 func (d *DBTRepoServer) CheckPubkeysGetFunc(wrapped http.HandlerFunc) http.HandlerFunc {
+	// Extract the domain from the repo server
+	domain, err := ExtractDomain(d.Address)
+	if err != nil {
+		err = errors.Wrapf(err, "failed extracting domain from configured dbt repo url %s", d.Address)
+		// TODO: what do we do with this error?
+	}
+
 	return Wrap(func(w http.ResponseWriter, ar *AuthenticatedRequest) {
 		ar.Header.Set("X-Authenticated-Username", ar.Username)
 		wrapped(w, &ar.Request)
-	}, d.PubkeysFromFuncGet)
+	}, domain, d.PubkeysFromFuncGet)
 }
 
 // PutHandlerPubKeyFile
@@ -387,8 +409,20 @@ func (d *DBTRepoServer) PutHandlerPubkeyFile(w http.ResponseWriter, r *http.Requ
 
 	// TODO sanity check username?
 
+	// Extract the domain from the repo server
+	domain, err := ExtractDomain(d.Address)
+	if err != nil {
+		err = errors.Wrapf(err, "failed extracting domain from configured dbt repo url %s", d.Address)
+		return
+	}
+
+	// Wrap the logrus logger so we can use it in our retrieval func
+	logAdapter := &LogrusAdapter{
+		logger: logrus.New(),
+	}
+
 	// Parse the token, which includes setting up it's internals so it can be verified.
-	subject, token, err := agentjwt.ParsePubkeySignedToken(tokenString, d.PubkeyFromFilePut)
+	subject, token, err := agentjwt.VerifyToken(tokenString, []string{domain}, d.PubkeyFromFilePut, logAdapter)
 	if err != nil {
 		log.Errorf("Error: %s", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -398,6 +432,7 @@ func (d *DBTRepoServer) PutHandlerPubkeyFile(w http.ResponseWriter, r *http.Requ
 	if !token.Valid {
 		log.Info("Auth Failed")
 		w.WriteHeader(http.StatusUnauthorized)
+		return
 	}
 
 	log.Infof("Subject %s successfully authenticated", subject)
@@ -425,8 +460,20 @@ func (d *DBTRepoServer) PutHandlerPubkeyFunc(w http.ResponseWriter, r *http.Requ
 
 	// TODO sanity check username?
 
+	// Extract the domain from the repo server
+	domain, err := ExtractDomain(d.Address)
+	if err != nil {
+		err = errors.Wrapf(err, "failed extracting domain from configured dbt repo url %s", d.Address)
+		return
+	}
+
+	// Wrap the logrus logger so we can use it in our retrieval func
+	logAdapter := &LogrusAdapter{
+		logger: logrus.New(),
+	}
+
 	//Parse the token, which includes setting up it's internals so it can be verified.
-	subject, token, err := agentjwt.ParsePubkeySignedToken(tokenString, d.PubkeysFromFuncPut)
+	subject, token, err := agentjwt.VerifyToken(tokenString, []string{domain}, d.PubkeysFromFuncPut, logAdapter)
 	if err != nil {
 		log.Errorf("Error: %s", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -436,6 +483,7 @@ func (d *DBTRepoServer) PutHandlerPubkeyFunc(w http.ResponseWriter, r *http.Requ
 	if !token.Valid {
 		log.Info("Auth Failed")
 		w.WriteHeader(http.StatusUnauthorized)
+		return
 	}
 
 	log.Infof("Subject %s successfully authenticated", subject)
@@ -449,6 +497,22 @@ func (d *DBTRepoServer) PutHandlerPubkeyFunc(w http.ResponseWriter, r *http.Requ
 	}
 
 	w.WriteHeader(http.StatusCreated)
+}
+
+type Logger interface {
+	Debug(msg string, args ...any)
+}
+
+type LogrusAdapter struct {
+	logger *logrus.Logger
+}
+
+func (l *LogrusAdapter) Debug(msg string, args ...any) {
+	if len(args) > 0 {
+		msg = fmt.Sprintf(msg, args...)
+	}
+
+	l.logger.Debug(msg)
 }
 
 // Auth Methods
