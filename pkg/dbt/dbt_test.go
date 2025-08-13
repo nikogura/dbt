@@ -19,7 +19,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -189,7 +188,7 @@ func TestFetchTrustStore(t *testing.T) {
 				t.Errorf("File not written")
 			}
 
-			actualBytes, err := ioutil.ReadFile(trustPath)
+			actualBytes, err := os.ReadFile(trustPath)
 			if err != nil {
 				t.Errorf("Error reading trust store: %s", err)
 			}
@@ -362,7 +361,7 @@ func TestNewDbt(t *testing.T) {
 					t.Errorf("Error generating dbt dir: %s", err)
 				}
 
-				err = ioutil.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
+				err = os.WriteFile(fileName, []byte(testDbtConfigContents(port)), 0644)
 				if err != nil {
 					t.Errorf("Error writing config file to %s: %s", fileName, err)
 				}
@@ -383,52 +382,3 @@ func TestGetHomeDir(t *testing.T) {
 	}
 }
 
-func ExampleRunTool() {
-	inputs := []struct {
-		name    string
-		obj     *DBT
-		homedir string
-	}{
-		{
-			"reposerver",
-
-			&DBT{
-				Config:  dbtConfig,
-				Verbose: true,
-			},
-			homeDirRepoServer,
-		},
-		{
-			"s3",
-			&DBT{
-				Config:    s3DbtConfig,
-				Verbose:   true,
-				S3Session: s3Session,
-			},
-			homeDirS3,
-		},
-	}
-
-	for _, tc := range inputs {
-		tc.obj.RunTool("", []string{"catalog", "help"}, tc.homedir, false)
-		// Output: Downloading binary tool "catalog" version 3.0.3.
-		//
-		//Tool for showing available DBT tools.
-
-		//DBT tools are made available in a trusted repository.  This tool show's what's available there.
-		//
-		//	Usage:
-		//  catalog [command]
-		//
-		//Available Commands:
-		//  help        Help about any command
-		//  list        ListCatalog available tools.
-		//
-		//Flags:
-		//  -h, --help       help for catalog
-		//  -v, --versions   Show all version information for tools.
-		//
-		//	Use "catalog [command] --help" for more information about a command.
-
-	}
-}

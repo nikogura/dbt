@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -58,7 +57,7 @@ type AuthOpts struct {
 
 // NewRepoServer creates a new DBTRepoServer object from the config file provided.
 func NewRepoServer(configFilePath string) (server *DBTRepoServer, err error) {
-	c, err := ioutil.ReadFile(configFilePath)
+	c, err := os.ReadFile(configFilePath)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to read config file %q", configFilePath)
 		return server, err
@@ -155,7 +154,7 @@ func (d *DBTRepoServer) HandlePut(path string, body io.ReadCloser, md5sum string
 		}
 	}
 
-	fileBytes, err := ioutil.ReadAll(body)
+	fileBytes, err := io.ReadAll(body)
 
 	// Checksum bytes
 	md5Actual, sha1Actual, sha256Actual, err := gomason.AllChecksumsForBytes(fileBytes)
@@ -187,7 +186,7 @@ func (d *DBTRepoServer) HandlePut(path string, body io.ReadCloser, md5sum string
 	}
 
 	// write file to filesystem.
-	err = ioutil.WriteFile(filePath, fileBytes, 0644)
+	err = os.WriteFile(filePath, fileBytes, 0644)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to write %s", filePath)
 	}
@@ -223,7 +222,7 @@ type PubkeyIdpFile struct {
 
 // LoadPubkeyIdpFile Loads a public key IDP JSON file.
 func LoadPubkeyIdpFile(filePath string) (pkidp PubkeyIdpFile, err error) {
-	fileData, err := ioutil.ReadFile(filePath)
+	fileData, err := os.ReadFile(filePath)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to read idp file %s", filePath)
 		return pkidp, err
@@ -501,14 +500,14 @@ func (d *DBTRepoServer) PutHandlerPubkeyFunc(w http.ResponseWriter, r *http.Requ
 }
 
 type Logger interface {
-	Debug(msg string, args ...interface{})
+	Debug(msg string, args ...any)
 }
 
 type LogrusAdapter struct {
 	logger *logrus.Logger
 }
 
-func (l *LogrusAdapter) Debug(msg string, args ...interface{}) {
+func (l *LogrusAdapter) Debug(msg string, args ...any) {
 	if len(args) > 0 {
 		msg = fmt.Sprintf(msg, args...)
 	}

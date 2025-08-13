@@ -871,7 +871,7 @@ func buildTestRepo() (err error) {
 		return err
 	}
 
-	meta.Options = make(map[string]interface{})
+	meta.Options = make(map[string]any)
 	meta.Options["keyring"] = keyring
 	meta.Options["trustdb"] = trustdb
 	meta.SignInfo = gomason.SignInfo{
@@ -918,7 +918,7 @@ func buildTestRepo() (err error) {
 		return err
 	}
 
-	oldMeta.Options = make(map[string]interface{})
+	oldMeta.Options = make(map[string]any)
 	oldMeta.Options["keyring"] = keyring
 	oldMeta.Options["trustdb"] = trustdb
 	oldMeta.SignInfo = gomason.SignInfo{

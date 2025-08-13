@@ -27,7 +27,6 @@ import (
 	"golang.org/x/net/html"
 	"gopkg.in/cheggaaa/pb.v1"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -276,12 +275,11 @@ func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 
 	if !NOPROGRESS {
 		headResp, err := client.Do(req)
-		defer headResp.Body.Close()
-
 		if err != nil {
 			err = errors.Wrapf(err, "error making request to %s", fileUrl)
 			return err
 		}
+		defer headResp.Body.Close()
 
 		if headResp.StatusCode > 399 {
 			err = errors.New(fmt.Sprintf("unable to request headers for %s: %d %s", fileUrl, headResp.StatusCode, headResp.Status))
@@ -404,7 +402,7 @@ func (dbt *DBT) VerifyFileVersion(fileUrl string, filePath string) (success bool
 	if resp != nil {
 		defer resp.Body.Close()
 
-		checksumBytes, err := ioutil.ReadAll(resp.Body)
+		checksumBytes, err := io.ReadAll(resp.Body)
 
 		if err != nil {
 			success = false
