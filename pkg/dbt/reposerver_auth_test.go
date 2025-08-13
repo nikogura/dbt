@@ -29,28 +29,28 @@ type testKeyPair struct {
 func generateTestKeyPair(t *testing.T, tmpDir string) *testKeyPair {
 	keyPath := fmt.Sprintf("%s/test_key_%d", tmpDir, time.Now().UnixNano())
 	pubKeyPath := keyPath + ".pub"
-	
+
 	// Generate SSH key pair
 	cmd := exec.Command("ssh-keygen", "-t", "rsa", "-b", "3072", "-f", keyPath, "-N", "", "-C", "dbttester@infradel.org")
 	err := cmd.Run()
 	if err != nil {
 		t.Fatalf("Failed to generate SSH key: %s", err)
 	}
-	
+
 	// Read public key
 	pubKeyBytes, err := os.ReadFile(pubKeyPath)
 	if err != nil {
 		t.Fatalf("Failed to read generated public key: %s", err)
 	}
 	publicKey := strings.TrimSpace(string(pubKeyBytes))
-	
+
 	// Read private key
 	privKeyBytes, err := os.ReadFile(keyPath)
 	if err != nil {
 		t.Fatalf("Failed to read generated private key: %s", err)
 	}
 	privateKey := string(privKeyBytes)
-	
+
 	return &testKeyPair{
 		publicKey:  publicKey,
 		privateKey: privateKey,
@@ -245,7 +245,7 @@ func TestRepoServerAuth(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error creating temp dir %q: %s\n", tmpDir, err)
 			}
-			
+
 			// Ensure cleanup even if test fails or times out
 			t.Cleanup(func() {
 				if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
@@ -272,21 +272,21 @@ func TestRepoServerAuth(t *testing.T) {
 			var oldSSHAuthSock string
 			var agentPID string
 			var testKeys *testKeyPair
-			
+
 			if strings.HasPrefix(tc.Name, "pubkey") {
 				// Save current SSH_AUTH_SOCK
 				oldSSHAuthSock = os.Getenv("SSH_AUTH_SOCK")
-				
+
 				// Generate fresh SSH key pair
 				testKeys = generateTestKeyPair(t, tmpDir)
-				
+
 				// Start SSH agent
 				agentCmd := exec.Command("ssh-agent", "-s")
 				agentOut, err := agentCmd.Output()
 				if err != nil {
 					t.Fatalf("Failed to start SSH agent: %s", err)
 				}
-				
+
 				// Parse agent output to get SSH_AUTH_SOCK and SSH_AGENT_PID
 				agentEnv := string(agentOut)
 				for _, line := range strings.Split(agentEnv, "\n") {
@@ -302,37 +302,36 @@ func TestRepoServerAuth(t *testing.T) {
 						os.Setenv("SSH_AGENT_PID", pidStr)
 					}
 				}
-				
+
 				// Add key to agent
 				addKeyCmd := exec.Command("ssh-add", testKeys.keyPath)
 				err = addKeyCmd.Run()
 				if err != nil {
 					t.Fatalf("Failed to add key to SSH agent: %s", err)
 				}
-				
+
 				// Update test case credentials to use generated key
 				tc.AuthPut.credential = testKeys.publicKey
 				tc.AuthGet.credential = testKeys.publicKey
-				
-				
+
 				// Update config template for pubkey-func tests (replace idpFunc commands with simple echo)
 				if strings.Contains(tc.Name, "func") {
 					newEchoCmd := "echo '" + testKeys.publicKey + "'"
-					
+
 					// Replace any idpFunc value with the new echo command
 					re := regexp.MustCompile(`"idpFunc":\s*"[^"]*"`)
 					tc.ConfigTemplate = re.ReplaceAllString(tc.ConfigTemplate, `"idpFunc": "`+newEchoCmd+`"`)
 				}
-				
+
 				// Replace placeholders in auth file
 				updatedAuthFile := strings.ReplaceAll(tc.AuthFile, "{{GENERATED_PUBLIC_KEY}}", testKeys.publicKey)
-				
+
 				// Write updated auth file
 				err = os.WriteFile(idpFile, []byte(updatedAuthFile), 0644)
 				if err != nil {
 					t.Fatalf("Failed creating auth file with generated key %s: %s", idpFile, err)
 				}
-				
+
 				// Cleanup function to kill SSH agent and restore environment
 				cleanupSSH := func() {
 					// Kill the SSH agent process if we started one
@@ -340,7 +339,7 @@ func TestRepoServerAuth(t *testing.T) {
 						killCmd := exec.Command("kill", agentPID)
 						_ = killCmd.Run() // Ignore errors as process might already be dead
 					}
-					
+
 					// Restore original SSH_AUTH_SOCK
 					if oldSSHAuthSock != "" {
 						os.Setenv("SSH_AUTH_SOCK", oldSSHAuthSock)
@@ -348,14 +347,14 @@ func TestRepoServerAuth(t *testing.T) {
 						os.Unsetenv("SSH_AUTH_SOCK")
 					}
 					os.Unsetenv("SSH_AGENT_PID")
-					
+
 					// Clean up key files
 					if testKeys != nil {
 						_ = os.Remove(testKeys.keyPath)
 						_ = os.Remove(testKeys.keyPath + ".pub")
 					}
 				}
-				
+
 				// Register cleanup with both defer (for normal completion) and t.Cleanup (for timeouts/panics)
 				defer cleanupSSH()
 				t.Cleanup(cleanupSSH)
