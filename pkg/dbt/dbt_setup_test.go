@@ -669,7 +669,7 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 
 	if version != "" {
 		_ = lang.Checkout(workDir, meta, version)
-		
+
 		// For old versions (like v3.0.2), copy missing template files that are needed for artifact processing
 		// but didn't exist in that historical version
 		if version == "v3.0.2" {
