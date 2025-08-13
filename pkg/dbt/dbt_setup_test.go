@@ -669,6 +669,20 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 
 	if version != "" {
 		_ = lang.Checkout(workDir, meta, version)
+		
+		// For old versions (like v3.0.2), copy missing template files that are needed for artifact processing
+		// but didn't exist in that historical version
+		if version == "v3.0.2" {
+			templateSrc := filepath.Join(cwd, "templates", "reposerver-description.tmpl")
+			templateDst := filepath.Join(dst, "templates", "reposerver-description.tmpl")
+			if _, err := os.Stat(templateSrc); err == nil {
+				// Source template exists in current version, copy it to old version's working directory
+				templateData, readErr := os.ReadFile(templateSrc)
+				if readErr == nil {
+					_ = os.WriteFile(templateDst, templateData, 0644)
+				}
+			}
+		}
 	}
 
 	err = lang.Build(workDir, meta, "", false)
