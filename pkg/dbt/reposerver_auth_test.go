@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/nikogura/gomason/pkg/gomason"
-	"github.com/orion-labs/jwt-ssh-agent-go/pkg/agentjwt"
+	"github.com/nikogura/jwt-ssh-agent-go/pkg/agentjwt"
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 	"html/template"
@@ -291,7 +291,7 @@ func TestRepoServerAuth(t *testing.T) {
 					case "pubkey":
 						fmt.Printf("Pubkey Authed Request.\n")
 						// use username and pubkey to set Token header
-						token, err := agentjwt.SignedJwtToken(tc.AuthPut.user, tc.AuthPut.credential)
+						token, err := agentjwt.SignedJwtToken("127.0.0.1", tc.AuthPut.user, tc.AuthPut.credential)
 						if err != nil {
 							t.Errorf("failed to sign JWT token: %s", err)
 						}
@@ -344,7 +344,7 @@ func TestRepoServerAuth(t *testing.T) {
 						case "pubkey":
 							fmt.Printf("Pubkey Authed Request.\n")
 							// use username and pubkey to set Token header
-							token, err := agentjwt.SignedJwtToken(tc.AuthGet.user, tc.AuthGet.credential)
+							token, err := agentjwt.SignedJwtToken("127.0.0.1", tc.AuthGet.user, tc.AuthGet.credential)
 							if err != nil {
 								t.Errorf("failed to sign JWT token: %s", err)
 							}

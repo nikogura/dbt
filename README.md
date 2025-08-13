@@ -524,7 +524,7 @@ Create your reposerver config file should be of the form:
 
 #### JWT Auth with Public Keys
 
-See [https://github.com/orion-labs/jwt-ssh-agent-go#background](https://github.com/orion-labs/jwt-ssh-agent-go#background) for details.
+See [https://github.com/nikogura/jwt-ssh-agent-go#background](https://github.com/nikogura/jwt-ssh-agent-go#background) for details.
 
 ##### Public Keys Mapped to Users in a File
 

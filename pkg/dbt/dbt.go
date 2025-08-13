@@ -296,7 +296,7 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 
 	if !ok {
 		dbt.VerboseOutput("File at %s does not match latest", binaryPath)
-		_, _ = fmt.Fprint(os.Stderr, fmt.Sprintf("Newer version of dbt available: %s\n\n", latest))
+		_, _ = fmt.Fprintf(os.Stderr, "Newer version of dbt available: %s\n\n", latest)
 	}
 
 	return ok, err

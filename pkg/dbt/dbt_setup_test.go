@@ -89,7 +89,7 @@ func TestMain(m *testing.M) {
 func setUp() (err error) {
 	dir, err := os.MkdirTemp("", "dbt")
 	if err != nil {
-		err = errors.Wrapf(err, "Error creating temp dir %q", tmpDir)
+		err = errors.Wrapf(err, "Error creating temp dir %q", dir)
 		return err
 	}
 
@@ -263,6 +263,14 @@ func tearDown() {
 	testServer.Close()
 	if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
 		_ = os.Remove(tmpDir)
+	}
+	
+	_, err := os.Stat(tmpDir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			err = os.RemoveAll(tmpDir)
+			log.Fatalf("cleanup failed: %s", err)
+		}
 	}
 }
 
@@ -546,8 +554,8 @@ func createTestKeys(keyring string, trustdb string) (err error) {
 	defaultKeyText := `%echo Generating a default key
 %no-protection
 %transient-key
-Key-Type: default
-Subkey-Type: default
+Key-Type: RSA
+Subkey-Type: RSA
 Name-Real: Gomason Tester
 Name-Comment: with no passphrase
 Name-Email: tester@nikogura.com

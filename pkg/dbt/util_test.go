@@ -16,16 +16,17 @@ package dbt
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSemverParse(t *testing.T) {
 	testParts := exampleVersionParts()
 	processedParts, err := SemverParse(exampleVersion())
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Error parsing semver string: %s", err))
+		fmt.Printf("Error parsing semver string: %s\n", err)
 		t.Fail()
 	}
 
@@ -54,14 +55,14 @@ func TestFileSha256(t *testing.T) {
 	err := ioutil.WriteFile(fileName, []byte(testFileContents()), 0644)
 
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Error writing test file: %s", err))
+		fmt.Printf("Error writing test file: %s\n", err)
 		t.Fail()
 	}
 
 	checksum, err := FileSha256(fileName)
 
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Couldn't get checksum for file %q: %s", fileName, err))
+		fmt.Printf("Couldn't get checksum for file %q: %s\n", fileName, err)
 		t.Fail()
 	}
 
@@ -75,14 +76,14 @@ func TestFileSha1(t *testing.T) {
 	err := ioutil.WriteFile(fileName, []byte(testFileContents()), 0644)
 
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Error writing test file: %s", err))
+		fmt.Printf("Error writing test file: %s\n", err)
 		t.Fail()
 	}
 
 	checksum, err := FileSha1(fileName)
 
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Couldn't get checksum for file %q: %s", fileName, err))
+		fmt.Printf("Couldn't get checksum for file %q: %s\n", fileName, err)
 		t.Fail()
 	}
 

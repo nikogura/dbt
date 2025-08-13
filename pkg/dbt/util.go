@@ -20,14 +20,16 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"github.com/orion-labs/jwt-ssh-agent-go/pkg/agentjwt"
+	"github.com/nikogura/jwt-ssh-agent-go/pkg/agentjwt"
 	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -264,7 +266,7 @@ func GetFunc(shellCommand string) (result string, err error) {
 }
 
 // GetFuncUsername runs a shell command that is a getter function for the username.  This could certainly be dangerous, so be careful how you use it.
-func GetFuncUsername(shellCommand string, username string) (result string, err error) {
+func GetFuncUsername(shellCommand string, username string) (result []string, err error) {
 	// add the username as the first arg of the shell command
 	shellCommand = fmt.Sprintf("%s %s", shellCommand, username)
 
@@ -295,7 +297,9 @@ func GetFuncUsername(shellCommand string, username string) (result string, err e
 		return result, err
 	}
 
-	result = strings.TrimSuffix(string(stdoutBytes), "\n")
+	result = make([]string, 0)
+
+	result = append(result, strings.TrimSuffix(string(stdoutBytes), "\n"))
 
 	return result, err
 }
@@ -354,12 +358,20 @@ func (dbt *DBT) AuthHeaders(r *http.Request) (err error) {
 		}
 	}
 
+	// Extract the domain from the repo server
+	domain, err := ExtractDomain(dbt.Config.Dbt.Repo)
+	if err != nil {
+		err = errors.Wrapf(err, "failed extracting domain from configured dbt repo url %s", dbt.Config.Dbt.Repo)
+		return err
+	}
+
 	// Don't try to sign a token if we don't actually have a public key
 	if pubkey != "" {
 		// use username and pubkey to set Token header
-		token, err := agentjwt.SignedJwtToken(username, pubkey)
+		token, err := agentjwt.SignedJwtToken(domain, username, pubkey)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to sign JWT token")
+			return err
 		}
 
 		if token != "" {
@@ -369,3 +381,25 @@ func (dbt *DBT) AuthHeaders(r *http.Request) (err error) {
 
 	return err
 }
+
+func ExtractDomain(urlLikeString string) (domain string, err error) {
+	urlLikeString = strings.TrimSpace(urlLikeString)
+
+	if regexp.MustCompile(`^https?`).MatchString(urlLikeString) {
+		read, _ := url.Parse(urlLikeString)
+		urlLikeString = read.Host
+	}
+
+	if regexp.MustCompile(`^www\.`).MatchString(urlLikeString) {
+		urlLikeString = regexp.MustCompile(`^www\.`).ReplaceAllString(urlLikeString, "")
+	}
+
+	domain = regexp.MustCompile(`([a-z0-9\-]+\.)*[a-z0-9\-]+`).FindString(urlLikeString)
+	if domain == "" {
+		err = errors.New(fmt.Sprintf("failed parsing domain from %s", urlLikeString))
+		return domain, err
+	}
+
+	return domain, err
+}
+
