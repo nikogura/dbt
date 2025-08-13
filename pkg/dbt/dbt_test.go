@@ -381,4 +381,3 @@ func TestGetHomeDir(t *testing.T) {
 		t.Errorf("Error getting homedir: %s", err)
 	}
 }
-
