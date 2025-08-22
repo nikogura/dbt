@@ -2,7 +2,7 @@ package cmd
 import (
     "fmt"
     "os"
-    "{{.ProjectPackage}}/pkg/{{.ProjectName}}"
+    "{{.ProjectPackage}}/pkg/{{.ProjectPackageName}}"
     homedir "github.com/mitchellh/go-homedir"
     "github.com/spf13/cobra"
     "github.com/spf13/viper"
@@ -19,7 +19,7 @@ var rootCmd = &cobra.Command{
     // Uncomment the following line if your bare application
     // has an action associated with it:
     Run: func(cmd *cobra.Command, args []string) {
-        {{.ProjectName}}.Run()
+        {{.ProjectPackageName}}.Run()
     },
 }
 

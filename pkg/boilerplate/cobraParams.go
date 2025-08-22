@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"github.com/pkg/errors"
 	"io"
+	"strings"
 )
 
 type CobraCliToolParams struct {
@@ -53,6 +54,9 @@ func (cp CobraCliToolParams) AsMap() (output map[string]interface{}, err error) 
 		err = errors.Wrapf(err, "failed to unmarshal data just marshalled")
 		return output, err
 	}
+
+	// Add a Go package-safe version of ProjectName
+	output["ProjectPackageName"] = strings.ReplaceAll(cp.ProjectName, "-", "")
 
 	return output, err
 }
