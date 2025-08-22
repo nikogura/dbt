@@ -292,7 +292,7 @@ func TestModuleValidations(t *testing.T) {
 					break
 				}
 			}
-			
+
 			if allValid != tt.isValid {
 				if tt.isValid {
 					t.Errorf("Expected %s to be valid but validation failed", tt.input)
