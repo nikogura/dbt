@@ -9,6 +9,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    outputs:
+      semver: ${{steps.semver.outputs.version_tag}}
     
     steps:
     - uses: actions/checkout@v4
