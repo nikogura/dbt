@@ -12,21 +12,17 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
+
+    - name: Semver
+      uses: paulhatch/semantic-version@v5.1.0
+      with:
+        bump_each_commit: true
+      id: semver
     
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: '1.22.4'
-    
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-1.22.4-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-1.22.4-
     
     - name: Install dependencies
       run: |
@@ -47,3 +43,24 @@ jobs:
         file: ./coverage.txt
         token: ${{ secrets.CODECOV_TOKEN }}
         verbose: true
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Tag Repo
+        uses: mathieudutour/github-tag-action@v6.1
+        with:
+          github_token: ${{secrets.TAGGING_PAT}}
+          custom_tag: ${{needs.test.outputs.semver}}
+          tag_prefix: ""
+
+      - name: Publish Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.TAGGING_PAT }}
+        with:
+          tag_name: ${{needs.test.outputs.semver}}
+          release_name: ${{needs.test.outputs.semver}}
+          draft: false
+          prerelease: false
