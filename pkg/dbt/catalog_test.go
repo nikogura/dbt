@@ -80,18 +80,6 @@ func TestFetchTools(t *testing.T) {
 				Version:       "",
 				Description:   "",
 			},
-			{
-				Name:          "catalog",
-				FormattedName: "",
-				Version:       "",
-				Description:   "",
-			},
-			{
-				Name:          "reposerver",
-				FormattedName: "",
-				Version:       "",
-				Description:   "",
-			},
 		}
 
 		assert.Equal(t, expected, actual, "returned list of tools meets expectations")
