@@ -35,7 +35,7 @@ jobs:
       with:
         bump_each_commit: true
         tag_prefix: ""
-        format: "${major}.${minor}.${patch}"
+        version_format: "${major}.${minor}.${patch}"
       id: semver
     
     - name: Set up Go
@@ -54,7 +54,13 @@ jobs:
         gpg-agent --daemon --allow-preset-passphrase || true
     
     - name: Run tests
-      run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+      run: |
+        # Clean up any existing test artifacts to ensure clean state
+        sudo rm -rf /tmp/dbt* || true
+        # Ensure we have adequate disk space for tests
+        df -h /tmp
+        # Run tests with timeout to prevent hanging
+        timeout 10m go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
