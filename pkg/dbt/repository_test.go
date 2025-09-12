@@ -50,12 +50,12 @@ func TestToolExists(t *testing.T) {
 
 	for _, tc := range inputs {
 		t.Run(tc.name, func(t *testing.T) {
-			exists, err := tc.obj.ToolExists("boilerplate")
+			exists, err := tc.obj.ToolExists("catalog")
 			if err != nil {
-				t.Errorf("Failed to check repo for %q: %s\n", "boilerplate", err)
+				t.Errorf("Failed to check repo for %q: %s\n", "catalog", err)
 			}
 			if !exists {
-				t.Errorf("Tool %q does not exist in repo %s\n", "boilerplate", tc.obj.Config.Tools.Repo)
+				t.Errorf("Tool %q does not exist in repo %s\n", "catalog", tc.obj.Config.Tools.Repo)
 			}
 
 			fakeToolName := "bar"
@@ -100,7 +100,7 @@ func TestToolVersionExists(t *testing.T) {
 
 	for _, tc := range inputs {
 		t.Run(tc.name, func(t *testing.T) {
-			toolName := "boilerplate"
+			toolName := "catalog"
 
 			ok, err := tc.obj.ToolVersionExists(toolName, VERSION)
 			if err != nil {
@@ -152,7 +152,7 @@ func TestFetchToolVersions(t *testing.T) {
 
 	for _, tc := range inputs {
 		t.Run(tc.name, func(t *testing.T) {
-			toolName := "boilerplate"
+			toolName := "catalog"
 
 			versions, err := tc.obj.FetchToolVersions(toolName)
 			if err != nil {

@@ -331,30 +331,6 @@ func createTestFilesA(toolRoot string, version string, dbtRoot string) (testFile
 	testFiles = make(map[string]*testFile)
 	files := []*testFile{
 		{
-			Name:     "boilerplate-description.txt",
-			FilePath: fmt.Sprintf("%s/boilerplate/%s/description.txt", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/description.txt", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "boilerplate-description.txt.asc",
-			FilePath: fmt.Sprintf("%s/boilerplate/%s/description.txt.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/description.txt.asc", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "boilerplate_linux_amd64",
-			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/linux/amd64/boilerplate", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "boilerplate_linux_amd64.asc",
-			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/linux/amd64/boilerplate.asc", version),
-			Repo:     "dbt-tools",
-		},
-		{
 			Name:     "catalog-description.txt",
 			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt", version),
@@ -376,30 +352,6 @@ func createTestFilesA(toolRoot string, version string, dbtRoot string) (testFile
 			Name:     "catalog_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog.asc", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "reposerver-description.txt",
-			FilePath: fmt.Sprintf("%s/reposerver/%s/description.txt", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/description.txt", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "reposerver-description.txt.asc",
-			FilePath: fmt.Sprintf("%s/reposerver/%s/description.txt.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/description.txt.asc", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "reposerver_linux_amd64",
-			FilePath: fmt.Sprintf("%s/reposerver/%s/linux/amd64/reposerver", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/linux/amd64/reposerver", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "reposerver_linux_amd64.asc",
-			FilePath: fmt.Sprintf("%s/reposerver/%s/linux/amd64/reposerver.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/linux/amd64/reposerver.asc", version),
 			Repo:     "dbt-tools",
 		},
 		{
@@ -452,30 +404,6 @@ func createTestFilesB(toolRoot string, version string, dbtRoot string) (testFile
 	testFiles = make(map[string]*testFile)
 	files := []*testFile{
 		{
-			Name:     "boilerplate-description.txt",
-			FilePath: fmt.Sprintf("%s/boilerplate/%s/description.txt", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/description.txt", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "boilerplate-description.txt.asc",
-			FilePath: fmt.Sprintf("%s/boilerplate/%s/description.txt.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/description.txt.asc", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "boilerplate_linux_amd64",
-			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/linux/amd64/boilerplate", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "boilerplate_linux_amd64.asc",
-			FilePath: fmt.Sprintf("%s/boilerplate/%s/linux/amd64/boilerplate.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/boilerplate/%s/linux/amd64/boilerplate.asc", version),
-			Repo:     "dbt-tools",
-		},
-		{
 			Name:     "catalog-description.txt",
 			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt", version),
@@ -497,30 +425,6 @@ func createTestFilesB(toolRoot string, version string, dbtRoot string) (testFile
 			Name:     "catalog_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog.asc", toolRoot, version),
 			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog.asc", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "reposerver-description.txt",
-			FilePath: fmt.Sprintf("%s/reposerver/%s/description.txt", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/description.txt", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "reposerver-description.txt.asc",
-			FilePath: fmt.Sprintf("%s/reposerver/%s/description.txt.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/description.txt.asc", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "reposerver_linux_amd64",
-			FilePath: fmt.Sprintf("%s/reposerver/%s/linux/amd64/reposerver", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/linux/amd64/reposerver", version),
-			Repo:     "dbt-tools",
-		},
-		{
-			Name:     "reposerver_linux_amd64.asc",
-			FilePath: fmt.Sprintf("%s/reposerver/%s/linux/amd64/reposerver.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/reposerver/%s/linux/amd64/reposerver.asc", version),
 			Repo:     "dbt-tools",
 		},
 		{
@@ -683,19 +587,6 @@ func buildSource(meta gomason.Metadata, version string, sourceDir string, testfi
 	if version != "" {
 		_ = lang.Checkout(workDir, meta, version)
 
-		// For old versions (like v3.0.2), copy missing template files that are needed for artifact processing
-		// but didn't exist in that historical version
-		if version == "v3.0.2" {
-			templateSrc := filepath.Join(cwd, "templates", "reposerver-description.tmpl")
-			templateDst := filepath.Join(dst, "templates", "reposerver-description.tmpl")
-			if _, err := os.Stat(templateSrc); err == nil {
-				// Source template exists in current version, copy it to old version's working directory
-				templateData, readErr := os.ReadFile(templateSrc)
-				if readErr == nil {
-					_ = os.WriteFile(templateDst, templateData, 0644)
-				}
-			}
-		}
 	}
 
 	err = lang.Build(workDir, meta, "", false)

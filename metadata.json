@@ -32,16 +32,6 @@
         "template": "templates/catalog-description.tmpl",
         "filename": "catalog-description.txt",
         "executable": false
-      },
-      {
-        "template": "templates/boilerplate-description.tmpl",
-        "filename": "boilerplate-description.txt",
-        "executable": false
-      },
-      {
-        "template": "templates/reposerver-description.tmpl",
-        "filename": "reposerver-description.txt",
-        "executable": false
       }
     ]
   },
@@ -100,55 +90,6 @@
         "dst": "{{.ToolRepository}}/catalog/{{.Version}}/linux/amd64/catalog",
         "sig": true,
         "checksums": true
-      },
-      {
-        "src": "boilerplate-description.txt",
-        "dst": "{{.ToolRepository}}/boilerplate/{{.Version}}/description.txt",
-        "sig": true,
-        "checksums": true
-      },
-      {
-        "src": "boilerplate_darwin_amd64",
-        "dst": "{{.ToolRepository}}/boilerplate/{{.Version}}/darwin/amd64/boilerplate",
-        "sig": true,
-        "checksums": true
-      },
-      {
-        "src": "boilerplate_darwin_arm64",
-        "dst": "{{.ToolRepository}}/boilerplate/{{.Version}}/darwin/arm64/boilerplate",
-        "sig": true,
-        "checksums": true
-      },
-      {
-        "src": "boilerplate_linux_amd64",
-        "dst": "{{.ToolRepository}}/boilerplate/{{.Version}}/linux/amd64/boilerplate",
-        "sig": true,
-        "checksums": true
-      },
-      {
-        "src": "reposerver-description.txt",
-        "dst": "{{.ToolRepository}}/reposerver/{{.Version}}/description.txt",
-        "sig": true,
-        "checksums": true
-      },
-      {
-        "src": "reposerver_darwin_amd64",
-        "dst": "{{.ToolRepository}}/reposerver/{{.Version}}/darwin/amd64/reposerver",
-        "sig": true,
-        "checksums": true
-      },
-      {
-        "src": "reposerver_darwin_arm64",
-        "dst": "{{.ToolRepository}}/reposerver/{{.Version}}/darwin/arm64/reposerver",
-        "sig": true,
-        "checksums": true
-      },
-      {
-        "src": "reposerver_linux_amd64",
-        "dst": "{{.ToolRepository}}/reposerver/{{.Version}}/linux/amd64/reposerver",
-        "sig": true,
-        "checksums": true
-      }
-    ]
+      }    ]
   }
 }
