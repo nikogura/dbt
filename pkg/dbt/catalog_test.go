@@ -75,7 +75,7 @@ func TestFetchTools(t *testing.T) {
 
 		expected := []Tool{
 			{
-				Name:          "boilerplate",
+				Name:          "catalog",
 				FormattedName: "",
 				Version:       "",
 				Description:   "",

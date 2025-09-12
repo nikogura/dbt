@@ -279,7 +279,6 @@ Output:
 ```
 Commands:
     Command Name        Latest Version      Description
-    boilerplate         3.0.4              A tool boilerplate generating tool for DBT
     catalog             3.0.4              Tool for showing available DBT tools
     reposerver          3.0.4              A tool repository server for DBT
 ```
@@ -296,14 +295,14 @@ dbt reposerver -f /path/to/config
 - **ssh-agent-file**: JWT authentication with SSH keys from files
 - **ssh-agent-func**: JWT authentication with SSH keys from shell functions
 
-### Boilerplate  
-Project template generator for creating new tools.
+## Related Tools
 
-```bash
-dbt boilerplate
-```
+Tools created specifically for use with DBT.
 
-Generates working project stubs with proper DBT integration.
+### Boilerplate 
+Project template generator for creating new tools. [https://github.com/nikogura/boilerplate](https://github.com/nikogura/boilerplate)
+
+The boilerplate tool helps generate working project stubs with proper DBT integration and is now maintained separately.
 
 ## Advanced Topics
 
@@ -415,9 +414,10 @@ DBT is designed to be extensible. Create your own tools by:
 3. Publishing to your repository
 4. Users automatically get access via `dbt catalog list`
 
-For template-based tool creation, use:
+For template-based tool creation, use the standalone [Boilerplate project](https://github.com/nikogura/boilerplate):
 ```bash
-dbt boilerplate
+go install github.com/nikogura/boilerplate@latest
+boilerplate
 ```
 
 ## License
