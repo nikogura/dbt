@@ -15,14 +15,22 @@ jobs:
   test:
     runs-on: ubuntu-latest
     outputs:
-      semver: ${{steps.semver.outputs.version_tag}}
+      semver: ${{steps.version.outputs.version_tag}}
     
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
-    - name: Semver
+    - name: Get Version from metadata.json
+      id: version
+      run: |
+        VERSION=$(jq -r '.version' metadata.json)
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "version_tag=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version from metadata.json: $VERSION"
+    
+    - name: Semver (fallback)
       uses: paulhatch/semantic-version@v5.4.0
       with:
         bump_each_commit: true
