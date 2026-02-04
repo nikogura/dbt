@@ -16,7 +16,7 @@ package dbt
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -52,7 +52,7 @@ func TestVersionIsNewerThan(t *testing.T) {
 func TestFileSha256(t *testing.T) {
 	fileName := fmt.Sprintf("%s/%s", tmpDir, "foo")
 
-	err := ioutil.WriteFile(fileName, []byte(testFileContents()), 0644)
+	err := os.WriteFile(fileName, []byte(testFileContents()), 0644)
 
 	if err != nil {
 		fmt.Printf("Error writing test file: %s\n", err)
@@ -73,7 +73,7 @@ func TestFileSha256(t *testing.T) {
 func TestFileSha1(t *testing.T) {
 	fileName := fmt.Sprintf("%s/%s", tmpDir, "foo")
 
-	err := ioutil.WriteFile(fileName, []byte(testFileContents()), 0644)
+	err := os.WriteFile(fileName, []byte(testFileContents()), 0644)
 
 	if err != nil {
 		fmt.Printf("Error writing test file: %s\n", err)
@@ -98,13 +98,14 @@ func TestStringInSlice(t *testing.T) {
 	assert.True(t, StringInSlice(testStringTrue(), exampleSlice()), "Expected string found in slice")
 	assert.False(t, StringInSlice(testStringFalse(), exampleSlice()), "Unexpected string not found in slice")
 }
-func exampleVersion() string {
-	return "1.2.3"
+func exampleVersion() (version string) {
+	version = "1.2.3"
+	return version
 }
 
-func exampleVersionParts() []int {
-
-	return []int{1, 2, 3}
+func exampleVersionParts() (parts []int) {
+	parts = []int{1, 2, 3}
+	return parts
 }
 
 func testVersionList() (versions []string) {
@@ -120,30 +121,37 @@ func testVersionList() (versions []string) {
 	return versions
 }
 
-func testLatestVersion() string {
-	return "2.0.1"
+func testLatestVersion() (version string) {
+	version = "2.0.1"
+	return version
 }
 
-func testFileContents() string {
-	return "The quick fox jumped over the lazy brown dog."
+func testFileContents() (contents string) {
+	contents = "The quick fox jumped over the lazy brown dog."
+	return contents
 }
 
-func testFileChecksumSha256() string {
-	return "1b47f99f277cad8c5e31f21e688e4d0b8803cb591b0383e2319869b520d061a1"
+func testFileChecksumSha256() (checksum string) {
+	checksum = "1b47f99f277cad8c5e31f21e688e4d0b8803cb591b0383e2319869b520d061a1"
+	return checksum
 }
 
-func testFileChecksumSha1() string {
-	return "5b7c9753dd9800a16969bf65e2330b40e657277b"
+func testFileChecksumSha1() (checksum string) {
+	checksum = "5b7c9753dd9800a16969bf65e2330b40e657277b"
+	return checksum
 }
 
-func exampleSlice() []string {
-	return []string{"foo", "bar", "baz", "wip", "zoz"}
+func exampleSlice() (slice []string) {
+	slice = []string{"foo", "bar", "baz", "wip", "zoz"}
+	return slice
 }
 
-func testStringTrue() string {
-	return "bar"
+func testStringTrue() (str string) {
+	str = "bar"
+	return str
 }
 
-func testStringFalse() string {
-	return "fargle"
+func testStringFalse() (str string) {
+	str = "fargle"
+	return str
 }

@@ -1,25 +1,40 @@
-FROM golang:1.15.4-alpine3.12
+# Build stage - use Debian to match distroless runtime (glibc, not musl)
+FROM golang:1.24-bookworm AS builder
 
-RUN mkdir -p /go/src/github.com/nikogura/dbt
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 
-COPY . /go/src/github.com/nikogura/dbt
+# Set working directory
+WORKDIR /build
 
-WORKDIR /go/src/github.com/nikogura/dbt
+# Copy go mod files
+COPY go.mod go.sum ./
 
-RUN go build github.com/nikogura/dbt/cmd/reposerver
+# Download dependencies
+RUN go mod download
 
-RUN mv reposerver /usr/local/bin
+# Copy source code
+COPY . .
 
-RUN cp dockerfiles/reposerver/entrypoint.sh /
+# Build the reposerver binary - static, no CGO
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s -extldflags '-static'" \
+    -o /bin/reposerver ./cmd/reposerver
 
-WORKDIR /
+# Final stage - distroless
+FROM gcr.io/distroless/static-debian12:nonroot
 
-RUN mkdir /var/dbt
-RUN mkdir /etc/dbt
+# Copy binary from builder
+COPY --from=builder /bin/reposerver /reposerver
 
-ENV ADDRESS 0.0.0.0
-ENV PORT 9999
-ENV SERVER_ROOT /var/dbt
-ENV CONFIG_FILE /etc/dbt/reposerver.json
+# Expose the default port
+EXPOSE 9999
 
-ENTRYPOINT ["/entrypoint.sh"]
+# Run as non-root user (distroless nonroot user is uid 65532)
+USER nonroot:nonroot
+
+# Default command with flags for container environment
+# Address 0.0.0.0 is required for Docker networking
+# Config file and server root should be mounted at runtime
+ENTRYPOINT ["/reposerver"]
+CMD ["-a", "0.0.0.0", "-p", "9999", "-r", "/var/dbt"]

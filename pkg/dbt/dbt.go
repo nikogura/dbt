@@ -15,11 +15,9 @@
 package dbt
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/mitchellh/go-homedir"
-	"github.com/pkg/errors"
 	"io"
 	"log"
 	"net/http"
@@ -28,38 +26,44 @@ import (
 	"runtime"
 	"syscall"
 	"time"
+
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/mitchellh/go-homedir"
+	"github.com/pkg/errors"
 )
 
-// DbtDir is the standard dbt directory.  Usually ~/.dbt
+// DbtDir is the standard dbt directory.  Usually ~/.dbt.
 const DbtDir = ".dbt"
 
-// TrustDir is the directory under the dbt dir where the trust store is downloaded to
+// TrustDir is the directory under the dbt dir where the trust store is downloaded to.
 const TrustDir = DbtDir + "/trust"
 
-// ToolDir is the directory where tools get downloaded to
+// ToolDir is the directory where tools get downloaded to.
 const ToolDir = DbtDir + "/tools"
 
-// ConfigDir is the directory where Dbt expects to find configuration info
+// ConfigDir is the directory where Dbt expects to find configuration info.
 const ConfigDir = DbtDir + "/conf"
 
-// ConfigFilePath is the actual dbt config file path
+// ConfigFilePath is the actual dbt config file path.
 const ConfigFilePath = ConfigDir + "/dbt.json"
 
-// TruststorePath is the actual file path to the downloaded trust store
+// TruststorePath is the actual file path to the downloaded trust store.
 const TruststorePath = TrustDir + "/truststore"
 
-// VERSION DBT's version
+// VERSION is DBT's version.
 const VERSION = "3.6.1"
 
-// DBT the dbt object itself
+// DBT is the dbt object itself.
 type DBT struct {
-	Config    Config
-	Verbose   bool
-	Logger    *log.Logger
-	S3Session *session.Session
+	Config     Config
+	ServerName string // Name of the server being used (for multi-server support)
+	Verbose    bool
+	Logger     *log.Logger
+	S3Session  *session.Session
+	OIDCClient *OIDCClient // Client for OIDC token exchange (nil if not using OIDC)
 }
 
-// Config  configuration of the dbt object
+// Config is the configuration of the dbt object.
 type Config struct {
 	Dbt          DbtConfig   `json:"dbt"`
 	Tools        ToolsConfig `json:"tools"`
@@ -70,24 +74,183 @@ type Config struct {
 	Pubkey       string      `json:"pubkey,omitempty"`
 	PubkeyPath   string      `json:"pubkeypath,omitempty"`
 	PubkeyFunc   string      `json:"pubkeyfunc,omitempty"`
+	// OIDC authentication options (RFC 8693 token exchange)
+	AuthType     string `json:"authType,omitempty"`     // "oidc" for OIDC auth, empty for legacy SSH-agent auth
+	IssuerURL    string `json:"issuerUrl,omitempty"`    // OIDC issuer URL for token exchange
+	OIDCAudience string `json:"oidcAudience,omitempty"` // Target audience for OIDC tokens (e.g., "dbt-server")
+	ConnectorID  string `json:"connectorId,omitempty"`  // Connector ID for providers that support it (e.g., "ssh" for Dex)
 }
 
-// DbtConfig internal config of dbt
+// DbtConfig is the internal config of dbt.
 type DbtConfig struct {
 	Repo       string `json:"repository"`
 	TrustStore string `json:"truststore"`
 }
 
-// ToolsConfig is the config information for the tools to be downloaded and run
+// ToolsConfig is the config information for the tools to be downloaded and run.
 type ToolsConfig struct {
 	Repo string `json:"repository"`
 }
 
-// NewDbt  creates a new dbt object
+// ServerConfig holds configuration for a single dbt server.
+type ServerConfig struct {
+	Repository      string `json:"repository"`
+	Truststore      string `json:"truststore,omitempty"`
+	ToolsRepository string `json:"toolsRepository,omitempty"`
+	AuthType        string `json:"authType,omitempty"`
+	IssuerURL       string `json:"issuerUrl,omitempty"`
+	OIDCAudience    string `json:"oidcAudience,omitempty"`
+	ConnectorID     string `json:"connectorId,omitempty"`
+}
+
+// MultiServerConfig holds the top-level config with multiple servers.
+type MultiServerConfig struct {
+	Servers       map[string]ServerConfig `json:"servers,omitempty"`
+	DefaultServer string                  `json:"defaultServer,omitempty"`
+	// Legacy fields for backward compatibility
+	Dbt   *DbtConfig   `json:"dbt,omitempty"`
+	Tools *ToolsConfig `json:"tools,omitempty"`
+	// Legacy auth fields
+	Username     string `json:"username,omitempty"`
+	Password     string `json:"password,omitempty"`
+	UsernameFunc string `json:"usernamefunc,omitempty"`
+	PasswordFunc string `json:"passwordfunc,omitempty"`
+	Pubkey       string `json:"pubkey,omitempty"`
+	PubkeyPath   string `json:"pubkeypath,omitempty"`
+	PubkeyFunc   string `json:"pubkeyfunc,omitempty"`
+	AuthType     string `json:"authType,omitempty"`
+	IssuerURL    string `json:"issuerUrl,omitempty"`
+	OIDCAudience string `json:"oidcAudience,omitempty"`
+	ConnectorID  string `json:"connectorId,omitempty"`
+}
+
+// DbtServerEnv is the environment variable for selecting a server.
+const DbtServerEnv = "DBT_SERVER"
+
+// SelectServer returns the ServerConfig for the specified server name.
+// Priority: cliFlag > envVar > configDefault > first server > legacy config.
+func (c *MultiServerConfig) SelectServer(cliFlag string) (server ServerConfig, name string, err error) {
+	// Check CLI flag first
+	if cliFlag != "" {
+		srv, ok := c.Servers[cliFlag]
+		if ok {
+			name = cliFlag
+			server = srv
+			return server, name, err
+		}
+		err = fmt.Errorf("server %q not found in config", cliFlag)
+		return server, name, err
+	}
+
+	// Check environment variable
+	envServer := os.Getenv(DbtServerEnv)
+	if envServer != "" {
+		srv, ok := c.Servers[envServer]
+		if ok {
+			name = envServer
+			server = srv
+			return server, name, err
+		}
+		err = fmt.Errorf("server %q (from %s) not found in config", envServer, DbtServerEnv)
+		return server, name, err
+	}
+
+	// Check config default
+	if c.DefaultServer != "" {
+		srv, ok := c.Servers[c.DefaultServer]
+		if ok {
+			name = c.DefaultServer
+			server = srv
+			return server, name, err
+		}
+	}
+
+	// Use first server if available
+	for serverName, srv := range c.Servers {
+		name = serverName
+		server = srv
+		return server, name, err
+	}
+
+	// Fall back to legacy config
+	if c.Dbt != nil {
+		name = "default"
+		server = c.toLegacyServer()
+		return server, name, err
+	}
+
+	err = errors.New("no servers configured")
+	return server, name, err
+}
+
+// toLegacyServer converts legacy config fields to a ServerConfig.
+func (c *MultiServerConfig) toLegacyServer() (server ServerConfig) {
+	if c.Dbt != nil {
+		server.Repository = c.Dbt.Repo
+		server.Truststore = c.Dbt.TrustStore
+	}
+	if c.Tools != nil {
+		server.ToolsRepository = c.Tools.Repo
+	}
+	server.AuthType = c.AuthType
+	server.IssuerURL = c.IssuerURL
+	server.OIDCAudience = c.OIDCAudience
+	server.ConnectorID = c.ConnectorID
+	return server
+}
+
+// ToConfig converts a selected ServerConfig back to a legacy Config for use with existing code.
+func (c *MultiServerConfig) ToConfig(server ServerConfig) (config Config) {
+	config.Dbt = DbtConfig{
+		Repo:       server.Repository,
+		TrustStore: server.Truststore,
+	}
+	config.Tools = ToolsConfig{
+		Repo: server.ToolsRepository,
+	}
+	// Copy legacy auth fields
+	config.Username = c.Username
+	config.Password = c.Password
+	config.UsernameFunc = c.UsernameFunc
+	config.PasswordFunc = c.PasswordFunc
+	config.Pubkey = c.Pubkey
+	config.PubkeyPath = c.PubkeyPath
+	config.PubkeyFunc = c.PubkeyFunc
+	// Use server-specific auth settings if present, otherwise fall back to top-level
+	if server.AuthType != "" {
+		config.AuthType = server.AuthType
+	} else {
+		config.AuthType = c.AuthType
+	}
+	if server.IssuerURL != "" {
+		config.IssuerURL = server.IssuerURL
+	} else {
+		config.IssuerURL = c.IssuerURL
+	}
+	if server.OIDCAudience != "" {
+		config.OIDCAudience = server.OIDCAudience
+	} else {
+		config.OIDCAudience = c.OIDCAudience
+	}
+	if server.ConnectorID != "" {
+		config.ConnectorID = server.ConnectorID
+	} else {
+		config.ConnectorID = c.ConnectorID
+	}
+	return config
+}
+
+// IsMultiServer returns true if the config uses the multi-server format.
+func (c *MultiServerConfig) IsMultiServer() (result bool) {
+	result = len(c.Servers) > 0
+	return result
+}
+
+// NewDbt creates a new dbt object.
 func NewDbt(homedir string) (dbt *DBT, err error) {
-	config, err := LoadDbtConfig(homedir, false)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to load config file")
+	config, configErr := LoadDbtConfig(homedir, false)
+	if configErr != nil {
+		err = errors.Wrapf(configErr, "failed to load config file")
 	}
 
 	dbt = &DBT{
@@ -97,16 +260,12 @@ func NewDbt(homedir string) (dbt *DBT, err error) {
 	}
 
 	ok, s3meta := S3Url(config.Dbt.Repo)
-	if err != nil {
-		err = errors.Wrapf(err, "failed checking to see if repo url is in s3")
-		return dbt, err
-	}
 
 	if ok {
 		if dbt.S3Session == nil {
-			s3Session, err := DefaultSession(&s3meta)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to create s3 session")
+			s3Session, sessionErr := DefaultSession(&s3meta)
+			if sessionErr != nil {
+				err = errors.Wrapf(sessionErr, "failed to create s3 session")
 				return dbt, err
 			}
 
@@ -114,20 +273,131 @@ func NewDbt(homedir string) (dbt *DBT, err error) {
 		}
 	}
 
+	// Initialize OIDC client if configured
+	if config.AuthType == "oidc" {
+		oidcConfig := &OIDCClientConfig{
+			IssuerURL:    config.IssuerURL,
+			OIDCAudience: config.OIDCAudience,
+			OIDCUsername: config.Username,
+			ConnectorID:  config.ConnectorID,
+		}
+		oidcClient, oidcErr := NewOIDCClient(oidcConfig)
+		if oidcErr != nil {
+			err = errors.Wrapf(oidcErr, "failed to create OIDC client")
+			return dbt, err
+		}
+		dbt.OIDCClient = oidcClient
+	}
+
 	return dbt, err
 }
 
-// SetVerbose Sets the verbose option on the dbt object
+// NewDbtWithServer creates a new dbt object with server selection support.
+// The serverFlag parameter specifies which server to use (can be empty for default selection).
+func NewDbtWithServer(homedir string, serverFlag string) (dbt *DBT, serverName string, err error) {
+	var multiConfig MultiServerConfig
+	multiConfig, err = LoadMultiServerConfig(homedir, false)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to load config file")
+		return dbt, serverName, err
+	}
+
+	var serverConfig ServerConfig
+	serverConfig, serverName, err = multiConfig.SelectServer(serverFlag)
+	if err != nil {
+		err = errors.Wrapf(err, "failed to select server")
+		return dbt, serverName, err
+	}
+
+	config := multiConfig.ToConfig(serverConfig)
+
+	dbt = &DBT{
+		Config:     config,
+		ServerName: serverName,
+		Verbose:    false,
+		Logger:     log.New(os.Stderr, "", 0),
+	}
+
+	ok, s3meta := S3Url(config.Dbt.Repo)
+
+	if ok {
+		if dbt.S3Session == nil {
+			s3Session, sessionErr := DefaultSession(&s3meta)
+			if sessionErr != nil {
+				err = errors.Wrapf(sessionErr, "failed to create s3 session")
+				return dbt, serverName, err
+			}
+
+			dbt.S3Session = s3Session
+		}
+	}
+
+	// Initialize OIDC client if configured
+	if config.AuthType == "oidc" {
+		oidcConfig := &OIDCClientConfig{
+			IssuerURL:    config.IssuerURL,
+			OIDCAudience: config.OIDCAudience,
+			OIDCUsername: config.Username,
+			ConnectorID:  config.ConnectorID,
+		}
+		oidcClient, oidcErr := NewOIDCClient(oidcConfig)
+		if oidcErr != nil {
+			err = errors.Wrapf(oidcErr, "failed to create OIDC client")
+			return dbt, serverName, err
+		}
+		dbt.OIDCClient = oidcClient
+	}
+
+	return dbt, serverName, err
+}
+
+// SetVerbose sets the verbose option on the dbt object.
 func (dbt *DBT) SetVerbose(verbose bool) {
 	dbt.Verbose = verbose
 }
 
-// LoadDbtConfig loads the dbt config from the expected location on the filesystem
+// ToolDirForServer returns the tool directory path for a specific server.
+// For legacy/default configs, returns the standard ToolDir.
+// For multi-server configs, returns ToolDir/{serverName}.
+func ToolDirForServer(serverName string) (toolDir string) {
+	if serverName == "" || serverName == "default" {
+		toolDir = ToolDir
+		return toolDir
+	}
+	toolDir = fmt.Sprintf("%s/%s", ToolDir, serverName)
+	return toolDir
+}
+
+// GetToolDir returns the tool directory for this DBT instance.
+func (dbt *DBT) GetToolDir() (toolDir string) {
+	toolDir = ToolDirForServer(dbt.ServerName)
+	return toolDir
+}
+
+// EnsureToolDir ensures the tool directory for this DBT instance exists.
+func (dbt *DBT) EnsureToolDir(homedir string) (err error) {
+	toolDir := dbt.GetToolDir()
+	toolPath := fmt.Sprintf("%s/%s", homedir, toolDir)
+
+	_, statErr := os.Stat(toolPath)
+	if os.IsNotExist(statErr) {
+		err = os.MkdirAll(toolPath, 0755)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to create tool directory %s", toolPath)
+			return err
+		}
+	}
+
+	return err
+}
+
+// LoadDbtConfig loads the dbt config from the expected location on the filesystem.
 func LoadDbtConfig(homedir string, verbose bool) (config Config, err error) {
 	if homedir == "" {
-		homedir, err = GetHomeDir()
-		if err != nil {
-			err = errors.Wrapf(err, "failed to get homedir")
+		var homedirErr error
+		homedir, homedirErr = GetHomeDir()
+		if homedirErr != nil {
+			err = errors.Wrapf(homedirErr, "failed to get homedir")
 			return config, err
 		}
 	}
@@ -144,8 +414,47 @@ func LoadDbtConfig(homedir string, verbose bool) (config Config, err error) {
 		logger.Printf("Loading config from %s", filePath)
 	}
 
-	mdBytes, err := os.ReadFile(filePath)
+	mdBytes, readErr := os.ReadFile(filePath)
+	if readErr != nil {
+		err = readErr
+		return config, err
+	}
+
+	err = json.Unmarshal(mdBytes, &config)
 	if err != nil {
+		return config, err
+	}
+
+	return config, err
+}
+
+// LoadMultiServerConfig loads the multi-server dbt config from the expected location on the filesystem.
+// This function supports both the new multi-server format and the legacy single-server format.
+func LoadMultiServerConfig(homedir string, verbose bool) (config MultiServerConfig, err error) {
+	if homedir == "" {
+		var homedirErr error
+		homedir, homedirErr = GetHomeDir()
+		if homedirErr != nil {
+			err = errors.Wrapf(homedirErr, "failed to get homedir")
+			return config, err
+		}
+	}
+
+	logger := log.New(os.Stderr, "", 0)
+
+	if verbose {
+		logger.Printf("Looking for dbt config in %s/.dbt", homedir)
+	}
+
+	filePath := fmt.Sprintf("%s/%s", homedir, ConfigFilePath)
+
+	if verbose {
+		logger.Printf("Loading config from %s", filePath)
+	}
+
+	mdBytes, readErr := os.ReadFile(filePath)
+	if readErr != nil {
+		err = readErr
 		return config, err
 	}
 
@@ -160,9 +469,10 @@ func LoadDbtConfig(homedir string, verbose bool) (config Config, err error) {
 // GenerateDbtDir generates the necessary dbt dirs in the user's homedir if they don't already exist.  If they do exist, it does nothing.
 func GenerateDbtDir(homedir string, verbose bool) (err error) {
 	if homedir == "" {
-		homedir, err = GetHomeDir()
-		if err != nil {
-			err = errors.Wrapf(err, "failed to get homedir")
+		var homedirErr error
+		homedir, homedirErr = GetHomeDir()
+		if homedirErr != nil {
+			err = errors.Wrapf(homedirErr, "failed to get homedir")
 			return err
 		}
 	}
@@ -175,20 +485,22 @@ func GenerateDbtDir(homedir string, verbose bool) (err error) {
 
 	dbtPath := fmt.Sprintf("%s/%s", homedir, DbtDir)
 
-	if _, err := os.Stat(dbtPath); os.IsNotExist(err) {
-		err = os.Mkdir(dbtPath, 0755)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to create directory %s", dbtPath)
+	_, dbtStatErr := os.Stat(dbtPath)
+	if os.IsNotExist(dbtStatErr) {
+		mkdirErr := os.Mkdir(dbtPath, 0755)
+		if mkdirErr != nil {
+			err = errors.Wrapf(mkdirErr, "failed to create directory %s", dbtPath)
 			return err
 		}
 	}
 
 	trustPath := fmt.Sprintf("%s/%s", homedir, TrustDir)
 
-	if _, err := os.Stat(trustPath); os.IsNotExist(err) {
-		err = os.Mkdir(trustPath, 0755)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to create directory %s", trustPath)
+	_, trustStatErr := os.Stat(trustPath)
+	if os.IsNotExist(trustStatErr) {
+		mkdirErr := os.Mkdir(trustPath, 0755)
+		if mkdirErr != nil {
+			err = errors.Wrapf(mkdirErr, "failed to create directory %s", trustPath)
 			return err
 		}
 	}
@@ -210,7 +522,7 @@ func GenerateDbtDir(homedir string, verbose bool) (err error) {
 	return err
 }
 
-// GetHomeDir get's the current user's homedir
+// GetHomeDir gets the current user's homedir.
 func GetHomeDir() (dir string, err error) {
 	dir, err = homedir.Dir()
 	return dir, err
@@ -225,16 +537,17 @@ func (dbt *DBT) FetchTrustStore(homedir string) (err error) {
 	isS3, s3Meta := S3Url(uri)
 
 	if isS3 {
-		return dbt.S3FetchTruststore(homedir, s3Meta)
+		err = dbt.S3FetchTruststore(homedir, s3Meta)
+		return err
 	}
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
 
-	req, err := http.NewRequest("GET", uri, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+	req, reqErr := http.NewRequestWithContext(context.Background(), http.MethodGet, uri, nil)
+	if reqErr != nil {
+		err = errors.Wrapf(reqErr, "failed to create request for url: %s", uri)
 		return err
 	}
 
@@ -244,17 +557,17 @@ func (dbt *DBT) FetchTrustStore(homedir string) (err error) {
 		return err
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to fetch truststore from %s", uri)
+	resp, doErr := client.Do(req)
+	if doErr != nil {
+		err = errors.Wrapf(doErr, "failed to fetch truststore from %s", uri)
 		return err
 	}
 	if resp != nil {
 		defer resp.Body.Close()
 
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to read truststore contents")
+		bodyBytes, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			err = errors.Wrapf(readErr, "failed to read truststore contents")
 			return err
 		}
 
@@ -263,9 +576,9 @@ func (dbt *DBT) FetchTrustStore(homedir string) (err error) {
 		// don't write anything if we have an empty string
 		if keytext != "" {
 			filePath := fmt.Sprintf("%s/%s", homedir, TruststorePath)
-			err = os.WriteFile(filePath, []byte(keytext), 0644)
-			if err != nil {
-				err = errors.Wrapf(err, "failed to write trust file")
+			writeErr := os.WriteFile(filePath, []byte(keytext), 0644)
+			if writeErr != nil {
+				err = errors.Wrapf(writeErr, "failed to write trust file")
 				return err
 			}
 		}
@@ -274,23 +587,24 @@ func (dbt *DBT) FetchTrustStore(homedir string) (err error) {
 	return err
 }
 
-// IsCurrent returns whether the currently running version is the latest version, and possibly an error if the version check fails
+// IsCurrent returns whether the currently running version is the latest version.
 func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
-	latest, err := dbt.FindLatestVersion("")
-	if err != nil {
-		err = errors.Wrap(err, "failed to fetch dbt versions")
+	latest, latestErr := dbt.FindLatestVersion("")
+	if latestErr != nil {
+		err = errors.Wrap(latestErr, "failed to fetch dbt versions")
 		return ok, err
 	}
 
 	dbt.VerboseOutput("Latest version: %s\n", latest)
 
-	latestDbtVersionUrl := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, runtime.GOOS, runtime.GOARCH)
+	latestDbtVersionURL := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, runtime.GOOS, runtime.GOARCH)
 
-	dbt.VerboseOutput("Latest version url: %s\n", latestDbtVersionUrl)
+	dbt.VerboseOutput("Latest version url: %s\n", latestDbtVersionURL)
 
-	ok, err = dbt.VerifyFileVersion(latestDbtVersionUrl, binaryPath)
-	if err != nil {
-		err = errors.Wrap(err, "failed to check latest version")
+	var verifyErr error
+	ok, verifyErr = dbt.VerifyFileVersion(latestDbtVersionURL, binaryPath)
+	if verifyErr != nil {
+		err = errors.Wrap(verifyErr, "failed to check latest version")
 		return ok, err
 	}
 
@@ -302,12 +616,12 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 	return ok, err
 }
 
-// UpgradeInPlace upgraded dbt in place
+// UpgradeInPlace upgrades dbt in place.
 func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 	dbt.VerboseOutput("Attempting upgrade in place")
-	tmpDir, err := os.MkdirTemp("", "dbt")
-	if err != nil {
-		err = errors.Wrap(err, "failed to create temp dir")
+	tmpDir, mkdirErr := os.MkdirTemp("", "dbt")
+	if mkdirErr != nil {
+		err = errors.Wrap(mkdirErr, "failed to create temp dir")
 		return err
 	}
 
@@ -319,28 +633,28 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 
 	dbt.VerboseOutput("  New binary file: %s", newBinaryFile)
 
-	latest, err := dbt.FindLatestVersion("")
-	if err != nil {
-		err = errors.Wrap(err, "failed to find latest dbt version")
+	latest, latestErr := dbt.FindLatestVersion("")
+	if latestErr != nil {
+		err = errors.Wrap(latestErr, "failed to find latest dbt version")
 		return err
 	}
 
 	dbt.VerboseOutput("  Latest: %s", latest)
 
-	latestDbtVersionUrl := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, runtime.GOOS, runtime.GOARCH)
+	latestDbtVersionURL := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, runtime.GOOS, runtime.GOARCH)
 
-	dbt.VerboseOutput("  Fetching from: %s", latestDbtVersionUrl)
+	dbt.VerboseOutput("  Fetching from: %s", latestDbtVersionURL)
 
-	err = dbt.FetchFile(latestDbtVersionUrl, newBinaryFile)
-	if err != nil {
-		err = errors.Wrap(err, "failed to fetch new dbt binary")
+	fetchErr := dbt.FetchFile(latestDbtVersionURL, newBinaryFile)
+	if fetchErr != nil {
+		err = errors.Wrap(fetchErr, "failed to fetch new dbt binary")
 		return err
 	}
 
 	dbt.VerboseOutput("  Verifying %s", newBinaryFile)
-	ok, err := dbt.VerifyFileVersion(latestDbtVersionUrl, newBinaryFile)
-	if err != nil {
-		err = errors.Wrap(err, "failed to verify downloaded binary")
+	ok, verifyErr := dbt.VerifyFileVersion(latestDbtVersionURL, newBinaryFile)
+	if verifyErr != nil {
+		err = errors.Wrap(verifyErr, "failed to verify downloaded binary")
 		return err
 	}
 
@@ -350,33 +664,33 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 		// So instead we read the file, write the file to a temp file, and then rename.
 		newBinaryTempFile := fmt.Sprintf("%s.new", binaryPath)
 
-		b, err := os.ReadFile(newBinaryFile)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to read new binary file %s", newBinaryFile)
+		b, readErr := os.ReadFile(newBinaryFile)
+		if readErr != nil {
+			err = errors.Wrapf(readErr, "failed to read new binary file %s", newBinaryFile)
 			return err
 		}
 
 		dbt.VerboseOutput("  Writing to %s", newBinaryTempFile)
 
-		err = os.WriteFile(newBinaryTempFile, b, 0755)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to write new binary temp file %s", newBinaryTempFile)
+		writeErr := os.WriteFile(newBinaryTempFile, b, 0755)
+		if writeErr != nil {
+			err = errors.Wrapf(writeErr, "failed to write new binary temp file %s", newBinaryTempFile)
 			return err
 		}
 
 		dbt.VerboseOutput("  renaming %s to %s", newBinaryTempFile, binaryPath)
 
-		err = os.Rename(newBinaryTempFile, binaryPath)
-		if err != nil {
-			err = errors.Wrap(err, "failed to move new binary into place")
+		renameErr := os.Rename(newBinaryTempFile, binaryPath)
+		if renameErr != nil {
+			err = errors.Wrap(renameErr, "failed to move new binary into place")
 			return err
 		}
 
 		dbt.VerboseOutput("  Chmodding %s to 0755", binaryPath)
 
-		err = os.Chmod(binaryPath, 0755)
-		if err != nil {
-			err = errors.Wrap(err, "failed to chmod new dbt binary")
+		chmodErr := os.Chmod(binaryPath, 0755)
+		if chmodErr != nil {
+			err = errors.Wrap(chmodErr, "failed to chmod new dbt binary")
 			return err
 		}
 	}
@@ -384,7 +698,9 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 	return err
 }
 
-// RunTool runs the dbt tool indicated by the args
+// RunTool runs the dbt tool indicated by the args.
+//
+//nolint:gocognit,funlen // tool execution requires multiple decision branches for version handling
 func (dbt *DBT) RunTool(version string, args []string, homedir string, offline bool) (err error) {
 	toolName := args[0]
 
@@ -393,7 +709,15 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 		args = args[1:]
 	}
 
-	localPath := fmt.Sprintf("%s/%s/%s", homedir, ToolDir, toolName)
+	toolDir := dbt.GetToolDir()
+	localPath := fmt.Sprintf("%s/%s/%s", homedir, toolDir, toolName)
+
+	// Ensure the tool directory exists
+	err = dbt.EnsureToolDir(homedir)
+	if err != nil {
+		err = errors.Wrap(err, "failed to ensure tool directory exists")
+		return err
+	}
 
 	// if offline, if tool is present and verifies, run it
 	if offline {
@@ -407,20 +731,21 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 	}
 
 	// we're not offline, so find the latest
-	latestVersion, err := dbt.FindLatestVersion(toolName)
-	if err != nil {
-		err = errors.Wrap(err, "failed to find latest version")
+	latestVersion, latestErr := dbt.FindLatestVersion(toolName)
+	if latestErr != nil {
+		err = errors.Wrap(latestErr, "failed to find latest version")
 		return err
 	}
 
 	// if it's not in the repo, it might still be on the filesystem
 	if latestVersion == "" {
 		// if it is indeed on the filesystem
-		if _, err := os.Stat(localPath); !os.IsNotExist(err) {
+		_, localStatErr := os.Stat(localPath)
+		if !os.IsNotExist(localStatErr) {
 			// attempt to run it in offline mode
-			err = dbt.verifyAndRun(homedir, args)
-			if err != nil {
-				err = errors.Wrap(err, "offline run failed")
+			runErr := dbt.verifyAndRun(homedir, args)
+			if runErr != nil {
+				err = errors.Wrap(runErr, "offline run failed")
 				return err
 			}
 
@@ -429,7 +754,7 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 		}
 
 		// It's not in the repo, and not on the filesystem, there's not a damn thing we can do.  Fail.
-		err = fmt.Errorf("Tool %s is not in repo, and has not been previously downloaded.  Cannot run.\n", toolName)
+		err = fmt.Errorf("tool %s is not in repo and has not been previously downloaded", toolName)
 		return err
 	}
 
@@ -439,22 +764,22 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 	}
 
 	// url should be http(s)://tool-repo/toolName/version/os/arch/tool
-	toolUrl := fmt.Sprintf("%s/%s/%s/%s/%s/%s", dbt.Config.Tools.Repo, toolName, version, runtime.GOOS, runtime.GOARCH, toolName)
+	toolURL := fmt.Sprintf("%s/%s/%s/%s/%s/%s", dbt.Config.Tools.Repo, toolName, version, runtime.GOOS, runtime.GOARCH, toolName)
 
-	if _, err := os.Stat(localPath); !os.IsNotExist(err) {
-
+	_, toolStatErr := os.Stat(localPath)
+	if !os.IsNotExist(toolStatErr) {
 		// check to see if the latest version is what we have
-		uptodate, err := dbt.VerifyFileVersion(toolUrl, localPath)
-		if err != nil {
-			err = errors.Wrap(err, "failed to verify file version")
+		uptodate, verifyErr := dbt.VerifyFileVersion(toolURL, localPath)
+		if verifyErr != nil {
+			err = errors.Wrap(verifyErr, "failed to verify file version")
 			return err
 		}
 
 		// if yes, run it
 		if uptodate {
-			err = dbt.verifyAndRun(homedir, args)
-			if err != nil {
-				err = errors.Wrap(err, "run failed")
+			runErr := dbt.verifyAndRun(homedir, args)
+			if runErr != nil {
+				err = errors.Wrap(runErr, "run failed")
 				return err
 			}
 
@@ -464,29 +789,29 @@ func (dbt *DBT) RunTool(version string, args []string, homedir string, offline b
 
 	// download the binary
 	dbt.Logger.Printf("Downloading binary tool %q version %s.", toolName, version)
-	err = dbt.FetchFile(toolUrl, localPath)
+	err = dbt.FetchFile(toolURL, localPath)
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("failed to fetch binary for %s from %s", toolName, toolUrl))
+		err = errors.Wrap(err, fmt.Sprintf("failed to fetch binary for %s from %s", toolName, toolURL))
 		return err
 	}
 
 	// download the checksum
-	toolChecksumUrl := fmt.Sprintf("%s.sha256", toolUrl)
+	toolChecksumURL := fmt.Sprintf("%s.sha256", toolURL)
 	toolChecksumFile := fmt.Sprintf("%s.sha256", localPath)
 
-	err = dbt.FetchFile(toolChecksumUrl, toolChecksumFile)
+	err = dbt.FetchFile(toolChecksumURL, toolChecksumFile)
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("failed to fetch checksum for %s from %s", toolName, toolChecksumUrl))
+		err = errors.Wrap(err, fmt.Sprintf("failed to fetch checksum for %s from %s", toolName, toolChecksumURL))
 		return err
 	}
 
 	// download the signature
-	toolSignatureUrl := fmt.Sprintf("%s.asc", toolUrl)
+	toolSignatureURL := fmt.Sprintf("%s.asc", toolURL)
 	toolSignatureFile := fmt.Sprintf("%s.asc", localPath)
 
-	err = dbt.FetchFile(toolSignatureUrl, toolSignatureFile)
+	err = dbt.FetchFile(toolSignatureURL, toolSignatureFile)
 	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("failed to fetch signature for %s from %s", toolName, toolSignatureUrl))
+		err = errors.Wrap(err, fmt.Sprintf("failed to fetch signature for %s from %s", toolName, toolSignatureURL))
 		return err
 	}
 
@@ -503,21 +828,24 @@ func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 		args = args[1:]
 	}
 
-	localPath := fmt.Sprintf("%s/%s/%s", homedir, ToolDir, toolName)
-	localChecksumPath := fmt.Sprintf("%s/%s/%s.sha256", homedir, ToolDir, toolName)
+	toolDir := dbt.GetToolDir()
+	localPath := fmt.Sprintf("%s/%s/%s", homedir, toolDir, toolName)
+	localChecksumPath := fmt.Sprintf("%s/%s/%s.sha256", homedir, toolDir, toolName)
 
 	dbt.VerboseOutput("Verifying %q", localPath)
 
-	checksumBytes, err := os.ReadFile(localChecksumPath)
-	if err != nil {
-		err = errors.Wrap(err, "error reading local checksum file")
+	checksumBytes, readErr := os.ReadFile(localChecksumPath)
+	if readErr != nil {
+		err = errors.Wrap(readErr, "error reading local checksum file")
 		return err
 	}
 
-	if _, err := os.Stat(localPath); !os.IsNotExist(err) {
-		checksumOk, err := dbt.VerifyFileChecksum(localPath, string(checksumBytes))
-		if err != nil {
-			err = errors.Wrap(err, "error validating checksum")
+	_, localStatErr := os.Stat(localPath)
+	//nolint:nestif // verification flow requires multiple nested checks
+	if !os.IsNotExist(localStatErr) {
+		checksumOk, checksumErr := dbt.VerifyFileChecksum(localPath, string(checksumBytes))
+		if checksumErr != nil {
+			err = errors.Wrap(checksumErr, "error validating checksum")
 			return err
 		}
 
@@ -526,9 +854,9 @@ func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 			return err
 		}
 
-		signatureOk, err := dbt.VerifyFileSignature(homedir, localPath)
-		if err != nil {
-			err = errors.Wrap(err, "error validating signature")
+		signatureOk, sigErr := dbt.VerifyFileSignature(homedir, localPath)
+		if sigErr != nil {
+			err = errors.Wrap(sigErr, "error validating signature")
 			return err
 		}
 
@@ -537,9 +865,9 @@ func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 			return err
 		}
 
-		err = dbt.runExec(homedir, args)
-		if err != nil {
-			err = errors.Wrap(err, "failed to run already downloaded tool")
+		execErr := dbt.runExec(homedir, args)
+		if execErr != nil {
+			err = errors.Wrap(execErr, "failed to run already downloaded tool")
 			return err
 		}
 	}
@@ -547,30 +875,32 @@ func (dbt *DBT) verifyAndRun(homedir string, args []string) (err error) {
 	return err
 }
 
+//nolint:gochecknoglobals // test flag to prevent actual exec calls in tests
 var testExec bool
 
 func (dbt *DBT) runExec(homedir string, args []string) (err error) {
 	toolName := args[0]
-	localPath := fmt.Sprintf("%s/%s/%s", homedir, ToolDir, toolName)
+	toolDir := dbt.GetToolDir()
+	localPath := fmt.Sprintf("%s/%s/%s", homedir, toolDir, toolName)
 
 	env := os.Environ()
 
 	if testExec {
 		cs := []string{"-test.run=TestHelperProcess", "--", localPath}
 		cs = append(cs, args...)
-		cmd := exec.Command(os.Args[0], cs...)
-		bytes, err := cmd.Output()
-		if err != nil {
-			err = errors.Wrap(err, "error running exec")
+		cmd := exec.CommandContext(context.Background(), os.Args[0], cs...)
+		cmdBytes, cmdErr := cmd.Output()
+		if cmdErr != nil {
+			err = errors.Wrap(cmdErr, "error running exec")
 			return err
 		}
 
-		fmt.Printf("\nTest Command Output: %q\n", string(bytes))
+		fmt.Printf("\nTest Command Output: %q\n", string(cmdBytes))
 
 	} else {
-		err = syscall.Exec(localPath, args, env)
-		if err != nil {
-			err = errors.Wrap(err, "error running exec")
+		execErr := syscall.Exec(localPath, args, env)
+		if execErr != nil {
+			err = errors.Wrap(execErr, "error running exec")
 			return err
 		}
 

@@ -24,10 +24,19 @@ import (
 	"syscall"
 )
 
+//nolint:gochecknoglobals // Cobra requires global variables for flags
 var toolVersion string
+
+//nolint:gochecknoglobals // Cobra requires global variables for flags
 var offline bool
+
+//nolint:gochecknoglobals // Cobra requires global variables for flags
 var verbose bool
 
+//nolint:gochecknoglobals // Cobra requires global variables for flags
+var serverFlag string
+
+//nolint:gochecknoglobals // Cobra boilerplate
 var rootCmd = &cobra.Command{
 	Use:   "dbt",
 	Short: "Dynamic Binary Toolkit",
@@ -38,21 +47,27 @@ A framework for running self-updating signed binaries from a trusted repository.
 
 Run 'dbt -- catalog list' to see a list of what tools are available in your repository.
 
+Use -s/--server to select a specific server when multiple servers are configured.
+Server selection priority: CLI flag (-s) > environment variable (DBT_SERVER) > config default > first server.
+
 `,
-	Example: "dbt -- catalog list",
+	Example: "dbt -s prod -- catalog list",
 	Version: "3.6.1",
 	Run:     Run,
 }
 
+//nolint:gochecknoinits // Cobra boilerplate
 func init() {
 	rootCmd.Flags().StringVarP(&toolVersion, "toolversion", "v", "", "Version of tool to run.")
 	rootCmd.Flags().BoolVarP(&offline, "offline", "o", false, "Offline mode.")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "V", false, "Verbose output")
+	rootCmd.Flags().StringVarP(&serverFlag, "server", "s", "", "Server name to use (overrides DBT_SERVER env and config default)")
 }
 
-// Execute - execute the command
+// Execute executes the root command.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	err := rootCmd.Execute()
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -61,16 +76,20 @@ func Execute() {
 // Run run dbt itself.
 func Run(cmd *cobra.Command, args []string) {
 	if len(args) == 0 {
-		err := cmd.Help()
-		if err != nil {
-			log.Fatal(err)
+		helpErr := cmd.Help()
+		if helpErr != nil {
+			log.Fatal(helpErr)
 		}
 		os.Exit(0)
 	}
 
-	dbtObj, err := dbt.NewDbt("")
+	dbtObj, serverName, err := dbt.NewDbtWithServer("", serverFlag)
 	if err != nil {
 		log.Fatalf("Error creating DBT object: %s", err)
+	}
+
+	if verbose && serverFlag != "" {
+		log.Printf("Using server: %s", serverName)
 	}
 
 	dbtObj.SetVerbose(verbose)
@@ -86,6 +105,7 @@ func Run(cmd *cobra.Command, args []string) {
 	}
 
 	// if we're not explicitly offline, try to upgrade in place
+	//nolint:nestif // upgrade flow requires nested checks
 	if !offline {
 		// first fetch the current truststore
 		err = dbtObj.FetchTrustStore(homedir)
@@ -93,17 +113,17 @@ func Run(cmd *cobra.Command, args []string) {
 			log.Fatalf("Failed to fetch remote truststore: %s.\n\nIf you want to try in 'offline' mode, retry your command again with: dbt -o ...", err)
 		}
 
-		ok, err := dbtObj.IsCurrent(dbtBinary)
-		if err != nil {
-			log.Printf("Failed to confirm whether we're up to date: %s", err)
+		ok, currentErr := dbtObj.IsCurrent(dbtBinary)
+		if currentErr != nil {
+			log.Printf("Failed to confirm whether we're up to date: %s", currentErr)
 		}
 
 		if !ok {
 			log.Printf("Downloading and verifying new version of dbt.")
-			err = dbtObj.UpgradeInPlace(dbtBinary)
-			if err != nil {
-				err = fmt.Errorf("upgrade in place failed: %s", err)
-				log.Fatalf("Error: %s", err)
+			upgradeErr := dbtObj.UpgradeInPlace(dbtBinary)
+			if upgradeErr != nil {
+				upgradeErr = fmt.Errorf("upgrade in place failed: %w", upgradeErr)
+				log.Fatalf("Error: %s", upgradeErr)
 			}
 
 			// Single white female ourself

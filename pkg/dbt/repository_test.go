@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//nolint:testifylint,noinlineerr // test file - assertion style and inline error handling acceptable
 package dbt
 
 import (
@@ -159,12 +160,13 @@ func TestFetchToolVersions(t *testing.T) {
 				fmt.Printf("Error searching for versions of tool %q in repo %q\n", toolName, tc.obj.Config.Tools.Repo)
 			}
 
-			assert.True(t, len(versions) == 2, "ListCatalog of versions should have 2 elements.")
+			assert.True(t, len(versions) == 3, "ListCatalog of versions should have 3 elements.")
 
 		})
 	}
 }
 
+//nolint:gocognit // test function with multiple sub-tests and assertions
 func TestFetchFile(t *testing.T) {
 
 	inputs := []struct {
@@ -196,21 +198,21 @@ func TestFetchFile(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			toolName := "catalog_linux_amd64"
 			testFile := testFilesA[toolName]
-			fileUrl := testFile.TestUrl
+			fileURL := testFile.TestURL
 			fileName := fmt.Sprintf("%s/fetchfile", tc.homedir)
-			checksumUrl := fmt.Sprintf("%s.sha256", fileUrl)
+			checksumURL := fmt.Sprintf("%s.sha256", fileURL)
 			checksumFile := fmt.Sprintf("%s.sha256", fileName)
 
-			t.Logf("downloading %s", fileUrl)
-			err := tc.obj.FetchFile(fileUrl, fileName)
+			t.Logf("downloading %s", fileURL)
+			err := tc.obj.FetchFile(fileURL, fileName)
 			if err != nil {
-				t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
+				t.Errorf("Error fetching file %q: %s\n", fileURL, err)
 			}
 
-			t.Logf("downloading %s", checksumUrl)
-			err = tc.obj.FetchFile(checksumUrl, checksumFile)
+			t.Logf("downloading %s", checksumURL)
+			err = tc.obj.FetchFile(checksumURL, checksumFile)
 			if err != nil {
-				t.Errorf("Error fetching file %q: %s\n", fileUrl, err)
+				t.Errorf("Error fetching file %q: %s\n", fileURL, err)
 			}
 
 			checksumBytes, err := os.ReadFile(checksumFile)
@@ -225,15 +227,15 @@ func TestFetchFile(t *testing.T) {
 
 			assert.True(t, success, "Checksum of downloaded file matches expectations.")
 
-			t.Logf("Verifying version of %s", fileUrl)
-			success, err = tc.obj.VerifyFileVersion(fileUrl, fileName)
+			t.Logf("Verifying version of %s", fileURL)
+			success, err = tc.obj.VerifyFileVersion(fileURL, fileName)
 			if err != nil {
 				t.Errorf("Failed to verify version: %s", err)
 			}
 
 			assert.True(t, success, "Verified version of downloaded file.")
 
-			failure, err := tc.obj.VerifyFileVersion(fmt.Sprintf("%s/dbt/1.2.3/linux/amd64/dbt", testToolUrl(port)), fileName)
+			failure, err := tc.obj.VerifyFileVersion(fmt.Sprintf("%s/dbt/1.2.3/linux/amd64/dbt", testToolURL(port)), fileName)
 			if err != nil {
 				t.Errorf("Verified non-existent version: %s", err)
 			}
@@ -241,13 +243,13 @@ func TestFetchFile(t *testing.T) {
 			assert.False(t, failure, "Verified a false version does not match.")
 
 			// download trust store
-			trustStoreUrl := fmt.Sprintf("%s/truststore", testDbtUrl(port))
+			trustStoreURL := fmt.Sprintf("%s/truststore", testDbtURL(port))
 			trustStoreFile := fmt.Sprintf("%s/%s", tc.homedir, TruststorePath)
 
-			t.Logf("Fetching truststore from %s", trustStoreUrl)
-			err = tc.obj.FetchFile(trustStoreUrl, trustStoreFile)
+			t.Logf("Fetching truststore from %s", trustStoreURL)
+			err = tc.obj.FetchFile(trustStoreURL, trustStoreFile)
 			if err != nil {
-				t.Errorf("Error fetching truststore %q: %s\n", fileUrl, err)
+				t.Errorf("Error fetching truststore %q: %s\n", fileURL, err)
 			}
 
 			if _, err = os.Stat(trustStoreFile); os.IsNotExist(err) {
@@ -262,13 +264,13 @@ func TestFetchFile(t *testing.T) {
 			assert.False(t, string(trustBytes) == "", "Downloaded Truststore is not empty")
 
 			// download signature
-			sigUrl := fmt.Sprintf("%s.asc", fileUrl)
+			sigURL := fmt.Sprintf("%s.asc", fileURL)
 			sigFile := fmt.Sprintf("%s.asc", fileName)
 
-			t.Logf("Downloading %s", sigUrl)
-			err = tc.obj.FetchFile(sigUrl, sigFile)
+			t.Logf("Downloading %s", sigURL)
+			err = tc.obj.FetchFile(sigURL, sigFile)
 			if err != nil {
-				t.Errorf("Error fetching signature %q: %s\n", sigUrl, err)
+				t.Errorf("Error fetching signature %q: %s\n", sigURL, err)
 			}
 
 			if _, err = os.Stat(sigFile); os.IsNotExist(err) {
