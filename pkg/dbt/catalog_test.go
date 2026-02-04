@@ -1,3 +1,4 @@
+//nolint:testifylint // test file - assertion style acceptable
 package dbt
 
 import (
