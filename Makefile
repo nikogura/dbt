@@ -1,4 +1,4 @@
-.PHONY: lint test test-integration docker-build docker-run clean
+.PHONY: lint test test-integration docker-build docker-run clean bump-version
 
 # Lint runs custom namedreturns linter followed by golangci-lint
 lint:
@@ -35,3 +35,12 @@ clean:
 	@echo "Cleaning build artifacts..."
 	rm -rf dist/
 	docker rm -f dbt-integration-test 2>/dev/null || true
+
+# Bump-version bumps the version number and regenerates test fixtures
+# Usage:
+#   make bump-version              # Bump patch (3.7.0 -> 3.7.1)
+#   make bump-version V=4.0.0      # Set specific version
+#   make bump-version V=minor      # Bump minor (3.7.0 -> 3.8.0)
+#   make bump-version V=major      # Bump major (3.7.0 -> 4.0.0)
+bump-version:
+	@./scripts/bump-version.sh $(V)
