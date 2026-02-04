@@ -86,10 +86,10 @@ func SetupTestRepo(tmpDir string) (truststoreContent string, err error) {
 	dirs := []string{
 		filepath.Join(dbtRoot, "3.0.2", "linux", "amd64"),
 		filepath.Join(dbtRoot, "3.3.4", "linux", "amd64"),
-		filepath.Join(dbtRoot, "3.6.1", "linux", "amd64"),
+		filepath.Join(dbtRoot, "3.7.0", "linux", "amd64"),
 		filepath.Join(toolRoot, "catalog", "3.0.2", "linux", "amd64"),
 		filepath.Join(toolRoot, "catalog", "3.3.4", "linux", "amd64"),
-		filepath.Join(toolRoot, "catalog", "3.6.1", "linux", "amd64"),
+		filepath.Join(toolRoot, "catalog", "3.7.0", "linux", "amd64"),
 	}
 
 	for _, dir := range dirs {
@@ -120,7 +120,7 @@ func SetupTestRepo(tmpDir string) (truststoreContent string, err error) {
 		return truststoreContent, err
 	}
 
-	err = writeArtifact(dbtRoot, "3.6.1", "dbt", Dbt361Binary, Dbt361Checksum, Dbt361Signature)
+	err = writeArtifact(dbtRoot, "3.7.0", "dbt", Dbt370Binary, Dbt370Checksum, Dbt370Signature)
 	if err != nil {
 		return truststoreContent, err
 	}
@@ -140,9 +140,9 @@ func SetupTestRepo(tmpDir string) (truststoreContent string, err error) {
 		return truststoreContent, err
 	}
 
-	err = writeCatalogArtifact(toolRoot, "3.6.1",
-		Catalog361Binary, Catalog361Checksum, Catalog361Signature,
-		Catalog361Description, Catalog361DescriptionSig)
+	err = writeCatalogArtifact(toolRoot, "3.7.0",
+		Catalog370Binary, Catalog370Checksum, Catalog370Signature,
+		Catalog370Description, Catalog370DescriptionSig)
 	if err != nil {
 		return truststoreContent, err
 	}
