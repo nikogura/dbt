@@ -160,12 +160,47 @@ DBT uses a config file at `~/.dbt/conf/dbt.json`, created automatically by the i
 - **repository**: URL of the trusted repository for DBT binaries
 - **truststore**: URL containing public keys of trusted DBT binary authors
 
-#### tools section  
+#### tools section
 - **repository**: URL where tools are stored and discovered
 
 #### Authentication (Optional)
+
+**Basic Auth**:
 - **username/password**: Basic auth credentials
 - **usernamefunc/passwordfunc**: Shell commands to retrieve credentials dynamically
+
+**OIDC Auth** (RFC 8693 token exchange):
+- **authType**: Set to `"oidc"` to enable OIDC authentication
+- **issuerUrl**: OIDC provider URL for token exchange
+- **oidcAudience**: Target audience for OIDC tokens (e.g., `"dbt-server"`)
+- **connectorId**: Optional connector ID for providers that support it (e.g., `"ssh"` for Dex)
+
+#### OIDC Client Configuration Example
+
+For repositories that require OIDC authentication:
+
+```json
+{
+  "dbt": {
+    "repository": "https://dbt.example.com/dbt",
+    "truststore": "https://dbt.example.com/dbt/truststore"
+  },
+  "tools": {
+    "repository": "https://dbt.example.com/dbt-tools"
+  },
+  "authType": "oidc",
+  "issuerUrl": "https://dex.example.com",
+  "oidcAudience": "dbt-server",
+  "connectorId": "ssh"
+}
+```
+
+The DBT client performs RFC 8693 token exchange:
+1. Creates an SSH-signed JWT using your ssh-agent
+2. Exchanges it with the OIDC provider for an ID token
+3. Uses the ID token to authenticate with the repository
+
+**Note**: The `connectorId` field is optional. Set it to `"ssh"` when using Dex with an SSH connector, or omit it for other OIDC providers like Keycloak or Okta that support RFC 8693 token exchange natively.
 
 ### Trust Store Format
 
@@ -290,10 +325,83 @@ HTTP repository server for hosting DBT tools and components.
 dbt reposerver -f /path/to/config
 ```
 
+#### Docker Image
+
+The reposerver is available as a distroless Docker image from GitHub Container Registry:
+
+```bash
+# Pull the latest image
+docker pull ghcr.io/nikogura/dbt-reposerver:latest
+
+# Run with default settings (serves /var/dbt on port 9999)
+docker run -d -p 9999:9999 -v /path/to/repo:/var/dbt ghcr.io/nikogura/dbt-reposerver:latest
+
+# Run with custom config file
+docker run -d -p 9999:9999 \
+  -v /path/to/repo:/var/dbt \
+  -v /path/to/config.json:/etc/dbt/reposerver.json \
+  ghcr.io/nikogura/dbt-reposerver:latest \
+  -a 0.0.0.0 -p 9999 -r /var/dbt -f /etc/dbt/reposerver.json
+
+# Run on custom port
+docker run -d -p 8080:8080 \
+  -v /path/to/repo:/var/dbt \
+  ghcr.io/nikogura/dbt-reposerver:latest \
+  -a 0.0.0.0 -p 8080 -r /var/dbt
+```
+
+**Command-line Flags** (passed after image name):
+- `-a`: Listen address (default: `0.0.0.0`)
+- `-p`: Listen port (default: `9999`)
+- `-r`: Server root directory (default: `/var/dbt`)
+- `-f`: Config file path (optional)
+
+**Note**: This is a distroless image with no shell. Configuration is done via command-line flags, not environment variables. For Kubernetes deployments, use liveness/readiness HTTP probes against the server port.
+
 **Auth Methods**:
 - **basic-htpasswd**: Standard htpasswd files
 - **ssh-agent-file**: JWT authentication with SSH keys from files
 - **ssh-agent-func**: JWT authentication with SSH keys from shell functions
+- **oidc**: OIDC token validation via JWKS (works with Dex, Keycloak, Okta, etc.)
+
+#### Reposerver OIDC Configuration
+
+Enable OIDC authentication for your reposerver:
+
+```json
+{
+  "address": "0.0.0.0",
+  "port": 9999,
+  "serverRoot": "/var/dbt",
+  "authTypeGet": "oidc",
+  "authGets": true,
+  "authOptsGet": {
+    "oidc": {
+      "issuerUrl": "https://dex.example.com",
+      "audiences": ["dbt-server"],
+      "usernameClaimKey": "email",
+      "allowedGroups": ["dbt-users", "dbt-admins"]
+    }
+  },
+  "authTypePut": "oidc",
+  "authOptsPut": {
+    "oidc": {
+      "issuerUrl": "https://dex.example.com",
+      "audiences": ["dbt-server"],
+      "usernameClaimKey": "email",
+      "allowedGroups": ["dbt-admins"]
+    }
+  }
+}
+```
+
+**OIDC Options**:
+- **issuerUrl**: OIDC provider URL (fetches `.well-known/openid-configuration`)
+- **audiences**: Expected `aud` claims in tokens
+- **usernameClaimKey**: Claim to extract username from (`sub`, `email`, `preferred_username`, `name`)
+- **allowedGroups**: Groups authorized to access (empty = all authenticated users)
+- **requiredClaims**: Additional claims that must match exactly
+- **skipIssuerVerify**: Skip issuer verification (testing only)
 
 ## Related Tools
 
@@ -303,6 +411,153 @@ Tools created specifically for use with DBT.
 Project template generator for creating new tools. [https://github.com/nikogura/boilerplate](https://github.com/nikogura/boilerplate)
 
 The boilerplate tool helps generate working project stubs with proper DBT integration and is now maintained separately.
+
+## Authentication Examples
+
+### OIDC with Dex
+
+**Server configuration** (`reposerver-config.json`):
+```json
+{
+  "address": "0.0.0.0",
+  "port": 9999,
+  "serverRoot": "/var/dbt",
+  "authTypeGet": "oidc",
+  "authGets": true,
+  "authOptsGet": {
+    "oidc": {
+      "issuerUrl": "https://dex.example.com",
+      "audiences": ["dbt-server"],
+      "usernameClaimKey": "email"
+    }
+  },
+  "authTypePut": "oidc",
+  "authOptsPut": {
+    "oidc": {
+      "issuerUrl": "https://dex.example.com",
+      "audiences": ["dbt-server"],
+      "usernameClaimKey": "email",
+      "allowedGroups": ["dbt-publishers"]
+    }
+  }
+}
+```
+
+**Client configuration** (`~/.dbt/conf/dbt.json`):
+```json
+{
+  "dbt": {
+    "repository": "https://dbt.example.com/dbt",
+    "truststore": "https://dbt.example.com/dbt/truststore"
+  },
+  "tools": {
+    "repository": "https://dbt.example.com/dbt-tools"
+  },
+  "authType": "oidc",
+  "issuerUrl": "https://dex.example.com",
+  "oidcAudience": "dbt-server",
+  "connectorId": "ssh"
+}
+```
+
+### OIDC with Keycloak
+
+**Server configuration**:
+```json
+{
+  "address": "0.0.0.0",
+  "port": 9999,
+  "serverRoot": "/var/dbt",
+  "authTypeGet": "oidc",
+  "authGets": true,
+  "authOptsGet": {
+    "oidc": {
+      "issuerUrl": "https://keycloak.example.com/realms/myrealm",
+      "audiences": ["dbt-server"],
+      "usernameClaimKey": "preferred_username"
+    }
+  },
+  "authTypePut": "oidc",
+  "authOptsPut": {
+    "oidc": {
+      "issuerUrl": "https://keycloak.example.com/realms/myrealm",
+      "audiences": ["dbt-server"],
+      "usernameClaimKey": "preferred_username",
+      "allowedGroups": ["/dbt-publishers"]
+    }
+  }
+}
+```
+
+**Client configuration**:
+```json
+{
+  "dbt": {
+    "repository": "https://dbt.example.com/dbt",
+    "truststore": "https://dbt.example.com/dbt/truststore"
+  },
+  "tools": {
+    "repository": "https://dbt.example.com/dbt-tools"
+  },
+  "authType": "oidc",
+  "issuerUrl": "https://keycloak.example.com/realms/myrealm",
+  "oidcAudience": "dbt-server"
+}
+```
+
+### Mixed Authentication (OIDC for GET, SSH-agent for PUT)
+
+Useful when you want authenticated reads but stricter write controls:
+
+```json
+{
+  "address": "0.0.0.0",
+  "port": 9999,
+  "serverRoot": "/var/dbt",
+  "authTypeGet": "oidc",
+  "authGets": true,
+  "authOptsGet": {
+    "oidc": {
+      "issuerUrl": "https://dex.example.com",
+      "audiences": ["dbt-server"]
+    }
+  },
+  "authTypePut": "ssh-agent-file",
+  "authOptsPut": {
+    "idpFile": "/etc/dbt/pubkeys.json"
+  }
+}
+```
+
+### Legacy SSH-agent Authentication (No Changes)
+
+Existing SSH-agent configurations continue to work unchanged:
+
+**Server** (`ssh-agent-file`):
+```json
+{
+  "address": "0.0.0.0",
+  "port": 9999,
+  "serverRoot": "/var/dbt",
+  "authTypePut": "ssh-agent-file",
+  "authOptsPut": {
+    "idpFile": "/etc/dbt/pubkeys.json"
+  }
+}
+```
+
+**Client** (no authType needed):
+```json
+{
+  "dbt": {
+    "repository": "https://dbt.example.com/dbt",
+    "truststore": "https://dbt.example.com/dbt/truststore"
+  },
+  "tools": {
+    "repository": "https://dbt.example.com/dbt-tools"
+  }
+}
+```
 
 ## Advanced Topics
 
@@ -405,12 +660,35 @@ This shows:
 - Verification steps
 - Error details
 
+## Building and Development
+
+**For DBT development and release management, use [Gomason](https://github.com/nikogura/gomason)** - the preferred build and deployment tool:
+
+```bash
+go install github.com/nikogura/gomason@latest
+
+# Test the project
+gomason test
+
+# Build and publish a release
+gomason publish
+```
+
+Gomason handles the complete release pipeline including:
+- Cross-platform builds
+- GPG signing with proper provenance
+- Template-based artifact generation (install scripts, descriptions, etc.)
+- Publishing to multiple repository types
+- Checksum and signature generation
+
+Manual builds are possible with standard `go build`, but gomason is recommended for consistent, reproducible releases with proper signing and publishing workflows.
+
 ## Contributing
 
 DBT is designed to be extensible. Create your own tools by:
 
 1. Building single-file executables
-2. Signing them with your trusted key
+2. Signing them with your trusted key  
 3. Publishing to your repository
 4. Users automatically get access via `dbt catalog list`
 

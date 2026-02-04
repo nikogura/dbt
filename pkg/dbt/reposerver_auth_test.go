@@ -1,63 +1,69 @@
+//nolint:govet,usetesting // test file - shadows and t.Setenv acceptable in complex test setup
 package dbt
 
 import (
 	"bytes"
 	"fmt"
-	"github.com/nikogura/gomason/pkg/gomason"
-	"github.com/nikogura/jwt-ssh-agent-go/pkg/agentjwt"
-	"github.com/phayes/freeport"
-	"github.com/stretchr/testify/assert"
 	"html/template"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/nikogura/gomason/pkg/gomason"
+	"github.com/nikogura/jwt-ssh-agent-go/pkg/agentjwt"
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/assert"
 )
 
-// testKeyPair holds a generated SSH key pair
+// testKeyPair holds a generated SSH key pair.
 type testKeyPair struct {
 	publicKey  string
 	privateKey string
 	keyPath    string
 }
 
-// generateTestKeyPair creates a fresh SSH key pair for testing
-func generateTestKeyPair(t *testing.T, tmpDir string) *testKeyPair {
+// generateTestKeyPair creates a fresh SSH key pair for testing.
+func generateTestKeyPair(t *testing.T, tmpDir string) (keyPair *testKeyPair) {
 	keyPath := fmt.Sprintf("%s/test_key_%d", tmpDir, time.Now().UnixNano())
 	pubKeyPath := keyPath + ".pub"
 
 	// Generate SSH key pair
 	cmd := exec.Command("ssh-keygen", "-t", "rsa", "-b", "3072", "-f", keyPath, "-N", "", "-C", "dbttester@infradel.org")
-	err := cmd.Run()
-	if err != nil {
-		t.Fatalf("Failed to generate SSH key: %s", err)
+	keygenErr := cmd.Run()
+	if keygenErr != nil {
+		t.Fatalf("Failed to generate SSH key: %s", keygenErr)
 	}
 
 	// Read public key
-	pubKeyBytes, err := os.ReadFile(pubKeyPath)
-	if err != nil {
-		t.Fatalf("Failed to read generated public key: %s", err)
+	pubKeyBytes, readPubErr := os.ReadFile(pubKeyPath)
+	if readPubErr != nil {
+		t.Fatalf("Failed to read generated public key: %s", readPubErr)
 	}
 	publicKey := strings.TrimSpace(string(pubKeyBytes))
 
 	// Read private key
-	privKeyBytes, err := os.ReadFile(keyPath)
-	if err != nil {
-		t.Fatalf("Failed to read generated private key: %s", err)
+	privKeyBytes, readPrivErr := os.ReadFile(keyPath)
+	if readPrivErr != nil {
+		t.Fatalf("Failed to read generated private key: %s", readPrivErr)
 	}
 	privateKey := string(privKeyBytes)
 
-	return &testKeyPair{
+	keyPair = &testKeyPair{
 		publicKey:  publicKey,
 		privateKey: privateKey,
 		keyPath:    keyPath,
 	}
+	return keyPair
 }
 
+//nolint:gocognit,gocyclo,cyclop // complex test function with multiple auth scenarios
 func TestRepoServerAuth(t *testing.T) {
 	type testfile struct {
 		name     string
@@ -248,7 +254,8 @@ func TestRepoServerAuth(t *testing.T) {
 
 			// Ensure cleanup even if test fails or times out
 			t.Cleanup(func() {
-				if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
+				_, statErr := os.Stat(tmpDir)
+				if !os.IsNotExist(statErr) {
 					// Fix permissions using bulk chmod commands for better performance on large directories
 					// Make all directories writable and executable by owner
 					chmodDirCmd := exec.Command("find", tmpDir, "-type", "d", "-exec", "chmod", "u+rwx", "{}", "+")
@@ -281,6 +288,7 @@ func TestRepoServerAuth(t *testing.T) {
 			var agentPID string
 			var testKeys *testKeyPair
 
+			//nolint:nestif // pubkey test setup requires complex SSH agent initialization
 			if strings.HasPrefix(tc.Name, "pubkey") {
 				// Save current SSH_AUTH_SOCK
 				oldSSHAuthSock = os.Getenv("SSH_AUTH_SOCK")
@@ -408,7 +416,7 @@ func TestRepoServerAuth(t *testing.T) {
 			// start reposerver
 			go server.RunRepoServer()
 
-			testHost := fmt.Sprintf("http://%s:%d", server.Address, server.Port)
+			testHost := fmt.Sprintf("http://%s", net.JoinHostPort(server.Address, strconv.Itoa(server.Port)))
 			fmt.Printf("--- Serving requests on %s ---\n", testHost)
 
 			fmt.Printf("Sleeping for 1 second for the test artifact server to start up.")
@@ -419,14 +427,14 @@ func TestRepoServerAuth(t *testing.T) {
 			client := &http.Client{}
 
 			for _, file := range tc.TestFiles {
-				fileUrl := fmt.Sprintf("%s/%s", testHost, file.name)
+				fileURL := fmt.Sprintf("%s/%s", testHost, file.name)
 
-				req, err := http.NewRequest(http.MethodPut, fileUrl, bytes.NewReader([]byte(file.contents)))
+				req, err := http.NewRequest(http.MethodPut, fileURL, bytes.NewReader([]byte(file.contents)))
 				if err != nil {
 					t.Errorf("Failed creating request for %s: %s", file.name, err)
 				}
 
-				fmt.Printf("Writing %s to server\n", fileUrl)
+				fmt.Printf("Writing %s to server\n", fileURL)
 
 				if file.auth {
 					switch tc.AuthTypePut {
@@ -465,10 +473,11 @@ func TestRepoServerAuth(t *testing.T) {
 
 				// GET Test files
 				// don't bother with unauthenticated files.  We don't allow that.
+				//nolint:nestif // GET verification requires multiple auth scenarios
 				if file.auth {
-					fmt.Printf("Verifying %s exists on server\n", fileUrl)
+					fmt.Printf("Verifying %s exists on server\n", fileURL)
 
-					req, err := http.NewRequest(http.MethodGet, fileUrl, nil)
+					req, err := http.NewRequest(http.MethodGet, fileURL, nil)
 					if err != nil {
 						t.Errorf("Failed creatign request for %s: %s", file.name, err)
 					}

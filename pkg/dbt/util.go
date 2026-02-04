@@ -15,13 +15,12 @@
 package dbt
 
 import (
+	"context"
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"github.com/nikogura/jwt-ssh-agent-go/pkg/agentjwt"
-	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -31,25 +30,31 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/nikogura/jwt-ssh-agent-go/pkg/agentjwt"
+	"github.com/pkg/errors"
 )
 
-// StringInSlice returns true if the given string is in the given slice
-func StringInSlice(a string, list []string) bool {
+// StringInSlice returns true if the given string is in the given slice.
+func StringInSlice(a string, list []string) (found bool) {
 	for _, b := range list {
 		if b == a {
-			return true
+			found = true
+			return found
 		}
 	}
-	return false
+	found = false
+	return found
 }
 
-// SemverParse breaks apart a semantic version strings and returns a slice of int's holding the parts
+// SemverParse breaks apart a semantic version string and returns a slice of ints holding the parts.
 func SemverParse(version string) (parts []int, err error) {
 	stringParts := strings.Split(version, ".")
 
 	for _, part := range stringParts {
-		number, err := strconv.Atoi(part)
-		if err != nil {
+		number, atoiErr := strconv.Atoi(part)
+		if atoiErr != nil {
+			err = atoiErr
 			return parts, err
 		}
 
@@ -76,20 +81,23 @@ func LatestVersion(versions []string) (latest string) {
 	return latest
 }
 
-// VersionAIsNewerThanB returns true if Semantic Version string v1 is newer (higher numbers) than Semantic Version string v2
+// VersionAIsNewerThanB returns true if Semantic Version string a is newer (higher numbers) than Semantic Version string b.
 func VersionAIsNewerThanB(a string, b string) (result bool) {
-	aParts, err := SemverParse(a)
-	if err != nil {
-		return false
+	aParts, aErr := SemverParse(a)
+	if aErr != nil {
+		result = false
+		return result
 	}
 
-	bParts, err := SemverParse(b)
-	if err != nil {
-		return true
+	bParts, bErr := SemverParse(b)
+	if bErr != nil {
+		result = true
+		return result
 	}
 
 	major := Spaceship(aParts[0], bParts[0])
 
+	//nolint:nestif // semantic version comparison requires nested major/minor/patch checks
 	if major == 0 {
 		minor := Spaceship(aParts[1], bParts[1])
 
@@ -97,45 +105,55 @@ func VersionAIsNewerThanB(a string, b string) (result bool) {
 			patch := Spaceship(aParts[2], bParts[2])
 
 			if patch == 0 {
-				return false
+				result = false
+				return result
 			}
 			if patch > 0 {
-				return true
+				result = true
+				return result
 			}
-			return false
+			result = false
+			return result
 
 		}
 		if minor > 0 {
-			return true
+			result = true
+			return result
 		}
-		return false
+		result = false
+		return result
 
 	}
 	if major > 0 {
-		return true
+		result = true
+		return result
 	}
-	return false
+	result = false
+	return result
 }
 
-// Spaceship A very simple implementation of a useful operator that go seems not to have.
-// returns 1 if a > b, -1 if a < b, and 0 if a == b
-func Spaceship(a int, b int) int {
+// Spaceship is a simple implementation of the spaceship operator.
+// Returns 1 if a > b, -1 if a < b, and 0 if a == b.
+func Spaceship(a int, b int) (result int) {
 	if a < b {
-		return -1
-
+		result = -1
+		return result
 	}
 	if a > b {
-		return 1
+		result = 1
+		return result
 	}
-	return 0
+	result = 0
+	return result
 }
 
-// FileSha256 returns the hex encoded Sha256 checksum for the given file
+// FileSha256 returns the hex encoded Sha256 checksum for the given file.
 func FileSha256(fileName string) (checksum string, err error) {
 	hasher := sha256.New()
-	checksumBytes, err := os.ReadFile(fileName)
+	checksumBytes, readErr := os.ReadFile(fileName)
 
-	if err != nil {
+	if readErr != nil {
+		err = readErr
 		return checksum, err
 	}
 
@@ -150,12 +168,13 @@ func FileSha256(fileName string) (checksum string, err error) {
 	return checksum, err
 }
 
-// FileSha1 returns the hex encoded Sha1 checksum for the given file
+// FileSha1 returns the hex encoded Sha1 checksum for the given file.
 func FileSha1(fileName string) (checksum string, err error) {
 	hasher := sha1.New()
-	checksumBytes, err := os.ReadFile(fileName)
+	checksumBytes, readErr := os.ReadFile(fileName)
 
-	if err != nil {
+	if readErr != nil {
+		err = readErr
 		return checksum, err
 	}
 
@@ -170,47 +189,53 @@ func FileSha1(fileName string) (checksum string, err error) {
 	return checksum, err
 }
 
-// FileCopy copies a single file from src to dst
-func FileCopy(src, dst string) error {
-	var err error
+// FileCopy copies a single file from src to dst.
+func FileCopy(src, dst string) (err error) {
 	var srcfd *os.File
 	var dstfd *os.File
 	var srcinfo os.FileInfo
 
-	if srcfd, err = os.Open(src); err != nil {
+	srcfd, err = os.Open(src)
+	if err != nil {
 		return err
 	}
 	defer srcfd.Close()
 
-	if dstfd, err = os.Create(dst); err != nil {
+	dstfd, err = os.Create(dst)
+	if err != nil {
 		return err
 	}
 	defer dstfd.Close()
 
-	if _, err = io.Copy(dstfd, srcfd); err != nil {
+	_, err = io.Copy(dstfd, srcfd)
+	if err != nil {
 		return err
 	}
-	if srcinfo, err = os.Stat(src); err != nil {
+	srcinfo, err = os.Stat(src)
+	if err != nil {
 		return err
 	}
-	return os.Chmod(dst, srcinfo.Mode())
+	err = os.Chmod(dst, srcinfo.Mode())
+	return err
 }
 
-// DirCopy copies a whole directory recursively
-func DirCopy(src string, dst string) error {
-	var err error
+// DirCopy copies a whole directory recursively.
+func DirCopy(src string, dst string) (err error) {
 	var fds []os.DirEntry
 	var srcinfo os.FileInfo
 
-	if srcinfo, err = os.Stat(src); err != nil {
+	srcinfo, err = os.Stat(src)
+	if err != nil {
 		return err
 	}
 
-	if err = os.MkdirAll(dst, srcinfo.Mode()); err != nil {
+	err = os.MkdirAll(dst, srcinfo.Mode())
+	if err != nil {
 		return err
 	}
 
-	if fds, err = os.ReadDir(src); err != nil {
+	fds, err = os.ReadDir(src)
+	if err != nil {
 		return err
 	}
 	for _, fd := range fds {
@@ -218,44 +243,50 @@ func DirCopy(src string, dst string) error {
 		dstfp := path.Join(dst, fd.Name())
 
 		if fd.IsDir() {
-			if err = DirCopy(srcfp, dstfp); err != nil {
-				fmt.Println(err)
+			copyErr := DirCopy(srcfp, dstfp)
+			if copyErr != nil {
+				fmt.Println(copyErr)
 			}
 		} else {
-			if err = FileCopy(srcfp, dstfp); err != nil {
-				fmt.Println(err)
+			copyErr := FileCopy(srcfp, dstfp)
+			if copyErr != nil {
+				fmt.Println(copyErr)
 			}
 		}
 	}
-	return nil
+	return err
 }
 
 // GetFunc runs a shell command that is a getter function.  This could certainly be dangerous, so be careful how you use it.
 func GetFunc(shellCommand string) (result string, err error) {
-	cmd := exec.Command("sh", "-c", shellCommand)
+	cmd := exec.CommandContext(context.Background(), "sh", "-c", shellCommand)
 
-	stdout, err := cmd.StdoutPipe()
+	stdout, pipeErr := cmd.StdoutPipe()
+	if pipeErr != nil {
+		err = errors.Wrapf(pipeErr, "failed to get stdout pipe for %q", shellCommand)
+		return result, err
+	}
 
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
 
 	cmd.Env = os.Environ()
 
-	err = cmd.Start()
-	if err != nil {
-		err = errors.Wrapf(err, "failed to run %q", shellCommand)
+	startErr := cmd.Start()
+	if startErr != nil {
+		err = errors.Wrapf(startErr, "failed to run %q", shellCommand)
 		return result, err
 	}
 
-	stdoutBytes, err := io.ReadAll(stdout)
-	if err != nil {
-		err = errors.Wrapf(err, "error reading stdout from func")
+	stdoutBytes, readErr := io.ReadAll(stdout)
+	if readErr != nil {
+		err = errors.Wrapf(readErr, "error reading stdout from func")
 		return result, err
 	}
 
-	err = cmd.Wait()
-	if err != nil {
-		err = errors.Wrapf(err, "error waiting for %q to exit", shellCommand)
+	waitErr := cmd.Wait()
+	if waitErr != nil {
+		err = errors.Wrapf(waitErr, "error waiting for %q to exit", shellCommand)
 		return result, err
 	}
 
@@ -269,30 +300,34 @@ func GetFuncUsername(shellCommand string, username string) (result []string, err
 	// add the username as the first arg of the shell command
 	shellCommand = fmt.Sprintf("%s %s", shellCommand, username)
 
-	cmd := exec.Command("sh", "-c", shellCommand)
+	cmd := exec.CommandContext(context.Background(), "sh", "-c", shellCommand)
 
-	stdout, err := cmd.StdoutPipe()
+	stdout, pipeErr := cmd.StdoutPipe()
+	if pipeErr != nil {
+		err = errors.Wrapf(pipeErr, "failed to get stdout pipe for %q", shellCommand)
+		return result, err
+	}
 
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
 
 	cmd.Env = os.Environ()
 
-	err = cmd.Start()
-	if err != nil {
-		err = errors.Wrapf(err, "failed to run %q", shellCommand)
+	startErr := cmd.Start()
+	if startErr != nil {
+		err = errors.Wrapf(startErr, "failed to run %q", shellCommand)
 		return result, err
 	}
 
-	stdoutBytes, err := io.ReadAll(stdout)
-	if err != nil {
-		err = errors.Wrapf(err, "error reading stdout from func")
+	stdoutBytes, readErr := io.ReadAll(stdout)
+	if readErr != nil {
+		err = errors.Wrapf(readErr, "error reading stdout from func")
 		return result, err
 	}
 
-	err = cmd.Wait()
-	if err != nil {
-		err = errors.Wrapf(err, "error waiting for %q to exit", shellCommand)
+	waitErr := cmd.Wait()
+	if waitErr != nil {
+		err = errors.Wrapf(waitErr, "error waiting for %q to exit", shellCommand)
 		return result, err
 	}
 
@@ -303,8 +338,21 @@ func GetFuncUsername(shellCommand string, username string) (result []string, err
 	return result, err
 }
 
-// AuthHeaders Convenience function to add auth headers - basic or token for non-s3 requests.  Depending on how client is configured, could result in both Basic Auth and Token headers.  Reposerver will, however only pay attention to one or the other.
+// AuthHeaders is a convenience function to add auth headers - basic or token for non-s3 requests.
+//
+//nolint:gocognit // auth header logic requires multiple configuration checks
 func (dbt *DBT) AuthHeaders(r *http.Request) (err error) {
+	// OIDC Auth - if configured, use OIDC token in Authorization header
+	if dbt.OIDCClient != nil {
+		token, tokenErr := dbt.OIDCClient.GetToken(r.Context())
+		if tokenErr != nil {
+			err = errors.Wrap(tokenErr, "failed to get OIDC token")
+			return err
+		}
+		r.Header.Set("Authorization", "Bearer "+token)
+		return err
+	}
+
 	// Basic Auth
 	// start with values hardcoded in the config file
 	username := dbt.Config.Username
@@ -338,9 +386,9 @@ func (dbt *DBT) AuthHeaders(r *http.Request) (err error) {
 
 	// read pubkey from file
 	if dbt.Config.PubkeyPath != "" {
-		b, err := os.ReadFile(dbt.Config.PubkeyPath)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to read public key from file %s", dbt.Config.PubkeyPath)
+		b, readErr := os.ReadFile(dbt.Config.PubkeyPath)
+		if readErr != nil {
+			err = errors.Wrapf(readErr, "failed to read public key from file %s", dbt.Config.PubkeyPath)
 			return err
 		}
 
@@ -358,9 +406,9 @@ func (dbt *DBT) AuthHeaders(r *http.Request) (err error) {
 	}
 
 	// Extract the domain from the repo server
-	domain, err := ExtractDomain(dbt.Config.Dbt.Repo)
-	if err != nil {
-		err = errors.Wrapf(err, "failed extracting domain from configured dbt repo url %s", dbt.Config.Dbt.Repo)
+	domain, domainErr := ExtractDomain(dbt.Config.Dbt.Repo)
+	if domainErr != nil {
+		err = errors.Wrapf(domainErr, "failed extracting domain from configured dbt repo url %s", dbt.Config.Dbt.Repo)
 		return err
 	}
 
@@ -368,9 +416,9 @@ func (dbt *DBT) AuthHeaders(r *http.Request) (err error) {
 	if pubkey != "" {
 		// use username and pubkey to set Token header
 		// Note: Updated for jwt-ssh-agent-go upgrade - subject should be username, audience should be domain
-		token, err := agentjwt.SignedJwtToken(username, domain, pubkey)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to sign JWT token")
+		token, signErr := agentjwt.SignedJwtToken(username, domain, pubkey)
+		if signErr != nil {
+			err = errors.Wrapf(signErr, "failed to sign JWT token")
 			return err
 		}
 

@@ -12,68 +12,76 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//nolint:noinlineerr,nosprintfhostport // test file - inline error handling and host:port formatting acceptable
 package dbt
 
 import (
 	"bytes"
 	"fmt"
+	"log"
+	"net/http/httptest"
+	"os"
+	"os/exec"
+	"os/signal"
+	"strings"
+	"syscall"
+	"testing"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/johannesboyne/gofakes3"
 	"github.com/johannesboyne/gofakes3/backend/s3mem"
-	"github.com/nikogura/gomason/pkg/gomason"
+	"github.com/nikogura/dbt/pkg/dbt/testfixtures"
 	"github.com/phayes/freeport"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"log"
-	"net/http/httptest"
-	"os"
-	"os/exec"
-	"os/signal"
-	"path/filepath"
-	"strings"
-	"syscall"
-	"testing"
-	"time"
 )
 
 // TestPackageGroup Github group owning this codebase.  Used to compile itself as part of it's test suite.  If you're not me, you'll want to change this in your fork.
 const TestPackageGroup = "nikogura"
 
-var tmpDir string
-var sourceDirA string
-var sourceDirB string
-var dbtConfig Config
-var s3DbtConfig Config
-var port int
-var repo DBTRepoServer
-var testHost string
-var trustfileContents string
-var dbtRoot string
-var toolRoot string
-var trustFile string
-var setup bool
-var oldVersion = "3.0.2"
-var testServer *httptest.Server
-var s3Config *aws.Config
-var s3Session *session.Session
-var s3Backend *s3mem.Backend
-var faker *gofakes3.GoFakeS3
-var homeDirRepoServer string
-var homeDirS3 string
+//nolint:gochecknoglobals // test setup requires shared state
+var (
+	tmpDir            string
+	dbtConfig         Config
+	s3DbtConfig       Config
+	port              int
+	repo              DBTRepoServer
+	testHost          string
+	trustfileContents string
+	dbtRoot           string
+	toolRoot          string
+	trustFile         string
+	setup             bool
+	oldVersion        = "3.0.2"
+	newVersion        = "3.3.4"
+	latestVersion     = "3.6.1"
+	testServer        *httptest.Server
+	s3Config          *aws.Config
+	s3Session         *session.Session
+	s3Backend         *s3mem.Backend
+	faker             *gofakes3.GoFakeS3
+	homeDirRepoServer string
+	homeDirS3         string
+)
 
 type testFile struct {
 	Name     string
 	FilePath string
-	UrlPath  string
-	TestUrl  string
+	URLPath  string
+	TestURL  string
 	Repo     string
 }
 
-var testFilesA map[string]*testFile
-var testFilesB map[string]*testFile
+//nolint:gochecknoglobals // test setup requires shared state
+var (
+	testFilesA map[string]*testFile
+	testFilesB map[string]*testFile
+	testFilesC map[string]*testFile
+)
 
 func TestMain(m *testing.M) {
 	// Set up signal handler to ensure cleanup on timeout/interrupt
@@ -99,10 +107,11 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+//nolint:gocognit // test setup requires multiple initialization steps
 func setUp() (err error) {
-	dir, err := os.MkdirTemp("", "dbt")
-	if err != nil {
-		err = errors.Wrapf(err, "Error creating temp dir %q", dir)
+	dir, mkdirErr := os.MkdirTemp("", "dbt")
+	if mkdirErr != nil {
+		err = errors.Wrapf(mkdirErr, "Error creating temp dir %q", dir)
 		return err
 	}
 
@@ -113,21 +122,17 @@ func setUp() (err error) {
 	tmpDir = dir
 	homeDirRepoServer = fmt.Sprintf("%s/homeDirReposerver", tmpDir)
 	homeDirS3 = fmt.Sprintf("%s/homeDirS3", tmpDir)
-	sourceDirA = fmt.Sprintf("%s/sourceA", tmpDir)
-	sourceDirB = fmt.Sprintf("%s/sourceB", tmpDir)
 	fmt.Printf("Temp Dir: %s\n", tmpDir)
 	fmt.Printf("Homedir Reposerver: %s\n", homeDirRepoServer)
 	fmt.Printf("Homedir S3: %s\n", homeDirS3)
-	fmt.Printf("Source A Dir: %s\n", sourceDirA)
-	fmt.Printf("Source B Dir: %s\n", sourceDirB)
 
 	dbtRoot = fmt.Sprintf("%s/repo/dbt", tmpDir)
 	trustFile = fmt.Sprintf("%s/truststore", dbtRoot)
 	toolRoot = fmt.Sprintf("%s/repo/dbt-tools", tmpDir)
 
-	freePort, err := freeport.GetFreePort()
-	if err != nil {
-		err = errors.Wrapf(err, "Error getting a free port")
+	freePort, portErr := freeport.GetFreePort()
+	if portErr != nil {
+		err = errors.Wrapf(portErr, "Error getting a free port")
 		return err
 	}
 
@@ -138,8 +143,12 @@ func setUp() (err error) {
 	fmt.Printf("--- Created %d Test Files ---\n", len(testFilesA))
 
 	fmt.Printf("-- Creating Version B Test Files ---\n")
-	testFilesB = createTestFilesB(toolRoot, VERSION, dbtRoot)
+	testFilesB = createTestFilesB(toolRoot, newVersion, dbtRoot)
 	fmt.Printf("--- Created %d Test Files ---\n", len(testFilesB))
+
+	fmt.Printf("-- Creating Version C Test Files ---\n")
+	testFilesC = createTestFilesC(toolRoot, latestVersion, dbtRoot)
+	fmt.Printf("--- Created %d Test Files ---\n", len(testFilesC))
 
 	// Dbt config for the built in repo server
 	dbtConfig = Config{
@@ -150,8 +159,6 @@ func setUp() (err error) {
 		Tools: ToolsConfig{
 			Repo: fmt.Sprintf("http://127.0.0.1:%d/dbt-tools", port),
 		},
-		//Username: "",
-		//Password: "",
 	}
 
 	// Dbt config for using s3 as a repo
@@ -165,6 +172,7 @@ func setUp() (err error) {
 		},
 	}
 
+	//nolint:nestif // test setup requires complex initialization
 	if !setup {
 		// Setup Fake S3
 		s3Backend = s3mem.New()
@@ -203,7 +211,7 @@ func setUp() (err error) {
 			return err
 		}
 
-		// actually build the test repo
+		// Build test repo using pre-built fixtures (fast, no gomason)
 		err = buildTestRepo()
 		if err != nil {
 			err = errors.Wrapf(err, "Error building test repo")
@@ -218,7 +226,9 @@ func setUp() (err error) {
 		}
 
 		// Run test server in the background
-		go repo.RunRepoServer()
+		go func() {
+			_ = repo.RunRepoServer()
+		}()
 
 		// Give things a moment to come up.
 		time.Sleep(time.Second)
@@ -259,9 +269,9 @@ func setUp() (err error) {
 			configPath := fmt.Sprintf("%s/%s", c.homedir, ConfigDir)
 			fileName := fmt.Sprintf("%s/dbt.json", configPath)
 
-			err := os.WriteFile(fileName, []byte(c.config), 0644)
-			if err != nil {
-				err = errors.Wrapf(err, "Error writing config file to %s", fileName)
+			writeErr := os.WriteFile(fileName, []byte(c.config), 0644)
+			if writeErr != nil {
+				err = errors.Wrapf(writeErr, "Error writing config file to %s", fileName)
 				return err
 			}
 
@@ -273,30 +283,34 @@ func setUp() (err error) {
 }
 
 func tearDown() {
-	testServer.Close()
-	if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
-		log.Printf("Cleaning up test directory: %s", tmpDir)
+	if testServer != nil {
+		testServer.Close()
+	}
+	if tmpDir != "" {
+		if _, err := os.Stat(tmpDir); !os.IsNotExist(err) {
+			log.Printf("Cleaning up test directory: %s", tmpDir)
 
-		// Fix permissions using bulk chmod commands for better performance
-		// Make all directories writable and executable by owner
-		chmodDirCmd := exec.Command("find", tmpDir, "-type", "d", "-exec", "chmod", "u+rwx", "{}", "+")
-		_ = chmodDirCmd.Run() // Ignore errors, try to continue
+			// Fix permissions using bulk chmod commands for better performance
+			// Make all directories writable and executable by owner
+			chmodDirCmd := exec.Command("find", tmpDir, "-type", "d", "-exec", "chmod", "u+rwx", "{}", "+")
+			_ = chmodDirCmd.Run() // Ignore errors, try to continue
 
-		// Make all files readable and writable by owner (especially for Go module cache read-only files)
-		chmodFileCmd := exec.Command("find", tmpDir, "-type", "f", "-exec", "chmod", "u+rw", "{}", "+")
-		_ = chmodFileCmd.Run() // Ignore errors, try to continue
+			// Make all files readable and writable by owner (especially for Go module cache read-only files)
+			chmodFileCmd := exec.Command("find", tmpDir, "-type", "f", "-exec", "chmod", "u+rw", "{}", "+")
+			_ = chmodFileCmd.Run() // Ignore errors, try to continue
 
-		err = os.RemoveAll(tmpDir)
-		if err != nil {
-			log.Printf("cleanup failed: %s", err)
-		} else {
-			log.Printf("Successfully cleaned up test directory")
+			err = os.RemoveAll(tmpDir)
+			if err != nil {
+				log.Printf("cleanup failed: %s", err)
+			} else {
+				log.Printf("Successfully cleaned up test directory")
+			}
 		}
 	}
 }
 
-func testDbtConfigContents(port int) string {
-	return fmt.Sprintf(`{
+func testDbtConfigContents(port int) (config string) {
+	config = fmt.Sprintf(`{
   "dbt": {
     "repository": "http://127.0.0.1:%d/dbt",
     "truststore": "http://127.0.0.1:%d/dbt/truststore"
@@ -305,10 +319,11 @@ func testDbtConfigContents(port int) string {
     "repository": "http://127.0.0.1:%d/dbt-tools"
   }
 }`, port, port, port)
+	return config
 }
 
-func testDbtConfigS3Contents() string {
-	return `{
+func testDbtConfigS3Contents() (config string) {
+	config = `{
   "dbt": {
     "repository": "https://dbt.s3.us-east-1.amazonaws.com",
     "truststore": "https://dbt.s3.us-east-1.amazonaws.com/truststore"
@@ -317,14 +332,17 @@ func testDbtConfigS3Contents() string {
     "repository": "https://dbt-tools.s3.us-east-1.amazonaws.com"
   }
 }`
+	return config
 }
 
-func testDbtUrl(port int) string {
-	return fmt.Sprintf("http://127.0.0.1:%d/dbt", port)
+func testDbtURL(port int) (url string) {
+	url = fmt.Sprintf("http://127.0.0.1:%d/dbt", port)
+	return url
 }
 
-func testToolUrl(port int) string {
-	return fmt.Sprintf("http://127.0.0.1:%d/dbt-tools", port)
+func testToolURL(port int) (url string) {
+	url = fmt.Sprintf("http://127.0.0.1:%d/dbt-tools", port)
+	return url
 }
 
 func createTestFilesA(toolRoot string, version string, dbtRoot string) (testFiles map[string]*testFile) {
@@ -333,68 +351,68 @@ func createTestFilesA(toolRoot string, version string, dbtRoot string) (testFile
 		{
 			Name:     "catalog-description.txt",
 			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt", version),
+			URLPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt", version),
 			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog-description.txt.asc",
 			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt.asc", version),
+			URLPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt.asc", version),
 			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog_linux_amd64",
 			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog", version),
+			URLPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog", version),
 			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog.asc", version),
+			URLPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog.asc", version),
 			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "dbt_linux_amd64",
 			FilePath: fmt.Sprintf("%s/%s/linux/amd64/dbt", dbtRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt", version),
+			URLPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt", version),
 			Repo:     "dbt",
 		},
 		{
 			Name:     "dbt_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/%s/linux/amd64/dbt.asc", dbtRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt.asc", version),
+			URLPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt.asc", version),
 			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt.sh",
 			FilePath: fmt.Sprintf("%s/install_dbt.sh", dbtRoot),
-			UrlPath:  "/dbt/install_dbt.sh",
+			URLPath:  "/dbt/install_dbt.sh",
 			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt.sh.asc",
 			FilePath: fmt.Sprintf("%s/install_dbt.sh.asc", dbtRoot),
-			UrlPath:  "/dbt/install_dbt.sh.asc",
+			URLPath:  "/dbt/install_dbt.sh.asc",
 			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt_mac_keychain.sh",
 			FilePath: fmt.Sprintf("%s/install_dbt_mac_keychain.sh", dbtRoot),
-			UrlPath:  "/dbt/install_dbt.sh",
+			URLPath:  "/dbt/install_dbt.sh",
 			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt_mac_keychain.sh.asc",
 			FilePath: fmt.Sprintf("%s/install_dbt_mac_keychain.sh.asc", dbtRoot),
-			UrlPath:  "/dbt/install_dbt.sh.asc",
+			URLPath:  "/dbt/install_dbt.sh.asc",
 			Repo:     "dbt",
 		},
 	}
 
 	hostname := "127.0.0.1"
 	for _, f := range files {
-		f.TestUrl = fmt.Sprintf("http://%s:%d%s", hostname, port, f.UrlPath)
+		f.TestURL = fmt.Sprintf("http://%s:%d%s", hostname, port, f.URLPath)
 		testFiles[f.Name] = f
 	}
 
@@ -406,448 +424,224 @@ func createTestFilesB(toolRoot string, version string, dbtRoot string) (testFile
 		{
 			Name:     "catalog-description.txt",
 			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt", version),
+			URLPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt", version),
 			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog-description.txt.asc",
 			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt.asc", version),
+			URLPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt.asc", version),
 			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog_linux_amd64",
 			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog", version),
+			URLPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog", version),
 			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "catalog_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog.asc", toolRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog.asc", version),
+			URLPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog.asc", version),
 			Repo:     "dbt-tools",
 		},
 		{
 			Name:     "dbt_linux_amd64",
 			FilePath: fmt.Sprintf("%s/%s/linux/amd64/dbt", dbtRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt", version),
+			URLPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt", version),
 			Repo:     "dbt",
 		},
 		{
 			Name:     "dbt_linux_amd64.asc",
 			FilePath: fmt.Sprintf("%s/%s/linux/amd64/dbt.asc", dbtRoot, version),
-			UrlPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt.asc", version),
+			URLPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt.asc", version),
 			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt.sh",
 			FilePath: fmt.Sprintf("%s/install_dbt.sh", dbtRoot),
-			UrlPath:  "/dbt/install_dbt.sh",
+			URLPath:  "/dbt/install_dbt.sh",
 			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt.sh.asc",
 			FilePath: fmt.Sprintf("%s/install_dbt.sh.asc", dbtRoot),
-			UrlPath:  "/dbt/install_dbt.sh.asc",
+			URLPath:  "/dbt/install_dbt.sh.asc",
 			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt_mac_keychain.sh",
 			FilePath: fmt.Sprintf("%s/install_dbt_mac_keychain.sh", dbtRoot),
-			UrlPath:  "/dbt/install_dbt.sh",
+			URLPath:  "/dbt/install_dbt.sh",
 			Repo:     "dbt",
 		},
 		{
 			Name:     "install_dbt_mac_keychain.sh.asc",
 			FilePath: fmt.Sprintf("%s/install_dbt_mac_keychain.sh.asc", dbtRoot),
-			UrlPath:  "/dbt/install_dbt.sh.asc",
+			URLPath:  "/dbt/install_dbt.sh.asc",
 			Repo:     "dbt",
 		},
 	}
 
 	hostname := "127.0.0.1"
 	for _, f := range files {
-		f.TestUrl = fmt.Sprintf("http://%s:%d%s", hostname, port, f.UrlPath)
+		f.TestURL = fmt.Sprintf("http://%s:%d%s", hostname, port, f.URLPath)
 		testFiles[f.Name] = f
 	}
 
 	return testFiles
 }
 
-func createTestKeys(keyring string, trustdb string) (err error) {
-	// write gpg batch file
-	defaultKeyText := `%echo Generating a default key
-%no-protection
-%transient-key
-Key-Type: RSA
-Subkey-Type: RSA
-Name-Real: Gomason Tester
-Name-Comment: with no passphrase
-Name-Email: tester@nikogura.com
-Expire-Date: 0
-%commit
-%echo done
-`
-
-	gpg, err := exec.LookPath("gpg")
-	if err != nil {
-		err = errors.Wrapf(err, "Failed to check if gpg is installed")
-		return err
-	}
-	keyFile := filepath.Join(tmpDir, "testkey")
-	err = os.WriteFile(keyFile, []byte(defaultKeyText), 0644)
-	if err != nil {
-		err = errors.Wrapf(err, "Error writing test key generation file")
-		return err
-	}
-
-	log.Printf("Keyring file: %s", keyring)
-	log.Printf("Trustdb file: %s", trustdb)
-	log.Printf("DBT truststore: %s", trustFile)
-	log.Printf("Test key generation file: %s", keyFile)
-
-	// generate a test key
-	cmd := exec.Command(gpg, "--trustdb", trustdb, "--no-default-keyring", "--keyring", keyring, "--batch", "--generate-key", keyFile)
-	err = cmd.Run()
-	if err != nil {
-		err = errors.Wrapf(err, "Error creating test key")
-		return err
-	}
-
-	// write out truststore
-	cmd = exec.Command(gpg, "--keyring", keyring, "--export", "-a", "tester@nikogura.com")
-
-	out, err := cmd.Output()
-	if err != nil {
-		err = errors.Wrapf(err, "Error exporting public key")
-		return err
+func createTestFilesC(toolRoot string, version string, dbtRoot string) (testFiles map[string]*testFile) {
+	testFiles = make(map[string]*testFile)
+	files := []*testFile{
+		{
+			Name:     "catalog-description.txt",
+			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt", toolRoot, version),
+			URLPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt", version),
+			Repo:     "dbt-tools",
+		},
+		{
+			Name:     "catalog-description.txt.asc",
+			FilePath: fmt.Sprintf("%s/catalog/%s/description.txt.asc", toolRoot, version),
+			URLPath:  fmt.Sprintf("/dbt-tools/catalog/%s/description.txt.asc", version),
+			Repo:     "dbt-tools",
+		},
+		{
+			Name:     "catalog_linux_amd64",
+			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog", toolRoot, version),
+			URLPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog", version),
+			Repo:     "dbt-tools",
+		},
+		{
+			Name:     "catalog_linux_amd64.asc",
+			FilePath: fmt.Sprintf("%s/catalog/%s/linux/amd64/catalog.asc", toolRoot, version),
+			URLPath:  fmt.Sprintf("/dbt-tools/catalog/%s/linux/amd64/catalog.asc", version),
+			Repo:     "dbt-tools",
+		},
+		{
+			Name:     "dbt_linux_amd64",
+			FilePath: fmt.Sprintf("%s/%s/linux/amd64/dbt", dbtRoot, version),
+			URLPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt", version),
+			Repo:     "dbt",
+		},
+		{
+			Name:     "dbt_linux_amd64.asc",
+			FilePath: fmt.Sprintf("%s/%s/linux/amd64/dbt.asc", dbtRoot, version),
+			URLPath:  fmt.Sprintf("/dbt/%s/linux/amd64/dbt.asc", version),
+			Repo:     "dbt",
+		},
 	}
 
-	trustfileContents = string(out)
+	hostname := "127.0.0.1"
+	for _, f := range files {
+		f.TestURL = fmt.Sprintf("http://%s:%d%s", hostname, port, f.URLPath)
+		testFiles[f.Name] = f
+	}
 
-	err = os.WriteFile(trustFile, out, 0644)
+	return testFiles
+}
+
+// buildTestRepo creates the test repository using pre-built fixtures.
+// This replaces the slow gomason compilation with static fixtures.
+func buildTestRepo() (err error) {
+	fmt.Printf("Building test repo using pre-built fixtures\n")
+
+	// Set up the test repository from fixtures
+	trustfileContents, err = testfixtures.SetupTestRepo(tmpDir)
 	if err != nil {
-		err = errors.Wrapf(err, "Error writing truststore file %s", trustFile)
+		err = errors.Wrapf(err, "failed to set up test repo from fixtures")
 		return err
 	}
 
+	// Upload fixtures to fake S3
+	err = uploadFixturesToS3()
+	if err != nil {
+		err = errors.Wrapf(err, "failed to upload fixtures to S3")
+		return err
+	}
+
+	fmt.Printf("Test repo built successfully using fixtures\n")
+	return err
+}
+
+// uploadFixturesToS3 uploads the test fixtures to the fake S3 endpoint.
+//
+//nolint:gocognit // S3 fixture upload requires multiple sequential operations
+func uploadFixturesToS3() (err error) {
 	s3Client := s3.New(s3Session)
 
-	// upload the file to the fake s3 endpoint
+	// Upload truststore to S3
 	_, err = s3Client.PutObject(&s3.PutObjectInput{
 		Bucket: aws.String("dbt"),
 		Key:    aws.String("truststore"),
-		Body:   bytes.NewReader(out),
+		Body:   bytes.NewReader([]byte(trustfileContents)),
 	})
 	if err != nil {
-		err = errors.Wrapf(err, "Failed to put truststore into fake s3")
+		err = errors.Wrapf(err, "failed to upload truststore to S3")
 		return err
 	}
 
-	log.Printf("Done creating keyring and test keys")
+	// Upload all test files to S3
+	for _, filesMap := range []map[string]*testFile{testFilesA, testFilesB, testFilesC} {
+		for _, f := range filesMap {
+			// Read the file from the filesystem (already written by SetupTestRepo)
+			content, readErr := os.ReadFile(f.FilePath)
+			if readErr != nil {
+				// File might not exist if it's a duplicate (like install scripts), skip
+				continue
+			}
 
-	return err
-}
+			key := strings.TrimPrefix(f.URLPath, fmt.Sprintf("/%s/", f.Repo))
 
-func buildSource(meta gomason.Metadata, version string, sourceDir string, testfiles map[string]*testFile) (err error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		err = errors.Wrapf(err, "Failed to get current working directory")
-		return err
-	}
-
-	gm := gomason.Gomason{Config: gomason.UserConfig{}}
-
-	lang, err := gomason.GetByName(meta.GetLanguage())
-	if err != nil {
-		err = errors.Wrapf(err, "Invalid language")
-		return err
-	}
-
-	workDir, err := lang.CreateWorkDir(sourceDir)
-	if err != nil {
-		err = errors.Wrapf(err, "Failed to create ephemeral workDir")
-		return err
-	}
-
-	src := strings.TrimSuffix(cwd, "/dbt/pkg/dbt")
-	dst := fmt.Sprintf("%s/src/github.com/%s", workDir, TestPackageGroup)
-	err = os.MkdirAll(dst, 0755)
-	if err != nil {
-		err = errors.Wrapf(err, "Failed creating directory %s", dst)
-		return err
-	}
-
-	err = DirCopy(src, dst)
-	if err != nil {
-		err = errors.Wrapf(err, "Failed copying directory %s to %s", src, dst)
-		return err
-	}
-
-	if version != "" {
-		_ = lang.Checkout(workDir, meta, version)
-
-	}
-
-	err = lang.Build(workDir, meta, "", false)
-	if err != nil {
-		err = errors.Wrapf(err, "build failed")
-		return err
-	}
-
-	err = gm.HandleArtifacts(meta, workDir, cwd, true, false, true, "", false)
-	if err != nil {
-		err = errors.Wrapf(err, "Artifact handling failed")
-		return err
-	}
-
-	err = gm.HandleExtras(meta, workDir, cwd, true, false, true, false)
-	if err != nil {
-		err = errors.Wrapf(err, "Extra artifact processing failed")
-		return err
-	}
-
-	fmt.Printf("--- Moving %d Test Files into repository ---\n", len(testFilesB))
-
-	s3Client := s3.New(s3Session)
-
-	// Write the files into place
-	for _, f := range testfiles {
-		fmt.Printf("Processing %s\n", f.Name)
-		src := fmt.Sprintf("%s/%s", cwd, f.Name)
-		dir := filepath.Dir(f.FilePath)
-		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			err = os.MkdirAll(dir, 0755)
-			if err != nil {
-				err = errors.Wrapf(err, "Error creating dir %s", dir)
+			// Upload to S3
+			_, putErr := s3Client.PutObject(&s3.PutObjectInput{
+				Bucket: aws.String(f.Repo),
+				Key:    aws.String(key),
+				Body:   bytes.NewReader(content),
+			})
+			if putErr != nil {
+				err = errors.Wrapf(putErr, "failed to upload %s to S3", key)
 				return err
 			}
-		}
 
-		// read the file we compiled
-		input, err := os.ReadFile(src)
-		if err != nil {
-			err = errors.Wrapf(err, "Failed to read file %s", src)
-			return err
-		}
+			// Create directory markers in S3
+			dirs, dirErr := DirsForURL(key)
+			if dirErr != nil {
+				continue
+			}
 
-		key := strings.TrimPrefix(f.UrlPath, fmt.Sprintf("/%s/", f.Repo))
-
-		// upload the file to the fake s3 endpoint
-		_, err = s3Client.PutObject(&s3.PutObjectInput{
-			Bucket: aws.String(f.Repo),
-			Key:    aws.String(key),
-			Body:   bytes.NewReader(input),
-		})
-		if err != nil {
-			err = errors.Wrapf(err, "Failed to put %s into fake s3", key)
-			return err
-		}
-
-		// verify it got into the fake s3
-		headOptions := &s3.HeadObjectInput{
-			Bucket: aws.String(f.Repo),
-			Key:    aws.String(key),
-		}
-
-		headSvc := s3.New(s3Session)
-
-		_, err = headSvc.HeadObject(headOptions)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to get metadata for %s", f.Name)
-			return err
-		}
-
-		// make the directory paths in s3
-		dirs, err := DirsForURL(key)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to parse dirs for %s", key)
-			return err
-		}
-
-		// create the 'folders' (0 byte objects) in s3
-		for _, d := range dirs {
-			if d != "." {
-				path := fmt.Sprintf("%s/", d)
-				// check to see if it doesn't already exist
-				headOptions = &s3.HeadObjectInput{
-					Bucket: aws.String(f.Repo),
-					Key:    aws.String(path),
-				}
-
-				_, err = headSvc.HeadObject(headOptions)
-				// if there's an error, it doesn't exist
-				if err != nil {
-					// so create it
-					_, err = s3Client.PutObject(&s3.PutObjectInput{
+			headSvc := s3.New(s3Session)
+			for _, d := range dirs {
+				if d != "." {
+					path := fmt.Sprintf("%s/", d)
+					headOptions := &s3.HeadObjectInput{
 						Bucket: aws.String(f.Repo),
 						Key:    aws.String(path),
-					})
-					if err != nil {
-						err = errors.Wrapf(err, "Failed to put %s into fake s3", key)
-						return err
+					}
+
+					_, headErr := headSvc.HeadObject(headOptions)
+					if headErr != nil {
+						// Create the folder marker
+						_, _ = s3Client.PutObject(&s3.PutObjectInput{
+							Bucket: aws.String(f.Repo),
+							Key:    aws.String(path),
+						})
 					}
 				}
 			}
+
+			// Upload checksum file
+			checksumPath := f.FilePath + ".sha256"
+			checksumContent, checksumErr := os.ReadFile(checksumPath)
+			if checksumErr == nil {
+				_, _ = s3Client.PutObject(&s3.PutObjectInput{
+					Bucket: aws.String(f.Repo),
+					Key:    aws.String(key + ".sha256"),
+					Body:   bytes.NewReader(checksumContent),
+				})
+			}
 		}
-
-		// write the file into place in the test repo
-		err = os.WriteFile(f.FilePath, input, 0644)
-		if err != nil {
-			err = errors.Wrapf(err, "Failed to write file %s", f.FilePath)
-			return err
-		}
-
-		// clean up after ourselves
-		err = os.Remove(src)
-		if err != nil {
-			err = errors.Wrapf(err, "Failed to remove file %s", src)
-			return err
-		}
-
-		// checksum the file
-		checksum, err := FileSha256(f.FilePath)
-		if err != nil {
-			err = errors.Wrapf(err, "Failed to checksum file %s", f.FilePath)
-			return err
-		}
-
-		checksumFile := fmt.Sprintf("%s.sha256", f.FilePath)
-
-		// write the file's checksum into the test repo
-		err = os.WriteFile(checksumFile, []byte(checksum), 0644)
-		if err != nil {
-			err = errors.Wrapf(err, "Failed to write %s", checksumFile)
-			return err
-		}
-
-		// upload the checksum to the fake s3 endpoint
-		_, err = s3Client.PutObject(&s3.PutObjectInput{
-			Bucket: aws.String(f.Repo),
-			Key:    aws.String(fmt.Sprintf("%s.sha256", key)),
-			Body:   bytes.NewReader([]byte(checksum)),
-		})
-		if err != nil {
-			err = errors.Wrapf(err, "Failed to put %s into fake s3", key)
-			return err
-		}
-
-		// verify it got into the fake s3
-		headOptions = &s3.HeadObjectInput{
-			Bucket: aws.String(f.Repo),
-			Key:    aws.String(key),
-		}
-
-		_, err = headSvc.HeadObject(headOptions)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to get metadata for %s", f.Name)
-			return err
-		}
-	}
-
-	return err
-}
-
-func buildTestRepo() (err error) {
-	_ = os.Setenv("GOMASON_NO_USER_CONFIG", "true")
-
-	// set up test keys
-	keyring := filepath.Join(tmpDir, "keyring.gpg")
-	trustdb := filepath.Join(tmpDir, "trustdb.gpg")
-
-	fmt.Printf("Creating dbt repo root at %s\n", dbtRoot)
-	err = os.MkdirAll(dbtRoot, 0755)
-	if err != nil {
-		err = errors.Wrapf(err, "Error building %s", dbtRoot)
-		return err
-	}
-
-	fmt.Printf("Creating tool repo root at %s\n", toolRoot)
-	err = os.MkdirAll(toolRoot, 0755)
-	if err != nil {
-		err = errors.Wrapf(err, "Error building %s", toolRoot)
-		return err
-	}
-
-	fmt.Printf("Building Current Source (3.3.4)")
-	currentMetadataFile := "testfixtures/metadata.3.3.4.json"
-
-	cwd, err := os.Getwd()
-	if err != nil {
-		err = errors.Wrapf(err, "error getting current working directory")
-		return err
-	}
-
-	_, err = os.Stat(currentMetadataFile)
-	if err != nil {
-		err = errors.Wrapf(err, "metadata %s not found in %s", currentMetadataFile, cwd)
-		return err
-	}
-	meta, err := gomason.ReadMetadata(currentMetadataFile)
-	if err != nil {
-		err = errors.Wrapf(err, "couldn't read package information from metadata.json")
-		return err
-	}
-
-	meta.Options = make(map[string]any)
-	meta.Options["keyring"] = keyring
-	meta.Options["trustdb"] = trustdb
-	meta.SignInfo = gomason.SignInfo{
-		Program: "gpg",
-		Email:   "tester@nikogura.com",
-	}
-
-	err = createTestKeys(keyring, trustdb)
-	if err != nil {
-		err = errors.Wrapf(err, "failed creating test keys")
-		return err
-	}
-
-	err = buildSource(meta, "", sourceDirB, testFilesB)
-	if err != nil {
-		err = errors.Wrapf(err, "failed building source")
-		return err
-	}
-
-	err = os.Chdir(cwd)
-	if err != nil {
-		err = errors.Wrapf(err, "failed changing directory back to %s", cwd)
-		return err
-	}
-
-	cwd, err = os.Getwd()
-	if err != nil {
-		err = errors.Wrapf(err, "error getting current working directory")
-		return err
-	}
-
-	fmt.Printf("Building Old Source (3.0.2)")
-	oldMetadataFile := "testfixtures/metadata.3.0.2.json"
-
-	_, err = os.Stat(oldMetadataFile)
-	if err != nil {
-		err = errors.Wrapf(err, "metadata %s not found in %s", oldMetadataFile, cwd)
-		return err
-	}
-
-	oldMeta, err := gomason.ReadMetadata(oldMetadataFile)
-	if err != nil {
-		err = errors.Wrapf(err, "couldn't read package information from old metadatafile %s", oldMetadataFile)
-		return err
-	}
-
-	oldMeta.Options = make(map[string]any)
-	oldMeta.Options["keyring"] = keyring
-	oldMeta.Options["trustdb"] = trustdb
-	oldMeta.SignInfo = gomason.SignInfo{
-		Program: "gpg",
-		Email:   "tester@nikogura.com",
-	}
-
-	err = buildSource(oldMeta, fmt.Sprintf("v%s", oldVersion), sourceDirA, testFilesA)
-	if err != nil {
-		err = errors.Wrapf(err, "error building old source")
-		return err
 	}
 
 	return err

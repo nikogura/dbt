@@ -1,6 +1,7 @@
 package dbt
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,25 +15,25 @@ import (
 	"github.com/nikogura/gomason/pkg/gomason"
 	"github.com/nikogura/jwt-ssh-agent-go/pkg/agentjwt"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
-// AUTH_BASIC_HTPASSWD config flag for basic auth
+//nolint:revive,staticcheck // AUTH_BASIC_HTPASSWD is a public API constant
 const AUTH_BASIC_HTPASSWD = "basic-htpasswd"
 
-// AUTH_SSH_AGENT_FILE config setting for file based ssh-agent auth (file mapping principals to public keys similer to .htaccess files)
+//nolint:revive,staticcheck // AUTH_SSH_AGENT_FILE is a public API constant
 const AUTH_SSH_AGENT_FILE = "ssh-agent-file"
 
-// AUTH_SSH_AGENT_FUNC config setting for using a shell function to retrieve the public key for a principal
+//nolint:revive,staticcheck // AUTH_SSH_AGENT_FUNC is a public API constant
 const AUTH_SSH_AGENT_FUNC = "ssh-agent-func"
 
-// AUTH_BASIC_LDAP config flag for user/password auth off an LDAP directory server
+//nolint:revive,staticcheck // AUTH_BASIC_LDAP is a public API constant
 const AUTH_BASIC_LDAP = "basic-ldap"
 
-// AUTH_SSH_AGENT_LDAP flag for configuring ssh-agent auth pulling public key from an LDAP directory
+//nolint:revive,staticcheck // AUTH_SSH_AGENT_LDAP is a public API constant
 const AUTH_SSH_AGENT_LDAP = "ssh-agent-ldap"
 
+//nolint:gochecknoinits // logrus configuration needs to happen at package init
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
 }
@@ -49,17 +50,18 @@ type DBTRepoServer struct {
 	AuthOptsPut AuthOpts `json:"authOptsPut"`
 }
 
-// AuthOpts Struct for holding Auth options
+// AuthOpts is a struct for holding Auth options.
 type AuthOpts struct {
-	IdpFile string `json:"idpFile"`
-	IdpFunc string `json:"idpFunc,omitempty"`
+	IdpFile string        `json:"idpFile"`
+	IdpFunc string        `json:"idpFunc,omitempty"`
+	OIDC    *OIDCAuthOpts `json:"oidc,omitempty"`
 }
 
 // NewRepoServer creates a new DBTRepoServer object from the config file provided.
 func NewRepoServer(configFilePath string) (server *DBTRepoServer, err error) {
-	c, err := os.ReadFile(configFilePath)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to read config file %q", configFilePath)
+	c, readErr := os.ReadFile(configFilePath)
+	if readErr != nil {
+		err = errors.Wrapf(readErr, "failed to read config file %q", configFilePath)
 		return server, err
 	}
 
@@ -73,71 +75,116 @@ func NewRepoServer(configFilePath string) (server *DBTRepoServer, err error) {
 	return server, err
 }
 
+// initOIDCValidators creates OIDC validators for PUT and GET if configured.
+func (d *DBTRepoServer) initOIDCValidators() (putValidator *OIDCValidator, getValidator *OIDCValidator, err error) {
+	if d.AuthTypePut == AUTH_OIDC {
+		if d.AuthOptsPut.OIDC == nil {
+			err = errors.New("OIDC auth type requires oidc configuration in authOptsPut")
+			return putValidator, getValidator, err
+		}
+		putValidator, err = NewOIDCValidator(context.Background(), d.AuthOptsPut.OIDC)
+		if err != nil {
+			err = errors.Wrap(err, "failed to create OIDC validator for PUT")
+			return putValidator, getValidator, err
+		}
+	}
+
+	if d.AuthTypeGet == AUTH_OIDC && d.AuthGets {
+		if d.AuthOptsGet.OIDC == nil {
+			err = errors.New("OIDC auth type requires oidc configuration in authOptsGet")
+			return putValidator, getValidator, err
+		}
+		getValidator, err = NewOIDCValidator(context.Background(), d.AuthOptsGet.OIDC)
+		if err != nil {
+			err = errors.Wrap(err, "failed to create OIDC validator for GET")
+			return putValidator, getValidator, err
+		}
+	}
+
+	return putValidator, getValidator, err
+}
+
+// setupPutRoutes configures PUT routes based on auth type.
+func (d *DBTRepoServer) setupPutRoutes(r *mux.Router, oidcValidator *OIDCValidator) (err error) {
+	if d.AuthTypePut == "" {
+		return err
+	}
+
+	switch d.AuthTypePut {
+	case AUTH_BASIC_HTPASSWD:
+		htpasswd := auth.HtpasswdFileProvider(d.AuthOptsPut.IdpFile)
+		authenticator := auth.NewBasicAuthenticator("DBT Server", htpasswd)
+		r.PathPrefix("/").HandlerFunc(authenticator.Wrap(d.PutHandlerHtpasswd)).Methods("PUT")
+	case AUTH_SSH_AGENT_FILE:
+		r.PathPrefix("/").HandlerFunc(d.PutHandlerPubkeyFile).Methods("PUT")
+	case AUTH_SSH_AGENT_FUNC:
+		r.PathPrefix("/").HandlerFunc(d.PutHandlerPubkeyFunc).Methods("PUT")
+	case AUTH_OIDC:
+		r.PathPrefix("/").HandlerFunc(d.PutHandlerOIDC(oidcValidator)).Methods("PUT")
+	default:
+		err = errors.New(fmt.Sprintf("unsupported auth method: %s", d.AuthTypePut))
+		return err
+	}
+
+	return err
+}
+
+// setupGetRoutes configures GET routes based on auth type.
+func (d *DBTRepoServer) setupGetRoutes(r *mux.Router, oidcValidator *OIDCValidator) (err error) {
+	fileServer := http.FileServer(http.Dir(d.ServerRoot))
+
+	if d.AuthTypeGet == "" || !d.AuthGets {
+		r.PathPrefix("/").Handler(fileServer).Methods("GET", "HEAD")
+		return err
+	}
+
+	switch d.AuthTypeGet {
+	case AUTH_BASIC_HTPASSWD:
+		htpasswd := auth.HtpasswdFileProvider(d.AuthOptsGet.IdpFile)
+		authenticator := auth.NewBasicAuthenticator("DBT Server", htpasswd)
+		r.PathPrefix("/").Handler(auth.JustCheck(authenticator, fileServer.ServeHTTP)).Methods("GET", "HEAD")
+	case AUTH_SSH_AGENT_FILE:
+		r.PathPrefix("/").Handler(d.CheckPubkeysGetFile(fileServer.ServeHTTP)).Methods("GET", "HEAD")
+	case AUTH_SSH_AGENT_FUNC:
+		r.PathPrefix("/").Handler(d.CheckPubkeysGetFunc(fileServer.ServeHTTP)).Methods("GET", "HEAD")
+	case AUTH_OIDC:
+		r.PathPrefix("/").Handler(d.CheckOIDCGet(fileServer.ServeHTTP, oidcValidator)).Methods("GET", "HEAD")
+	default:
+		err = errors.New(fmt.Sprintf("unsupported auth method: %s", d.AuthTypeGet))
+		return err
+	}
+
+	return err
+}
+
 // RunRepoServer Run runs the test repository server.
 func (d *DBTRepoServer) RunRepoServer() (err error) {
-
 	log.Printf("Running dbt artifact server on %s port %d.  Serving tree at: %s", d.Address, d.Port, d.ServerRoot)
 
 	fullAddress := fmt.Sprintf("%s:%s", d.Address, strconv.Itoa(d.Port))
-
 	r := mux.NewRouter()
 
-	// handle the uploads if enabled
-	if d.AuthTypePut != "" {
-		switch d.AuthTypePut {
-		case AUTH_BASIC_HTPASSWD:
-			htpasswd := auth.HtpasswdFileProvider(d.AuthOptsPut.IdpFile)
-			authenticator := auth.NewBasicAuthenticator("DBT Server", htpasswd)
-			r.PathPrefix("/").HandlerFunc(authenticator.Wrap(d.PutHandlerHtpasswd)).Methods("PUT")
-		case AUTH_SSH_AGENT_FILE:
-			r.PathPrefix("/").HandlerFunc(d.PutHandlerPubkeyFile).Methods("PUT")
-		case AUTH_SSH_AGENT_FUNC:
-			r.PathPrefix("/").HandlerFunc(d.PutHandlerPubkeyFunc).Methods("PUT")
-		//case AUTH_BASIC_LDAP:
-		//	err = errors.New("basic auth via ldap not yet supported")
-		//	return err
-		//case AUTH_SSH_AGENT_LDAP:
-		//	err = errors.New("ssh-agent auth via ldap not yet supported")
-		//	return err
-		default:
-			err = errors.New(fmt.Sprintf("unsupported auth method: %s", d.AuthTypePut))
-			return err
-		}
+	// Initialize OIDC validators if needed
+	oidcValidatorPut, oidcValidatorGet, initErr := d.initOIDCValidators()
+	if initErr != nil {
+		err = initErr
+		return err
 	}
 
-	// handle the downloads and indices
-	if d.AuthTypeGet != "" && d.AuthGets {
-		switch d.AuthTypeGet {
-		case AUTH_BASIC_HTPASSWD:
-			htpasswd := auth.HtpasswdFileProvider(d.AuthOptsGet.IdpFile)
-			authenticator := auth.NewBasicAuthenticator("DBT Server", htpasswd)
-			r.PathPrefix("/").Handler(auth.JustCheck(authenticator, http.FileServer(http.Dir(d.ServerRoot)).ServeHTTP)).Methods("GET", "HEAD")
-		case AUTH_SSH_AGENT_FILE:
-			r.PathPrefix("/").Handler(d.CheckPubkeysGetFile(http.FileServer(http.Dir(d.ServerRoot)).ServeHTTP)).Methods("GET", "HEAD")
-
-		case AUTH_SSH_AGENT_FUNC:
-			r.PathPrefix("/").Handler(d.CheckPubkeysGetFunc(http.FileServer(http.Dir(d.ServerRoot)).ServeHTTP)).Methods("GET", "HEAD")
-
-		//case AUTH_BASIC_LDAP:
-		//	err = errors.New("basic auth via ldap not yet supported")
-		//	return err
-		//
-		//case AUTH_SSH_AGENT_LDAP:
-		//	err = errors.New("ssh-agent auth via ldap not yet supported")
-		//	return err
-		//
-		default:
-			err = errors.New(fmt.Sprintf("unsupported auth method: %s", d.AuthTypeGet))
-			return err
-
-		}
-	} else {
-		r.PathPrefix("/").Handler(http.FileServer(http.Dir(d.ServerRoot))).Methods("GET", "HEAD")
+	// Setup PUT routes
+	err = d.setupPutRoutes(r, oidcValidatorPut)
+	if err != nil {
+		return err
 	}
 
-	// run the server
+	// Setup GET routes
+	err = d.setupGetRoutes(r, oidcValidatorGet)
+	if err != nil {
+		return err
+	}
+
+	// Run the server
 	err = http.ListenAndServe(fullAddress, r)
-
 	return err
 }
 
@@ -146,20 +193,25 @@ func (d *DBTRepoServer) HandlePut(path string, body io.ReadCloser, md5sum string
 	fileDir := filepath.Dir(filePath)
 
 	// create subdirs if they don't exist
-	if _, err := os.Stat(fileDir); os.IsNotExist(err) {
-		err = os.MkdirAll(fileDir, 0755)
-		if err != nil {
-			err = errors.Wrapf(err, "failed to create server path %s", fileDir)
+	_, statErr := os.Stat(fileDir)
+	if os.IsNotExist(statErr) {
+		mkdirErr := os.MkdirAll(fileDir, 0755)
+		if mkdirErr != nil {
+			err = errors.Wrapf(mkdirErr, "failed to create server path %s", fileDir)
 			return err
 		}
 	}
 
-	fileBytes, err := io.ReadAll(body)
+	fileBytes, readErr := io.ReadAll(body)
+	if readErr != nil {
+		err = errors.Wrapf(readErr, "failed to read request body")
+		return err
+	}
 
 	// Checksum bytes
-	md5Actual, sha1Actual, sha256Actual, err := gomason.AllChecksumsForBytes(fileBytes)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to derive checksums for file %s", filePath)
+	md5Actual, sha1Actual, sha256Actual, checksumErr := gomason.AllChecksumsForBytes(fileBytes)
+	if checksumErr != nil {
+		err = errors.Wrapf(checksumErr, "failed to derive checksums for file %s", filePath)
 		return err
 	}
 
@@ -194,7 +246,7 @@ func (d *DBTRepoServer) HandlePut(path string, body io.ReadCloser, md5sum string
 	return err
 }
 
-// PutHandlerHtpasswd Handles puts with htpasswd auth
+// PutHandlerHtpasswd handles puts with htpasswd auth.
 func (d *DBTRepoServer) PutHandlerHtpasswd(w http.ResponseWriter, r *auth.AuthenticatedRequest) {
 
 	err := d.HandlePut(r.URL.Path, r.Body, r.Header.Get("X-Checksum-Md5"), r.Header.Get("X-Checksum-Sha1"), r.Header.Get("X-Checksum-Sha256"))
@@ -222,9 +274,9 @@ type PubkeyIdpFile struct {
 
 // LoadPubkeyIdpFile Loads a public key IDP JSON file.
 func LoadPubkeyIdpFile(filePath string) (pkidp PubkeyIdpFile, err error) {
-	fileData, err := os.ReadFile(filePath)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to read idp file %s", filePath)
+	fileData, readErr := os.ReadFile(filePath)
+	if readErr != nil {
+		err = errors.Wrapf(readErr, "failed to read idp file %s", filePath)
 		return pkidp, err
 	}
 
@@ -237,11 +289,11 @@ func LoadPubkeyIdpFile(filePath string) (pkidp PubkeyIdpFile, err error) {
 	return pkidp, err
 }
 
-// PubkeyFromFilePut takes a subject name, and pulls the corresponding pubkey out of the identity provider file for puts
+// PubkeyFromFilePut takes a subject name and pulls the corresponding pubkey out of the identity provider file for puts.
 func (d *DBTRepoServer) PubkeyFromFilePut(subject string) (pubkeys []string, err error) {
-	idpFile, err := LoadPubkeyIdpFile(d.AuthOptsPut.IdpFile)
-	if err != nil {
-		err = errors.Wrapf(err, "failed loading PUT IDP file%s", d.AuthOptsPut.IdpFile)
+	idpFile, loadErr := LoadPubkeyIdpFile(d.AuthOptsPut.IdpFile)
+	if loadErr != nil {
+		err = errors.Wrapf(loadErr, "failed loading PUT IDP file%s", d.AuthOptsPut.IdpFile)
 		return pubkeys, err
 	}
 
@@ -260,11 +312,11 @@ func (d *DBTRepoServer) PubkeyFromFilePut(subject string) (pubkeys []string, err
 	return pubkeys, err
 }
 
-// PubkeyFromFileGet takes a subject name, and pulls the corresponding pubkey out of the identity provider file for puts
+// PubkeyFromFileGet takes a subject name and pulls the corresponding pubkey out of the identity provider file for gets.
 func (d *DBTRepoServer) PubkeyFromFileGet(subject string) (pubkeys []string, err error) {
-	idpFile, err := LoadPubkeyIdpFile(d.AuthOptsGet.IdpFile)
-	if err != nil {
-		err = errors.Wrapf(err, "failed loading GET IDP file%s", d.AuthOptsGet.IdpFile)
+	idpFile, loadErr := LoadPubkeyIdpFile(d.AuthOptsGet.IdpFile)
+	if loadErr != nil {
+		err = errors.Wrapf(loadErr, "failed loading GET IDP file%s", d.AuthOptsGet.IdpFile)
 		return pubkeys, err
 	}
 
@@ -282,31 +334,31 @@ func (d *DBTRepoServer) PubkeyFromFileGet(subject string) (pubkeys []string, err
 	return pubkeys, err
 }
 
-// PubkeyFromFuncPut takes a subject name, and runs the configured function to return the corresponding public key
+// PubkeysFromFuncPut takes a subject name and runs the configured function to return the corresponding public key.
 func (d *DBTRepoServer) PubkeysFromFuncPut(subject string) (pubkeys []string, err error) {
-
-	pubkeys, err = GetFuncUsername(d.AuthOptsPut.IdpFunc, subject)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to get password from shell function %q", d.AuthOptsPut.IdpFunc)
+	var funcErr error
+	pubkeys, funcErr = GetFuncUsername(d.AuthOptsPut.IdpFunc, subject)
+	if funcErr != nil {
+		err = errors.Wrapf(funcErr, "failed to get password from shell function %q", d.AuthOptsPut.IdpFunc)
 		return pubkeys, err
 	}
 
 	return pubkeys, err
 }
 
-// PubkeyFromFuncGet takes a subject name, and runs the configured function to return the corresponding public key
+// PubkeysFromFuncGet takes a subject name and runs the configured function to return the corresponding public key.
 func (d *DBTRepoServer) PubkeysFromFuncGet(subject string) (pubkey []string, err error) {
-
-	pubkey, err = GetFuncUsername(d.AuthOptsGet.IdpFunc, subject)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to get password from shell function %q", d.AuthOptsGet.IdpFunc)
+	var funcErr error
+	pubkey, funcErr = GetFuncUsername(d.AuthOptsGet.IdpFunc, subject)
+	if funcErr != nil {
+		err = errors.Wrapf(funcErr, "failed to get password from shell function %q", d.AuthOptsGet.IdpFunc)
 		return pubkey, err
 	}
 
 	return pubkey, err
 }
 
-// AuthenticatedHandlerFunc is like http.HandlerFunc, but takes AuthenticatedRequest instead of http.Request
+// AuthenticatedHandlerFunc is like http.HandlerFunc, but takes AuthenticatedRequest instead of http.Request.
 type AuthenticatedHandlerFunc func(http.ResponseWriter, *AuthenticatedRequest)
 
 // AuthenticatedRequest  Basically an http.Request with an added Username field.  The Username should never be empty.
@@ -332,7 +384,7 @@ func CheckPubkeyAuth(w http.ResponseWriter, r *http.Request, audience string, pu
 
 	// Wrap the logrus logger so we can use it in our retrieval func
 	logAdapter := &LogrusAdapter{
-		logger: logrus.New(),
+		logger: log.New(),
 	}
 
 	//Parse the token, which includes setting up it's internals so it can be verified.
@@ -355,47 +407,42 @@ func CheckPubkeyAuth(w http.ResponseWriter, r *http.Request, audience string, pu
 	return username
 }
 
-// Wrap returns an http.HandlerFunc which wraps AuthenticatedHandlerFunc
-func Wrap(wrapped AuthenticatedHandlerFunc, audience string, pubkeyRetrievalFunc func(subject string) (pubkeys []string, err error)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+// Wrap returns an http.HandlerFunc which wraps AuthenticatedHandlerFunc.
+func Wrap(wrapped AuthenticatedHandlerFunc, audience string, pubkeyRetrievalFunc func(subject string) (pubkeys []string, err error)) (handler http.HandlerFunc) {
+	handler = func(w http.ResponseWriter, r *http.Request) {
 		if username := CheckPubkeyAuth(w, r, audience, pubkeyRetrievalFunc); username != "" {
 			ar := &AuthenticatedRequest{Request: *r, Username: username}
 			wrapped(w, ar)
 		}
 	}
+	return handler
 }
 
 // CheckPubkeysGetFile Checks the pubkey signature in the JWT token against a public key found in a htpasswd like file and if things check out, passes things along to the provided handler.
-func (d *DBTRepoServer) CheckPubkeysGetFile(wrapped http.HandlerFunc) http.HandlerFunc {
+func (d *DBTRepoServer) CheckPubkeysGetFile(wrapped http.HandlerFunc) (handler http.HandlerFunc) {
 	// Extract the domain from the repo server
-	domain, err := ExtractDomain(d.Address)
-	if err != nil {
-		err = errors.Wrapf(err, "failed extracting domain from configured dbt repo url %s", d.Address)
-		// TODO: what do we do with this error?
-	}
+	domain, _ := ExtractDomain(d.Address)
 
-	return Wrap(func(w http.ResponseWriter, ar *AuthenticatedRequest) {
+	handler = Wrap(func(w http.ResponseWriter, ar *AuthenticatedRequest) {
 		ar.Header.Set("X-Authenticated-Username", ar.Username)
 		wrapped(w, &ar.Request)
 	}, domain, d.PubkeyFromFileGet)
+	return handler
 }
 
 // CheckPubkeysGetFunc Checks the pubkey signature in the JWT token against a public key produced from a function and if things check out, passes things along to the provided handler.
-func (d *DBTRepoServer) CheckPubkeysGetFunc(wrapped http.HandlerFunc) http.HandlerFunc {
+func (d *DBTRepoServer) CheckPubkeysGetFunc(wrapped http.HandlerFunc) (handler http.HandlerFunc) {
 	// Extract the domain from the repo server
-	domain, err := ExtractDomain(d.Address)
-	if err != nil {
-		err = errors.Wrapf(err, "failed extracting domain from configured dbt repo url %s", d.Address)
-		// TODO: what do we do with this error?
-	}
+	domain, _ := ExtractDomain(d.Address)
 
-	return Wrap(func(w http.ResponseWriter, ar *AuthenticatedRequest) {
+	handler = Wrap(func(w http.ResponseWriter, ar *AuthenticatedRequest) {
 		ar.Header.Set("X-Authenticated-Username", ar.Username)
 		wrapped(w, &ar.Request)
 	}, domain, d.PubkeysFromFuncGet)
+	return handler
 }
 
-// PutHandlerPubKeyFile
+// PutHandlerPubkeyFile handles PUT requests with public key file authentication.
 func (d *DBTRepoServer) PutHandlerPubkeyFile(w http.ResponseWriter, r *http.Request) {
 	tokenString := r.Header.Get("Token")
 
@@ -410,21 +457,22 @@ func (d *DBTRepoServer) PutHandlerPubkeyFile(w http.ResponseWriter, r *http.Requ
 	// TODO sanity check username?
 
 	// Extract the domain from the repo server
-	domain, err := ExtractDomain(d.Address)
-	if err != nil {
-		err = errors.Wrapf(err, "failed extracting domain from configured dbt repo url %s", d.Address)
+	domain, domainErr := ExtractDomain(d.Address)
+	if domainErr != nil {
+		log.Errorf("failed extracting domain from configured dbt repo url %s: %v", d.Address, domainErr)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	// Wrap the logrus logger so we can use it in our retrieval func
 	logAdapter := &LogrusAdapter{
-		logger: logrus.New(),
+		logger: log.New(),
 	}
 
 	// Parse the token, which includes setting up it's internals so it can be verified.
-	subject, token, err := agentjwt.VerifyToken(tokenString, []string{domain}, d.PubkeyFromFilePut, logAdapter)
-	if err != nil {
-		log.Errorf("Error: %s", err)
+	subject, token, verifyErr := agentjwt.VerifyToken(tokenString, []string{domain}, d.PubkeyFromFilePut, logAdapter)
+	if verifyErr != nil {
+		log.Errorf("Error: %s", verifyErr)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -437,18 +485,17 @@ func (d *DBTRepoServer) PutHandlerPubkeyFile(w http.ResponseWriter, r *http.Requ
 
 	log.Infof("Subject %s successfully authenticated", subject)
 
-	err = d.HandlePut(r.URL.Path, r.Body, r.Header.Get("X-Checksum-Md5"), r.Header.Get("X-Checksum-Sha1"), r.Header.Get("X-Checksum-Sha256"))
-	if err != nil {
-		err = errors.Wrapf(err, "failed writing file %s", r.URL.Path)
+	putErr := d.HandlePut(r.URL.Path, r.Body, r.Header.Get("X-Checksum-Md5"), r.Header.Get("X-Checksum-Sha1"), r.Header.Get("X-Checksum-Sha256"))
+	if putErr != nil {
+		log.Errorf("failed writing file %s: %v", r.URL.Path, putErr)
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Error(err)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
 }
 
-// PutHandlerPubkeyFunc
+// PutHandlerPubkeyFunc handles PUT requests with public key function authentication.
 func (d *DBTRepoServer) PutHandlerPubkeyFunc(w http.ResponseWriter, r *http.Request) {
 	tokenString := r.Header.Get("Token")
 
@@ -460,22 +507,23 @@ func (d *DBTRepoServer) PutHandlerPubkeyFunc(w http.ResponseWriter, r *http.Requ
 
 	// TODO sanity check username?
 
-	// Extract the domain from the repo server
-	domain, err := ExtractDomain(d.Address)
-	if err != nil {
-		err = errors.Wrapf(err, "failed extracting domain from configured dbt repo url %s", d.Address)
+	// Extract the domain from the repo server.
+	domain, domainErr := ExtractDomain(d.Address)
+	if domainErr != nil {
+		log.Errorf("failed extracting domain from configured dbt repo url %s: %v", d.Address, domainErr)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	// Wrap the logrus logger so we can use it in our retrieval func
+	// Wrap the logrus logger so we can use it in our retrieval func.
 	logAdapter := &LogrusAdapter{
-		logger: logrus.New(),
+		logger: log.New(),
 	}
 
-	//Parse the token, which includes setting up it's internals so it can be verified.
-	subject, token, err := agentjwt.VerifyToken(tokenString, []string{domain}, d.PubkeysFromFuncPut, logAdapter)
-	if err != nil {
-		log.Errorf("Error: %s", err)
+	// Parse the token, which includes setting up it's internals so it can be verified.
+	subject, token, verifyErr := agentjwt.VerifyToken(tokenString, []string{domain}, d.PubkeysFromFuncPut, logAdapter)
+	if verifyErr != nil {
+		log.Errorf("Error: %s", verifyErr)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -488,11 +536,10 @@ func (d *DBTRepoServer) PutHandlerPubkeyFunc(w http.ResponseWriter, r *http.Requ
 
 	log.Infof("Subject %s successfully authenticated", subject)
 
-	err = d.HandlePut(r.URL.Path, r.Body, r.Header.Get("X-Checksum-Md5"), r.Header.Get("X-Checksum-Sha1"), r.Header.Get("X-Checksum-Sha256"))
-	if err != nil {
-		err = errors.Wrapf(err, "failed writing file %s", r.URL.Path)
+	putErr := d.HandlePut(r.URL.Path, r.Body, r.Header.Get("X-Checksum-Md5"), r.Header.Get("X-Checksum-Sha1"), r.Header.Get("X-Checksum-Sha256"))
+	if putErr != nil {
+		log.Errorf("failed writing file %s: %v", r.URL.Path, putErr)
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Error(err)
 		return
 	}
 
@@ -504,7 +551,7 @@ type Logger interface {
 }
 
 type LogrusAdapter struct {
-	logger *logrus.Logger
+	logger *log.Logger
 }
 
 func (l *LogrusAdapter) Debug(msg string, args ...any) {
