@@ -30,9 +30,17 @@ var listCmd = &cobra.Command{
 ListCatalog available tools.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		dbtObj, err := dbt.NewDbt("")
+		// Check for server flag from environment (set by dbt when running tools)
+		serverFlag := os.Getenv("DBT_SERVER")
+
+		dbtObj, _, err := dbt.NewDbtWithServer("", serverFlag)
 		if err != nil {
 			log.Fatalf("Error creating DBT object: %s", err)
+		}
+
+		// Override tools repo from environment if set (passed by dbt for multi-server)
+		if toolsRepo := os.Getenv("DBT_TOOLS_REPO"); toolsRepo != "" {
+			dbtObj.Config.Tools.Repo = toolsRepo
 		}
 
 		dbtObj.SetVerbose(verbose)
