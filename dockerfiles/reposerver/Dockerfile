@@ -1,8 +1,8 @@
-# Build stage
-FROM golang:1.22-alpine AS builder
+# Build stage - use Debian to match distroless runtime (glibc, not musl)
+FROM golang:1.24-bookworm AS builder
 
 # Install build dependencies
-RUN apk add --no-cache git
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /build
