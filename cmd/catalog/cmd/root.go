@@ -20,10 +20,15 @@ import (
 	"os"
 )
 
+//nolint:gochecknoglobals // Cobra requires global variables for flags
 var versions bool
+
+//nolint:gochecknoglobals // Cobra requires global variables for flags
 var verbose bool
 
-// RootCmd represents the base command when called without any subcommands
+// RootCmd represents the base command when called without any subcommands.
+//
+//nolint:gochecknoglobals // Cobra boilerplate
 var RootCmd = &cobra.Command{
 	Use:   "catalog",
 	Short: "Tool for showing available DBT tools.",
@@ -34,14 +39,16 @@ DBT tools are made available in a trusted repository.  This tool show's what's a
 `,
 }
 
-// Execute - execute the command
+// Execute executes the root command.
 func Execute() {
-	if err := RootCmd.Execute(); err != nil {
+	err := RootCmd.Execute()
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 }
 
+//nolint:gochecknoinits // Cobra boilerplate
 func init() {
 	RootCmd.PersistentFlags().BoolVarP(&versions, "versions", "v", false, "Show all version information for tools.")
 	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "V", false, "Verbose output")

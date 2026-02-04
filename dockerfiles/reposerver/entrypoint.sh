@@ -1,15 +1,15 @@
 #!/bin/sh
+set -e
 
-echo "Running DBT Reposerver with:"
-
+echo "Starting DBT Reposerver..."
 echo "  ADDRESS: ${ADDRESS}"
 echo "  PORT: ${PORT}"
 echo "  SERVER_ROOT: ${SERVER_ROOT}"
 
 if [ -e "${CONFIG_FILE}" ]; then
   echo "  CONFIG_FILE: ${CONFIG_FILE}"
-  /usr/local/bin/reposerver -a "${ADDRESS}" -p "${PORT}" -r "${SERVER_ROOT}" -f "${CONFIG_FILE}"
+  exec /app/reposerver -a "${ADDRESS}" -p "${PORT}" -r "${SERVER_ROOT}" -f "${CONFIG_FILE}"
 else
-  /usr/local/bin/reposerver -a "${ADDRESS}" -p "${PORT}" -r "${SERVER_ROOT}"
+  echo "  CONFIG_FILE: (not provided, using defaults)"
+  exec /app/reposerver -a "${ADDRESS}" -p "${PORT}" -r "${SERVER_ROOT}"
 fi
-

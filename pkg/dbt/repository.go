@@ -17,15 +17,8 @@ package dbt
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/keybase/go-crypto/openpgp"
-	"github.com/pkg/errors"
-	"golang.org/x/net/html"
-	"gopkg.in/cheggaaa/pb.v1"
 	"io"
 	"log"
 	"net/http"
@@ -36,44 +29,58 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/keybase/go-crypto/openpgp"
+	"github.com/pkg/errors"
+	"golang.org/x/net/html"
+	"gopkg.in/cheggaaa/pb.v1"
 )
 
-// AWS_ID_ENV_VAR Default env var for AWS access key
-const AWS_ID_ENV_VAR = "AWS_ACCESS_KEY_ID"
+// AWSIDEnvVar is the default env var for AWS access key.
+const AWSIDEnvVar = "AWS_ACCESS_KEY_ID"
 
-// AWS_SECRET_ENV_VAR Default env var for AWS secret key
-const AWS_SECRET_ENV_VAR = "AWS_SECRET_ACCESS_KEY"
+// AWSSecretEnvVar is the default env var for AWS secret key.
+const AWSSecretEnvVar = "AWS_SECRET_ACCESS_KEY"
 
-// AWS_REGION_ENV_VAR Default env var for AWS region
-const AWS_REGION_ENV_VAR = "AWS_DEFAULT_REGION"
+// AWSRegionEnvVar is the default env var for AWS region.
+const AWSRegionEnvVar = "AWS_DEFAULT_REGION"
 
 // NOPROGRESS turns off the progress bar on file fetches.  Primarily used for testing to avoid cluttering up the output and confusing the test harness.
+//
+//nolint:gochecknoglobals // package-level flag for test/debug control
 var NOPROGRESS = false
 
-// ToolExists Returns true if a tool of the name input exists in the repository given.
+// ToolExists returns true if a tool of the name input exists in the repository given.
 func (dbt *DBT) ToolExists(toolName string) (found bool, err error) {
 	var uri string
-	var repoUrl string
+	var repoURL string
 
 	if toolName == "" {
-		repoUrl = dbt.Config.Dbt.Repo
-		uri = fmt.Sprintf("%s/", repoUrl)
+		repoURL = dbt.Config.Dbt.Repo
+		uri = fmt.Sprintf("%s/", repoURL)
 	} else {
-		repoUrl = dbt.Config.Tools.Repo
-		uri = fmt.Sprintf("%s/%s/", repoUrl, toolName)
+		repoURL = dbt.Config.Tools.Repo
+		uri = fmt.Sprintf("%s/%s/", repoURL, toolName)
 	}
 
 	isS3, s3Meta := S3Url(uri)
 
 	if isS3 {
-		return dbt.S3ToolExists(s3Meta)
+		found, err = dbt.S3ToolExists(s3Meta)
+		return found, err
 	}
 
 	client := &http.Client{}
 
-	req, err := http.NewRequest("GET", uri, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+	ctx := context.Background()
+
+	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
+	if reqErr != nil {
+		err = errors.Wrapf(reqErr, "failed to create request for url: %s", uri)
 		return found, err
 	}
 
@@ -83,48 +90,56 @@ func (dbt *DBT) ToolExists(toolName string) (found bool, err error) {
 		return found, err
 	}
 
-	resp, err := client.Do(req)
+	resp, doErr := client.Do(req)
 
-	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Failed to find tool in repo %q: %s", repoUrl, err))
-		return false, err
+	if doErr != nil {
+		err = errors.Wrap(doErr, fmt.Sprintf("Failed to find tool in repo %q: %s", repoURL, doErr))
+		found = false
+		return found, err
 	}
 
 	if resp != nil {
-		if resp.StatusCode != 200 {
-			return false, err
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			found = false
+			return found, err
 		}
 	} else {
-		return false, err
+		found = false
+		return found, err
 	}
 
-	return true, err
+	found = true
+	return found, err
 }
 
-// ToolVersionExists returns true if the specified version of a tool is in the repo
+// ToolVersionExists returns true if the specified version of a tool is in the repo.
 func (dbt *DBT) ToolVersionExists(tool string, version string) (ok bool, err error) {
 	var uri string
 
-	repoUrl := dbt.Config.Tools.Repo
+	repoURL := dbt.Config.Tools.Repo
 
 	if tool == "" {
-		uri = fmt.Sprintf("%s/%s/", repoUrl, version)
+		uri = fmt.Sprintf("%s/%s/", repoURL, version)
 
 	} else {
-		uri = fmt.Sprintf("%s/%s/%s/", repoUrl, tool, version)
+		uri = fmt.Sprintf("%s/%s/%s/", repoURL, tool, version)
 	}
 
 	isS3, s3Meta := S3Url(uri)
 
 	if isS3 {
-		return dbt.S3ToolVersionExists(s3Meta)
+		ok, err = dbt.S3ToolVersionExists(s3Meta)
+		return ok, err
 	}
 
 	client := &http.Client{}
 
-	req, err := http.NewRequest("GET", uri, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+	ctx := context.Background()
+
+	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
+	if reqErr != nil {
+		err = errors.Wrapf(reqErr, "failed to create request for url: %s", uri)
 		return ok, err
 	}
 
@@ -134,13 +149,14 @@ func (dbt *DBT) ToolVersionExists(tool string, version string) (ok bool, err err
 		return ok, err
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		err = errors.Wrapf(err, "Error looking for tool %q version %q in repo %q", tool, version, uri)
+	resp, doErr := client.Do(req)
+	if doErr != nil {
+		err = errors.Wrapf(doErr, "Error looking for tool %q version %q in repo %q", tool, version, uri)
 		return ok, err
 	}
+	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return ok, err
 	}
 
@@ -149,30 +165,33 @@ func (dbt *DBT) ToolVersionExists(tool string, version string) (ok bool, err err
 	return ok, err
 }
 
-// FetchToolVersions Given the name of a tool, returns the available versions, and possibly an error if things didn't go well.  If tool name is "", fetches versions of dbt itself.
+// FetchToolVersions returns the available versions of a tool.  If tool name is "", fetches versions of dbt itself.
 func (dbt *DBT) FetchToolVersions(toolName string) (versions []string, err error) {
 	var uri string
-	var repoUrl string
+	var repoURL string
 
 	if toolName == "" {
-		repoUrl = dbt.Config.Dbt.Repo
-		uri = fmt.Sprintf("%s/", repoUrl)
+		repoURL = dbt.Config.Dbt.Repo
+		uri = fmt.Sprintf("%s/", repoURL)
 	} else {
-		repoUrl = dbt.Config.Tools.Repo
-		uri = fmt.Sprintf("%s/%s/", repoUrl, toolName)
+		repoURL = dbt.Config.Tools.Repo
+		uri = fmt.Sprintf("%s/%s/", repoURL, toolName)
 	}
 
 	isS3, s3Meta := S3Url(uri)
 
 	if isS3 {
-		return dbt.S3FetchToolVersions(s3Meta)
+		versions, err = dbt.S3FetchToolVersions(s3Meta)
+		return versions, err
 	}
 
 	client := &http.Client{}
 
-	req, err := http.NewRequest("GET", uri, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+	ctx := context.Background()
+
+	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
+	if reqErr != nil {
+		err = errors.Wrapf(reqErr, "failed to create request for url: %s", uri)
 		return versions, err
 	}
 
@@ -182,9 +201,9 @@ func (dbt *DBT) FetchToolVersions(toolName string) (versions []string, err error
 		return versions, err
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		err = errors.Wrapf(err, "Error looking for versions of tool %q in repo %q", toolName, uri)
+	resp, doErr := client.Do(req)
+	if doErr != nil {
+		err = errors.Wrapf(doErr, "Error looking for versions of tool %q in repo %q", toolName, uri)
 		return versions, err
 	}
 
@@ -198,19 +217,23 @@ func (dbt *DBT) FetchToolVersions(toolName string) (versions []string, err error
 	return versions, err
 }
 
-// ParseVersionResponse does an http get of an url and returns a list of semantic version links found at that place
+// ParseVersionResponse parses an HTML response and returns a list of semantic version links found.
+//
+//nolint:gocognit // HTML parsing requires nested loops
 func (dbt *DBT) ParseVersionResponse(resp *http.Response) (versions []string) {
 	parser := html.NewTokenizer(resp.Body)
 
 	for {
 		tt := parser.Next()
 
-		switch {
-		case tt == html.ErrorToken:
-			return
-		case tt == html.StartTagToken:
+		//nolint:exhaustive // only handling relevant token types
+		switch tt {
+		case html.ErrorToken:
+			return versions
+		case html.StartTagToken:
 			t := parser.Token()
 			isAnchor := t.Data == "a"
+			//nolint:nestif // HTML anchor parsing requires nested attribute checks
 			if isAnchor {
 				for _, a := range t.Attr {
 					if a.Key == "href" {
@@ -229,15 +252,20 @@ func (dbt *DBT) ParseVersionResponse(resp *http.Response) (versions []string) {
 					}
 				}
 			}
+		default:
+			// Skip other token types (TextToken, EndTagToken, etc.)
 		}
 	}
 }
 
-// FetchFile Fetches a file and places it on the filesystem.
+// FetchFile fetches a file and places it on the filesystem.
 // Does not validate the signature.  That's a different step.
-func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
-	out, err := os.Create(destPath)
-	if err != nil {
+//
+//nolint:gocognit,funlen // file download with progress bar requires multiple code paths
+func (dbt *DBT) FetchFile(fileURL string, destPath string) (err error) {
+	out, createErr := os.Create(destPath)
+	if createErr != nil {
+		err = createErr
 		return err
 	}
 
@@ -249,19 +277,22 @@ func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 	defer out.Close()
 
 	// Check to see if this is an S3 URL
-	isS3, s3Meta := S3Url(fileUrl)
+	isS3, s3Meta := S3Url(fileURL)
 
 	if isS3 {
-		return dbt.S3FetchFile(fileUrl, s3Meta, out)
+		err = dbt.S3FetchFile(fileURL, s3Meta, out)
+		return err
 	}
 
 	client := &http.Client{
 		Timeout: 300 * time.Second,
 	}
 
-	req, err := http.NewRequest("HEAD", fileUrl, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to create request for url: %s", fileUrl)
+	ctx := context.Background()
+
+	req, reqErr := http.NewRequestWithContext(ctx, http.MethodHead, fileURL, nil)
+	if reqErr != nil {
+		err = errors.Wrapf(reqErr, "failed to create request for url: %s", fileURL)
 		return err
 	}
 
@@ -274,15 +305,15 @@ func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 	var bar *pb.ProgressBar
 
 	if !NOPROGRESS {
-		headResp, err := client.Do(req)
-		if err != nil {
-			err = errors.Wrapf(err, "error making request to %s", fileUrl)
+		headResp, doErr := client.Do(req)
+		if doErr != nil {
+			err = errors.Wrapf(doErr, "error making request to %s", fileURL)
 			return err
 		}
 		defer headResp.Body.Close()
 
 		if headResp.StatusCode > 399 {
-			err = errors.New(fmt.Sprintf("unable to request headers for %s: %d %s", fileUrl, headResp.StatusCode, headResp.Status))
+			err = fmt.Errorf("unable to request headers for %s: %d %s", fileURL, headResp.StatusCode, headResp.Status)
 			return err
 		}
 
@@ -291,9 +322,9 @@ func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 			sizeHeader = "0"
 		}
 
-		size, err := strconv.Atoi(sizeHeader)
-		if err != nil {
-			err = errors.Wrap(err, "unable to convert Content-Length header to integer")
+		size, atoiErr := strconv.Atoi(sizeHeader)
+		if atoiErr != nil {
+			err = errors.Wrap(atoiErr, "unable to convert Content-Length header to integer")
 			return err
 		}
 
@@ -304,9 +335,9 @@ func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 
 	}
 
-	req, err = http.NewRequest("GET", fileUrl, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to create request for url: %s", fileUrl)
+	req, reqErr = http.NewRequestWithContext(ctx, http.MethodGet, fileURL, nil)
+	if reqErr != nil {
+		err = errors.Wrapf(reqErr, "failed to create request for url: %s", fileURL)
 		return err
 	}
 
@@ -316,14 +347,14 @@ func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 		return err
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("Error fetching file from %q", fileUrl))
+	resp, doErr := client.Do(req)
+	if doErr != nil {
+		err = errors.Wrap(doErr, fmt.Sprintf("Error fetching file from %q", fileURL))
 		return err
 	}
 
 	if resp.StatusCode > 399 {
-		err = errors.New(fmt.Sprintf("unable to make request to %s: %d %s", fileUrl, resp.StatusCode, resp.Status))
+		err = fmt.Errorf("unable to make request to %s: %d %s", fileURL, resp.StatusCode, resp.Status)
 		return err
 	}
 
@@ -348,10 +379,11 @@ func (dbt *DBT) FetchFile(fileUrl string, destPath string) (err error) {
 	return err
 }
 
-// VerifyFileChecksum Verifies the sha256 checksum of a given file against an expected value
+// VerifyFileChecksum verifies the sha256 checksum of a given file against an expected value.
 func (dbt *DBT) VerifyFileChecksum(filePath string, expected string) (success bool, err error) {
-	checksum, err := FileSha256(filePath)
-	if err != nil {
+	checksum, checksumErr := FileSha256(filePath)
+	if checksumErr != nil {
+		err = checksumErr
 		success = false
 		return success, err
 	}
@@ -368,22 +400,25 @@ func (dbt *DBT) VerifyFileChecksum(filePath string, expected string) (success bo
 	return success, err
 }
 
-// VerifyFileVersion verifies the version by matching it's Sha256 checksum against what the repo says it should be
-func (dbt *DBT) VerifyFileVersion(fileUrl string, filePath string) (success bool, err error) {
-	uri := fmt.Sprintf("%s.sha256", fileUrl)
+// VerifyFileVersion verifies the version by matching its Sha256 checksum against what the repo says it should be.
+func (dbt *DBT) VerifyFileVersion(fileURL string, filePath string) (success bool, err error) {
+	uri := fmt.Sprintf("%s.sha256", fileURL)
 
 	// Check to see if this is an S3 URL
 	isS3, s3Meta := S3Url(uri)
 
 	if isS3 {
-		return dbt.S3VerifyFileVersion(filePath, s3Meta)
+		success, err = dbt.S3VerifyFileVersion(filePath, s3Meta)
+		return success, err
 	}
 
 	client := &http.Client{}
 
-	req, err := http.NewRequest("GET", uri, nil)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to create request for url: %s", uri)
+	ctx := context.Background()
+
+	req, reqErr := http.NewRequestWithContext(ctx, http.MethodGet, uri, nil)
+	if reqErr != nil {
+		err = errors.Wrapf(reqErr, "failed to create request for url: %s", uri)
 		return success, err
 	}
 
@@ -393,26 +428,28 @@ func (dbt *DBT) VerifyFileVersion(fileUrl string, filePath string) (success bool
 		return success, err
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
-		err = errors.Wrapf(err, "Error fetching checksum from %q", uri)
+	resp, doErr := client.Do(req)
+	if doErr != nil {
+		err = errors.Wrapf(doErr, "Error fetching checksum from %q", uri)
 		return success, err
 	}
 
 	if resp != nil {
 		defer resp.Body.Close()
 
-		checksumBytes, err := io.ReadAll(resp.Body)
+		checksumBytes, readErr := io.ReadAll(resp.Body)
 
-		if err != nil {
+		if readErr != nil {
+			err = readErr
 			success = false
 			return success, err
 		}
 
 		expected := string(checksumBytes)
-		actual, err := FileSha256(filePath)
+		actual, checksumErr := FileSha256(filePath)
 
-		if err != nil {
+		if checksumErr != nil {
+			err = checksumErr
 			success = false
 			return success, err
 		}
@@ -429,7 +466,7 @@ func (dbt *DBT) VerifyFileVersion(fileUrl string, filePath string) (success bool
 	return success, err
 }
 
-// VerifyFileSignature verifies the signature on the given file
+// VerifyFileSignature verifies the signature on the given file.
 func (dbt *DBT) VerifyFileSignature(homedir string, filePath string) (success bool, err error) {
 	if homedir == "" {
 		homedir, err = GetHomeDir()
@@ -443,10 +480,11 @@ func (dbt *DBT) VerifyFileSignature(homedir string, filePath string) (success bo
 
 	truststoreFileName := fmt.Sprintf("%s/%s", homedir, TruststorePath)
 
-	truststore, err := os.Open(truststoreFileName)
-	if err != nil {
-		err = errors.Wrap(err, "failed to open truststore file")
-		return false, err
+	truststore, openErr := os.Open(truststoreFileName)
+	if openErr != nil {
+		err = errors.Wrap(openErr, "failed to open truststore file")
+		success = false
+		return success, err
 	}
 
 	defer truststore.Close()
@@ -476,24 +514,27 @@ func (dbt *DBT) VerifyFileSignature(homedir string, filePath string) (success bo
 
 	for _, cert := range certs {
 
-		entities, err := openpgp.ReadArmoredKeyRing(strings.NewReader(cert))
-		if err != nil {
-			err = errors.Wrap(err, "failed to read cert from truststore")
-			return false, err
+		entities, readErr := openpgp.ReadArmoredKeyRing(strings.NewReader(cert))
+		if readErr != nil {
+			err = errors.Wrap(readErr, "failed to read cert from truststore")
+			success = false
+			return success, err
 		}
 
-		signature, err := os.Open(sigFile)
-		if err != nil {
-			err = errors.Wrap(err, "failed to open signature file")
-			return false, err
+		signature, sigErr := os.Open(sigFile)
+		if sigErr != nil {
+			err = errors.Wrap(sigErr, "failed to open signature file")
+			success = false
+			return success, err
 		}
 
 		defer signature.Close()
 
-		target, err := os.Open(filePath)
-		if err != nil {
-			err = errors.Wrap(err, "failed to open target file")
-			return false, err
+		target, targetErr := os.Open(filePath)
+		if targetErr != nil {
+			err = errors.Wrap(targetErr, "failed to open target file")
+			success = false
+			return success, err
 		}
 
 		defer target.Close()
@@ -501,26 +542,28 @@ func (dbt *DBT) VerifyFileSignature(homedir string, filePath string) (success bo
 		entity, _ := openpgp.CheckArmoredDetachedSignature(entities, target, signature)
 		if entity != nil {
 			dbt.VerboseOutput("  Pass!")
-			return true, nil
+			success = true
+			return success, err
 		}
 	}
 
-	err = fmt.Errorf("signing entity not in truststore")
-	return false, err
+	err = errors.New("signing entity not in truststore")
+	success = false
+	return success, err
 }
 
 // FindLatestVersion finds the latest version of the tool available in the tool repo.  If the tool name is "", it is expecting to parse versions of dbt itself.
 func (dbt *DBT) FindLatestVersion(toolName string) (latest string, err error) {
-	toolInRepo, err := dbt.ToolExists(toolName)
-	if err != nil {
-		err = errors.Wrap(err, fmt.Sprintf("error checking repo for tool %s", toolName))
+	toolInRepo, existsErr := dbt.ToolExists(toolName)
+	if existsErr != nil {
+		err = errors.Wrap(existsErr, fmt.Sprintf("error checking repo for tool %s", toolName))
 		return latest, err
 	}
 
 	if toolInRepo {
-		versions, err := dbt.FetchToolVersions(toolName)
-		if err != nil {
-			err = errors.Wrap(err, fmt.Sprintf("error getting versions for tool %s", toolName))
+		versions, versionsErr := dbt.FetchToolVersions(toolName)
+		if versionsErr != nil {
+			err = errors.Wrap(versionsErr, fmt.Sprintf("error getting versions for tool %s", toolName))
 			return latest, err
 		}
 
@@ -535,7 +578,7 @@ func (dbt *DBT) FindLatestVersion(toolName string) (latest string, err error) {
 
 // DefaultSession creates a default AWS session from local config path.  Hooks directly into credentials if present, or Credentials Provider if configured.
 func DefaultSession(s3meta *S3Meta) (awssession *session.Session, err error) {
-	if os.Getenv(AWS_ID_ENV_VAR) == "" && os.Getenv(AWS_SECRET_ENV_VAR) == "" {
+	if os.Getenv(AWSIDEnvVar) == "" && os.Getenv(AWSSecretEnvVar) == "" {
 		_ = os.Setenv("AWS_SDK_LOAD_CONFIG", "true")
 	}
 
@@ -552,13 +595,13 @@ func DefaultSession(s3meta *S3Meta) (awssession *session.Session, err error) {
 	return awssession, err
 }
 
-// DirsForURL given a URL, return a list of path elements suitable for creating directories/ folders
+// DirsForURL returns a list of path elements suitable for creating directories/folders given a URL.
 func DirsForURL(uri string) (dirs []string, err error) {
 	dirs = make([]string, 0)
 
-	u, err := url.Parse(uri)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to parse %s", uri)
+	u, parseErr := url.Parse(uri)
+	if parseErr != nil {
+		err = errors.Wrapf(parseErr, "failed to parse %s", uri)
 		return dirs, err
 	}
 
@@ -580,15 +623,15 @@ func DirsForURL(uri string) (dirs []string, err error) {
 	return dirs, err
 }
 
-// S3Meta a struct for holding metadata for S3 Objects.  There's probably already a struct that holds this, but this is all I need.
+// S3Meta is a struct for holding metadata for S3 Objects.
 type S3Meta struct {
 	Bucket string
 	Region string
 	Key    string
-	Url    string
+	URL    string
 }
 
-// S3Url returns true, and a metadata struct if the url given appears to be in s3
+// S3Url returns true, and a metadata struct if the url given appears to be in s3.
 func S3Url(url string) (ok bool, meta S3Meta) {
 	// Check to see if it's an s3 URL.
 	s3Url := regexp.MustCompile(`https?://(.*)\.s3\.(.*)\.amazonaws.com/?(.*)?`)
@@ -605,7 +648,7 @@ func S3Url(url string) (ok bool, meta S3Meta) {
 		meta = S3Meta{
 			Bucket: match[1],
 			Region: match[2],
-			Url:    url,
+			URL:    url,
 		}
 
 		ok = true
@@ -616,7 +659,7 @@ func S3Url(url string) (ok bool, meta S3Meta) {
 			Bucket: match[1],
 			Region: match[2],
 			Key:    match[3],
-			Url:    url,
+			URL:    url,
 		}
 
 		ok = true
@@ -626,8 +669,8 @@ func S3Url(url string) (ok bool, meta S3Meta) {
 	return ok, meta
 }
 
-// S3FetchFile fetches a file out of S3 instead of using a normal HTTP GET
-func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err error) {
+// S3FetchFile fetches a file out of S3 instead of using a normal HTTP GET.
+func (dbt *DBT) S3FetchFile(fileURL string, meta S3Meta, outFile *os.File) (err error) {
 	headOptions := &s3.HeadObjectInput{
 		Bucket: aws.String(meta.Bucket),
 		Key:    aws.String(meta.Key),
@@ -635,9 +678,9 @@ func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err 
 
 	headSvc := s3.New(dbt.S3Session)
 
-	fileMeta, err := headSvc.HeadObject(headOptions)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to get metadata for %s", fileUrl)
+	fileMeta, headErr := headSvc.HeadObject(headOptions)
+	if headErr != nil {
+		err = errors.Wrapf(headErr, "failed to get metadata for %s", fileURL)
 		return err
 	}
 
@@ -657,7 +700,7 @@ func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err 
 
 		_, err = downloader.Download(buf, downloadOptions)
 		if err != nil {
-			err = errors.Wrapf(err, "unable to download file from %s", fileUrl)
+			err = errors.Wrapf(err, "unable to download file from %s", fileURL)
 			return err
 		}
 
@@ -679,7 +722,7 @@ func (dbt *DBT) S3FetchFile(fileUrl string, meta S3Meta, outFile *os.File) (err 
 	return err
 }
 
-// S3ToolExists detects whether a tool exists in S3 by looking at the top level folder for the tool
+// S3ToolExists detects whether a tool exists in S3 by looking at the top level folder for the tool.
 func (dbt *DBT) S3ToolExists(meta S3Meta) (found bool, err error) {
 	svc := s3.New(dbt.S3Session)
 	options := &s3.ListObjectsInput{
@@ -688,9 +731,9 @@ func (dbt *DBT) S3ToolExists(meta S3Meta) (found bool, err error) {
 		Delimiter: aws.String("/"),
 	}
 
-	resp, err := svc.ListObjects(options)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to list objects at %s", meta.Key)
+	resp, listErr := svc.ListObjects(options)
+	if listErr != nil {
+		err = errors.Wrapf(listErr, "failed to list objects at %s", meta.Key)
 		return found, err
 	}
 
@@ -701,15 +744,15 @@ func (dbt *DBT) S3ToolExists(meta S3Meta) (found bool, err error) {
 	return found, err
 }
 
-// S3FetchTruststore fetches the truststore out of S3 writing it into the dbt dir on the local disk
+// S3FetchTruststore fetches the truststore out of S3 writing it into the dbt dir on the local disk.
 func (dbt *DBT) S3FetchTruststore(homedir string, meta S3Meta) (err error) {
 	downloader := s3manager.NewDownloader(dbt.S3Session)
 	filePath := fmt.Sprintf("%s/%s", homedir, TruststorePath)
 	dbt.VerboseOutput("Writing truststore to %s", filePath)
 
-	file, err := os.Create(filePath)
-	if err != nil {
-		err = errors.Wrapf(err, "Failed opening truststore file %s", filePath)
+	file, createErr := os.Create(filePath)
+	if createErr != nil {
+		err = errors.Wrapf(createErr, "Failed opening truststore file %s", filePath)
 		return err
 	}
 	_, err = downloader.Download(file, &s3.GetObjectInput{
@@ -718,13 +761,13 @@ func (dbt *DBT) S3FetchTruststore(homedir string, meta S3Meta) (err error) {
 	})
 
 	if err != nil {
-		err = errors.Wrapf(err, "failed to download truststore from %s", meta.Url)
+		err = errors.Wrapf(err, "failed to download truststore from %s", meta.URL)
 	}
 
 	return err
 }
 
-// S3ToolVersionExists returns true if the tool version exists
+// S3ToolVersionExists returns true if the tool version exists.
 func (dbt *DBT) S3ToolVersionExists(meta S3Meta) (ok bool, err error) {
 	headOptions := &s3.HeadObjectInput{
 		Bucket: aws.String(meta.Bucket),
@@ -735,9 +778,10 @@ func (dbt *DBT) S3ToolVersionExists(meta S3Meta) (ok bool, err error) {
 
 	headSvc := s3.New(dbt.S3Session)
 
-	// not found is an error, as opposed to a successful request that has a 404 code
+	// not found is an error, as opposed to a successful request that has a 404 code.
 	_, fetchErr := headSvc.HeadObject(headOptions)
 	if fetchErr != nil {
+		err = fetchErr
 		return ok, err
 	}
 
@@ -746,30 +790,31 @@ func (dbt *DBT) S3ToolVersionExists(meta S3Meta) (ok bool, err error) {
 	return ok, err
 }
 
-// S3VerifyFileVersion verifies the version of a file on the filesystem matches the sha256 hash stored in the s3 bucket for that file
+// S3VerifyFileVersion verifies the version of a file on the filesystem matches the sha256 hash stored in the s3 bucket for that file.
 func (dbt *DBT) S3VerifyFileVersion(filePath string, meta S3Meta) (success bool, err error) {
 	// get checksum file from s3
 	buff := &aws.WriteAtBuffer{}
 	downloader := s3manager.NewDownloader(dbt.S3Session)
-	_, err = downloader.Download(buff, &s3.GetObjectInput{
+	_, downloadErr := downloader.Download(buff, &s3.GetObjectInput{
 		Bucket: aws.String(meta.Bucket),
 		Key:    aws.String(meta.Key),
 	})
 
-	if err != nil {
-		err = errors.Wrapf(err, "failed to download checksum for %s", meta.Url)
+	if downloadErr != nil {
+		err = errors.Wrapf(downloadErr, "failed to download checksum for %s", meta.URL)
 		return success, err
 	}
 
 	// compare it to what's on the disk
 	expected := string(buff.Bytes())
-	actual, err := FileSha256(filePath)
+	actual, checksumErr := FileSha256(filePath)
 
-	dbt.VerboseOutput("Verifying checksum of %q against content of %q", filePath, meta.Url)
+	dbt.VerboseOutput("Verifying checksum of %q against content of %q", filePath, meta.URL)
 	dbt.VerboseOutput("  Expected: %s", expected)
 	dbt.VerboseOutput("  Actual:   %s", actual)
 
-	if err != nil {
+	if checksumErr != nil {
+		err = checksumErr
 		success = false
 		return success, err
 	}
@@ -782,7 +827,7 @@ func (dbt *DBT) S3VerifyFileVersion(filePath string, meta S3Meta) (success bool,
 	return success, err
 }
 
-// S3FetchToolVersions fetches available versions for a tool from S3
+// S3FetchToolVersions fetches available versions for a tool from S3.
 func (dbt *DBT) S3FetchToolVersions(meta S3Meta) (versions []string, err error) {
 	versions = make([]string, 0)
 	uniqueVersions := make(map[string]int)
@@ -793,9 +838,9 @@ func (dbt *DBT) S3FetchToolVersions(meta S3Meta) (versions []string, err error) 
 		Prefix: aws.String(meta.Key),
 	}
 
-	resp, err := svc.ListObjects(options)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to list objects at %s", meta.Key)
+	resp, listErr := svc.ListObjects(options)
+	if listErr != nil {
+		err = errors.Wrapf(listErr, "failed to list objects at %s", meta.Key)
 		return versions, err
 	}
 
@@ -803,6 +848,7 @@ func (dbt *DBT) S3FetchToolVersions(meta S3Meta) (versions []string, err error) 
 	semver := regexp.MustCompile(`\d+\.\d+\.\d+`)
 
 	for _, k := range resp.Contents {
+		//nolint:nestif // S3 key parsing requires nested version extraction
 		if dir.MatchString(*k.Key) {
 			parts := strings.Split(*k.Key, "/")
 			if len(parts) > 0 {

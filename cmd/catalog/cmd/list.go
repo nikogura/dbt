@@ -22,7 +22,7 @@ import (
 	"os"
 )
 
-// listCmd represents the list command
+//nolint:gochecknoglobals // Cobra boilerplate
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "ListCatalog available tools.",
@@ -45,6 +45,7 @@ ListCatalog available tools.
 	},
 }
 
+//nolint:gochecknoinits // Cobra boilerplate
 func init() {
 	RootCmd.AddCommand(listCmd)
 }

@@ -22,11 +22,19 @@ import (
 	"os"
 )
 
+//nolint:gochecknoglobals // Cobra requires global variables for flags
 var address string
+
+//nolint:gochecknoglobals // Cobra requires global variables for flags
 var port int
+
+//nolint:gochecknoglobals // Cobra requires global variables for flags
 var serverRoot string
+
+//nolint:gochecknoglobals // Cobra requires global variables for flags
 var configFile string
 
+//nolint:gochecknoglobals // Cobra boilerplate
 var rootCmd = &cobra.Command{
 	Use:   "reposerver",
 	Short: "dbt repository server",
@@ -41,6 +49,7 @@ Pure golang server implementation of the dbt trusted repostitory.
 	Run:     Run,
 }
 
+//nolint:gochecknoinits // Cobra boilerplate
 func init() {
 	rootCmd.Flags().StringVarP(&address, "address", "a", "127.0.0.1", "Address on which to run server.")
 	rootCmd.Flags().IntVarP(&port, "port", "p", 9999, "Port on which to run server.")
@@ -48,15 +57,16 @@ func init() {
 	rootCmd.Flags().StringVarP(&configFile, "file", "f", "", "Config file for reposerver.")
 }
 
-// Execute  execute the command
+// Execute executes the root command.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	err := rootCmd.Execute()
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 }
 
-// Run run the reposerver
+// Run runs the reposerver.
 func Run(cmd *cobra.Command, args []string) {
 	var repo *dbt.DBTRepoServer
 
