@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 env:
-  GO_VERSION: '1.22'
+  GO_VERSION: '1.24'
 
 permissions:
   contents: write
@@ -151,6 +151,73 @@ jobs:
     - name: Run integration tests
       run: |
         go test -tags=integration -v -timeout=10m ./test/integration/...
+
+  publish-rc:
+    name: Publish Release Candidate
+    runs-on: ubuntu-latest
+    needs: [test, integration]
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and push RC Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./dockerfiles/reposerver/Dockerfile
+        push: true
+        tags: |
+          ghcr.io/${{ github.repository_owner }}/dbt-reposerver:rc-${{ needs.test.outputs.version_tag }}-pr${{ github.event.pull_request.number }}
+          ghcr.io/${{ github.repository_owner }}/dbt-reposerver:pr-${{ github.event.pull_request.number }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Comment PR with RC image info
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const version = '${{ needs.test.outputs.version_tag }}';
+          const prNumber = context.payload.pull_request.number;
+          const owner = context.repo.owner;
+
+          const body = `## 🐳 Release Candidate Image Published
+
+          The following Docker images are available for testing:
+
+          \`\`\`bash
+          # Pull by PR number
+          docker pull ghcr.io/${owner}/dbt-reposerver:pr-${prNumber}
+
+          # Pull by version + PR
+          docker pull ghcr.io/${owner}/dbt-reposerver:rc-${version}-pr${prNumber}
+          \`\`\`
+
+          ### Quick Test
+          \`\`\`bash
+          docker run -d -p 9999:9999 -v /path/to/repo:/var/dbt:ro ghcr.io/${owner}/dbt-reposerver:pr-${prNumber}
+          \`\`\`
+          `;
+
+          github.rest.issues.createComment({
+            issue_number: prNumber,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: body
+          });
 
   publish:
     name: Publish
