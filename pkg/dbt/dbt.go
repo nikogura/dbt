@@ -885,6 +885,20 @@ func (dbt *DBT) runExec(homedir string, args []string) (err error) {
 
 	env := os.Environ()
 
+	// Inject repository URLs so tools can use them without re-parsing config
+	if dbt.Config.Dbt.Repo != "" {
+		env = append(env, fmt.Sprintf("DBT_REPO=%s", dbt.Config.Dbt.Repo))
+	}
+	if dbt.Config.Tools.Repo != "" {
+		env = append(env, fmt.Sprintf("DBT_TOOLS_REPO=%s", dbt.Config.Tools.Repo))
+	}
+	if dbt.Config.Dbt.TrustStore != "" {
+		env = append(env, fmt.Sprintf("DBT_TRUSTSTORE=%s", dbt.Config.Dbt.TrustStore))
+	}
+	if dbt.ServerName != "" {
+		env = append(env, fmt.Sprintf("DBT_SERVER=%s", dbt.ServerName))
+	}
+
 	if testExec {
 		cs := []string{"-test.run=TestHelperProcess", "--", localPath}
 		cs = append(cs, args...)
