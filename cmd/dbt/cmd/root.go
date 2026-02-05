@@ -15,13 +15,18 @@
 package cmd
 
 import (
+	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
-	"github.com/nikogura/dbt/pkg/dbt"
-	"github.com/spf13/cobra"
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
+
+	"github.com/nikogura/dbt/pkg/dbt"
+	"github.com/spf13/cobra"
 )
 
 //nolint:gochecknoglobals // Cobra requires global variables for flags
@@ -35,6 +40,9 @@ var verbose bool
 
 //nolint:gochecknoglobals // Cobra requires global variables for flags
 var serverFlag string
+
+//nolint:gochecknoglobals // Cobra requires global variables for flags
+var authCheck bool
 
 //nolint:gochecknoglobals // Cobra boilerplate
 var rootCmd = &cobra.Command{
@@ -62,6 +70,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&offline, "offline", "o", false, "Offline mode.")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "V", false, "Verbose output")
 	rootCmd.Flags().StringVarP(&serverFlag, "server", "s", "", "Server name to use (overrides DBT_SERVER env and config default)")
+	rootCmd.Flags().BoolVar(&authCheck, "auth-check", false, "Check OIDC authentication status and exit")
 }
 
 // Execute executes the root command.
@@ -75,6 +84,12 @@ func Execute() {
 
 // Run run dbt itself.
 func Run(cmd *cobra.Command, args []string) {
+	// Handle --auth-check flag
+	if authCheck {
+		runAuthCheck()
+		return
+	}
+
 	if len(args) == 0 {
 		helpErr := cmd.Help()
 		if helpErr != nil {
@@ -135,4 +150,107 @@ func Run(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+// runAuthCheck checks OIDC authentication status for the selected server.
+func runAuthCheck() {
+	dbtObj, serverName, err := dbt.NewDbtWithServer("", serverFlag)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating DBT object: %s\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Server: %s\n", serverName)
+	fmt.Printf("Repository: %s\n", dbtObj.Config.Dbt.Repo)
+
+	// Check if OIDC is configured
+	if dbtObj.OIDCClient == nil {
+		fmt.Println("\nOIDC authentication is not configured for this server.")
+		fmt.Println("AuthType in config must be 'oidc' with issuerUrl and oidcAudience set.")
+		os.Exit(0)
+	}
+
+	fmt.Printf("Issuer URL: %s\n", dbtObj.OIDCClient.IssuerURL)
+	fmt.Printf("Audience: %s\n", dbtObj.OIDCClient.Audience)
+	fmt.Printf("Client ID: %s\n", dbtObj.OIDCClient.ClientID)
+	fmt.Printf("Connector ID: %s\n", dbtObj.OIDCClient.ConnectorID)
+	fmt.Println()
+
+	// Attempt to get token
+	fmt.Println("Attempting OIDC authentication...")
+	token, tokenErr := dbtObj.OIDCClient.GetToken(context.Background())
+	if tokenErr != nil {
+		fmt.Fprintf(os.Stderr, "\n✗ Authentication failed: %s\n", tokenErr)
+		os.Exit(1)
+	}
+
+	fmt.Println("✓ Authentication successful")
+	fmt.Println()
+
+	// Decode and display token claims
+	claims, decodeErr := decodeJWTClaims(token)
+	if decodeErr != nil {
+		fmt.Printf("Token received but could not decode claims: %s\n", decodeErr)
+		return
+	}
+
+	// Display relevant claims
+	if sub, ok := claims["sub"].(string); ok {
+		fmt.Printf("  Subject: %s\n", sub)
+	}
+	if name, ok := claims["name"].(string); ok {
+		fmt.Printf("  Name: %s\n", name)
+	}
+	if email, ok := claims["email"].(string); ok {
+		fmt.Printf("  Email: %s\n", email)
+	}
+	if groups, ok := claims["groups"].([]interface{}); ok {
+		groupStrs := make([]string, 0, len(groups))
+		for _, g := range groups {
+			if gs, isStr := g.(string); isStr {
+				groupStrs = append(groupStrs, gs)
+			}
+		}
+		fmt.Printf("  Groups: %v\n", groupStrs)
+	}
+	if aud, ok := claims["aud"].(string); ok {
+		fmt.Printf("  Audience: %s\n", aud)
+	}
+	if iss, ok := claims["iss"].(string); ok {
+		fmt.Printf("  Issuer: %s\n", iss)
+	}
+}
+
+// decodeJWTClaims extracts the claims from a JWT token without verification.
+func decodeJWTClaims(token string) (claims map[string]interface{}, err error) {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		err = fmt.Errorf("invalid JWT format: expected 3 parts, got %d", len(parts))
+		return claims, err
+	}
+
+	// Decode the payload (second part)
+	payload := parts[1]
+	// Add padding if needed
+	switch len(payload) % 4 {
+	case 2:
+		payload += "=="
+	case 3:
+		payload += "="
+	}
+
+	decoded, decodeErr := base64.URLEncoding.DecodeString(payload)
+	if decodeErr != nil {
+		err = fmt.Errorf("failed to decode JWT payload: %w", decodeErr)
+		return claims, err
+	}
+
+	claims = make(map[string]interface{})
+	unmarshalErr := json.Unmarshal(decoded, &claims)
+	if unmarshalErr != nil {
+		err = fmt.Errorf("failed to parse JWT claims: %w", unmarshalErr)
+		return claims, err
+	}
+
+	return claims, err
 }
