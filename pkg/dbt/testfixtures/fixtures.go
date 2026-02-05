@@ -13,11 +13,21 @@
 // limitations under the License.
 
 // Package testfixtures provides pre-built test artifacts for dbt tests.
-// These fixtures replace the slow gomason compilation process with static files.
+// These fixtures use static version numbers (1.0.0, 2.0.0, 3.0.0) that
+// never change, decoupled from actual release versions.
 package testfixtures
 
 import (
 	_ "embed"
+)
+
+// Test fixture versions - these are static and never change.
+// They exist only to test that dbt correctly identifies and uses
+// the "latest" version from a repository.
+const (
+	OldVersion    = "1.0.0"
+	NewVersion    = "2.0.0"
+	LatestVersion = "3.0.0"
 )
 
 // PublicKey is the GPG test key (public key for signature verification).
@@ -25,89 +35,89 @@ import (
 //go:embed gpg/public-key.asc
 var PublicKey string
 
-// Dbt302Binary is the DBT binary for version 3.0.2.
+// Dbt100Binary is the DBT binary for test version 1.0.0.
 //
-//go:embed repo/dbt/3.0.2/linux/amd64/dbt
-var Dbt302Binary []byte
+//go:embed repo/dbt/1.0.0/linux/amd64/dbt
+var Dbt100Binary []byte
 
-//go:embed repo/dbt/3.0.2/linux/amd64/dbt.sha256
-var Dbt302Checksum string
+//go:embed repo/dbt/1.0.0/linux/amd64/dbt.sha256
+var Dbt100Checksum string
 
-//go:embed repo/dbt/3.0.2/linux/amd64/dbt.asc
-var Dbt302Signature string
+//go:embed repo/dbt/1.0.0/linux/amd64/dbt.asc
+var Dbt100Signature string
 
-// Dbt334Binary is the DBT binary for version 3.3.4.
+// Dbt200Binary is the DBT binary for test version 2.0.0.
 //
-//go:embed repo/dbt/3.3.4/linux/amd64/dbt
-var Dbt334Binary []byte
+//go:embed repo/dbt/2.0.0/linux/amd64/dbt
+var Dbt200Binary []byte
 
-//go:embed repo/dbt/3.3.4/linux/amd64/dbt.sha256
-var Dbt334Checksum string
+//go:embed repo/dbt/2.0.0/linux/amd64/dbt.sha256
+var Dbt200Checksum string
 
-//go:embed repo/dbt/3.3.4/linux/amd64/dbt.asc
-var Dbt334Signature string
+//go:embed repo/dbt/2.0.0/linux/amd64/dbt.asc
+var Dbt200Signature string
 
-// Dbt373Binary is the DBT binary for version 3.7.0.
+// Dbt300Binary is the DBT binary for test version 3.0.0.
 //
-//go:embed repo/dbt/3.7.3/linux/amd64/dbt
-var Dbt373Binary []byte
+//go:embed repo/dbt/3.0.0/linux/amd64/dbt
+var Dbt300Binary []byte
 
-//go:embed repo/dbt/3.7.3/linux/amd64/dbt.sha256
-var Dbt373Checksum string
+//go:embed repo/dbt/3.0.0/linux/amd64/dbt.sha256
+var Dbt300Checksum string
 
-//go:embed repo/dbt/3.7.3/linux/amd64/dbt.asc
-var Dbt373Signature string
+//go:embed repo/dbt/3.0.0/linux/amd64/dbt.asc
+var Dbt300Signature string
 
-// Catalog302Binary is the catalog binary for version 3.0.2.
+// Catalog100Binary is the catalog binary for test version 1.0.0.
 //
-//go:embed repo/dbt-tools/catalog/3.0.2/linux/amd64/catalog
-var Catalog302Binary []byte
+//go:embed repo/dbt-tools/catalog/1.0.0/linux/amd64/catalog
+var Catalog100Binary []byte
 
-//go:embed repo/dbt-tools/catalog/3.0.2/linux/amd64/catalog.sha256
-var Catalog302Checksum string
+//go:embed repo/dbt-tools/catalog/1.0.0/linux/amd64/catalog.sha256
+var Catalog100Checksum string
 
-//go:embed repo/dbt-tools/catalog/3.0.2/linux/amd64/catalog.asc
-var Catalog302Signature string
+//go:embed repo/dbt-tools/catalog/1.0.0/linux/amd64/catalog.asc
+var Catalog100Signature string
 
-//go:embed repo/dbt-tools/catalog/3.0.2/description.txt
-var Catalog302Description string
+//go:embed repo/dbt-tools/catalog/1.0.0/description.txt
+var Catalog100Description string
 
-//go:embed repo/dbt-tools/catalog/3.0.2/description.txt.asc
-var Catalog302DescriptionSig string
+//go:embed repo/dbt-tools/catalog/1.0.0/description.txt.asc
+var Catalog100DescriptionSig string
 
-// Catalog334Binary is the catalog binary for version 3.3.4.
+// Catalog200Binary is the catalog binary for test version 2.0.0.
 //
-//go:embed repo/dbt-tools/catalog/3.3.4/linux/amd64/catalog
-var Catalog334Binary []byte
+//go:embed repo/dbt-tools/catalog/2.0.0/linux/amd64/catalog
+var Catalog200Binary []byte
 
-//go:embed repo/dbt-tools/catalog/3.3.4/linux/amd64/catalog.sha256
-var Catalog334Checksum string
+//go:embed repo/dbt-tools/catalog/2.0.0/linux/amd64/catalog.sha256
+var Catalog200Checksum string
 
-//go:embed repo/dbt-tools/catalog/3.3.4/linux/amd64/catalog.asc
-var Catalog334Signature string
+//go:embed repo/dbt-tools/catalog/2.0.0/linux/amd64/catalog.asc
+var Catalog200Signature string
 
-//go:embed repo/dbt-tools/catalog/3.3.4/description.txt
-var Catalog334Description string
+//go:embed repo/dbt-tools/catalog/2.0.0/description.txt
+var Catalog200Description string
 
-//go:embed repo/dbt-tools/catalog/3.3.4/description.txt.asc
-var Catalog334DescriptionSig string
+//go:embed repo/dbt-tools/catalog/2.0.0/description.txt.asc
+var Catalog200DescriptionSig string
 
-// Catalog373Binary is the catalog binary for version 3.7.0.
+// Catalog300Binary is the catalog binary for test version 3.0.0.
 //
-//go:embed repo/dbt-tools/catalog/3.7.3/linux/amd64/catalog
-var Catalog373Binary []byte
+//go:embed repo/dbt-tools/catalog/3.0.0/linux/amd64/catalog
+var Catalog300Binary []byte
 
-//go:embed repo/dbt-tools/catalog/3.7.3/linux/amd64/catalog.sha256
-var Catalog373Checksum string
+//go:embed repo/dbt-tools/catalog/3.0.0/linux/amd64/catalog.sha256
+var Catalog300Checksum string
 
-//go:embed repo/dbt-tools/catalog/3.7.3/linux/amd64/catalog.asc
-var Catalog373Signature string
+//go:embed repo/dbt-tools/catalog/3.0.0/linux/amd64/catalog.asc
+var Catalog300Signature string
 
-//go:embed repo/dbt-tools/catalog/3.7.3/description.txt
-var Catalog373Description string
+//go:embed repo/dbt-tools/catalog/3.0.0/description.txt
+var Catalog300Description string
 
-//go:embed repo/dbt-tools/catalog/3.7.3/description.txt.asc
-var Catalog373DescriptionSig string
+//go:embed repo/dbt-tools/catalog/3.0.0/description.txt.asc
+var Catalog300DescriptionSig string
 
 // Truststore is the GPG truststore (same as public key).
 //

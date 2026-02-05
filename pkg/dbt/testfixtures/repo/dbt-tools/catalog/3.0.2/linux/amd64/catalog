@@ -1,4 +1,0 @@
-#!/bin/bash
-# Catalog Test Binary v3.0.2
-# This is a test fixture, not a real executable
-echo "catalog version 3.0.2"

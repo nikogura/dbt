@@ -1,0 +1,4 @@
+#!/bin/bash
+# DBT Test Binary v2.0.0
+# This is a test fixture, not a real executable
+echo "dbt version 2.0.0"

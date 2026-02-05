@@ -32,8 +32,8 @@ type Artifact struct {
 
 // ArtifactSet contains artifacts for both test versions.
 type ArtifactSet struct {
-	OldVersion string // 3.0.2
-	NewVersion string // 3.3.4
+	OldVersion string // 1.0.0
+	NewVersion string // 2.0.0
 	Old        Artifact
 	New        Artifact
 }
@@ -41,17 +41,17 @@ type ArtifactSet struct {
 // GetDbtArtifacts returns the dbt binary artifacts.
 func GetDbtArtifacts() (artifacts ArtifactSet) {
 	artifacts = ArtifactSet{
-		OldVersion: "3.0.2",
-		NewVersion: "3.3.4",
+		OldVersion: OldVersion,
+		NewVersion: NewVersion,
 		Old: Artifact{
-			Binary:    Dbt302Binary,
-			Checksum:  strings.TrimSpace(Dbt302Checksum),
-			Signature: Dbt302Signature,
+			Binary:    Dbt100Binary,
+			Checksum:  strings.TrimSpace(Dbt100Checksum),
+			Signature: Dbt100Signature,
 		},
 		New: Artifact{
-			Binary:    Dbt334Binary,
-			Checksum:  strings.TrimSpace(Dbt334Checksum),
-			Signature: Dbt334Signature,
+			Binary:    Dbt200Binary,
+			Checksum:  strings.TrimSpace(Dbt200Checksum),
+			Signature: Dbt200Signature,
 		},
 	}
 	return artifacts
@@ -60,17 +60,17 @@ func GetDbtArtifacts() (artifacts ArtifactSet) {
 // GetCatalogArtifacts returns the catalog tool artifacts.
 func GetCatalogArtifacts() (artifacts ArtifactSet) {
 	artifacts = ArtifactSet{
-		OldVersion: "3.0.2",
-		NewVersion: "3.3.4",
+		OldVersion: OldVersion,
+		NewVersion: NewVersion,
 		Old: Artifact{
-			Binary:    Catalog302Binary,
-			Checksum:  strings.TrimSpace(Catalog302Checksum),
-			Signature: Catalog302Signature,
+			Binary:    Catalog100Binary,
+			Checksum:  strings.TrimSpace(Catalog100Checksum),
+			Signature: Catalog100Signature,
 		},
 		New: Artifact{
-			Binary:    Catalog334Binary,
-			Checksum:  strings.TrimSpace(Catalog334Checksum),
-			Signature: Catalog334Signature,
+			Binary:    Catalog200Binary,
+			Checksum:  strings.TrimSpace(Catalog200Checksum),
+			Signature: Catalog200Signature,
 		},
 	}
 	return artifacts
@@ -82,14 +82,14 @@ func SetupTestRepo(tmpDir string) (truststoreContent string, err error) {
 	dbtRoot := filepath.Join(tmpDir, "repo", "dbt")
 	toolRoot := filepath.Join(tmpDir, "repo", "dbt-tools")
 
-	// Create directory structure
+	// Create directory structure using static test versions
 	dirs := []string{
-		filepath.Join(dbtRoot, "3.0.2", "linux", "amd64"),
-		filepath.Join(dbtRoot, "3.3.4", "linux", "amd64"),
-		filepath.Join(dbtRoot, "3.7.3", "linux", "amd64"),
-		filepath.Join(toolRoot, "catalog", "3.0.2", "linux", "amd64"),
-		filepath.Join(toolRoot, "catalog", "3.3.4", "linux", "amd64"),
-		filepath.Join(toolRoot, "catalog", "3.7.3", "linux", "amd64"),
+		filepath.Join(dbtRoot, OldVersion, "linux", "amd64"),
+		filepath.Join(dbtRoot, NewVersion, "linux", "amd64"),
+		filepath.Join(dbtRoot, LatestVersion, "linux", "amd64"),
+		filepath.Join(toolRoot, "catalog", OldVersion, "linux", "amd64"),
+		filepath.Join(toolRoot, "catalog", NewVersion, "linux", "amd64"),
+		filepath.Join(toolRoot, "catalog", LatestVersion, "linux", "amd64"),
 	}
 
 	for _, dir := range dirs {
@@ -109,40 +109,40 @@ func SetupTestRepo(tmpDir string) (truststoreContent string, err error) {
 		return truststoreContent, err
 	}
 
-	// Write dbt binaries for both versions
-	err = writeArtifact(dbtRoot, "3.0.2", "dbt", Dbt302Binary, Dbt302Checksum, Dbt302Signature)
+	// Write dbt binaries for all test versions
+	err = writeArtifact(dbtRoot, OldVersion, "dbt", Dbt100Binary, Dbt100Checksum, Dbt100Signature)
 	if err != nil {
 		return truststoreContent, err
 	}
 
-	err = writeArtifact(dbtRoot, "3.3.4", "dbt", Dbt334Binary, Dbt334Checksum, Dbt334Signature)
+	err = writeArtifact(dbtRoot, NewVersion, "dbt", Dbt200Binary, Dbt200Checksum, Dbt200Signature)
 	if err != nil {
 		return truststoreContent, err
 	}
 
-	err = writeArtifact(dbtRoot, "3.7.3", "dbt", Dbt373Binary, Dbt373Checksum, Dbt373Signature)
+	err = writeArtifact(dbtRoot, LatestVersion, "dbt", Dbt300Binary, Dbt300Checksum, Dbt300Signature)
 	if err != nil {
 		return truststoreContent, err
 	}
 
-	// Write catalog binaries for all versions
-	err = writeCatalogArtifact(toolRoot, "3.0.2",
-		Catalog302Binary, Catalog302Checksum, Catalog302Signature,
-		Catalog302Description, Catalog302DescriptionSig)
+	// Write catalog binaries for all test versions
+	err = writeCatalogArtifact(toolRoot, OldVersion,
+		Catalog100Binary, Catalog100Checksum, Catalog100Signature,
+		Catalog100Description, Catalog100DescriptionSig)
 	if err != nil {
 		return truststoreContent, err
 	}
 
-	err = writeCatalogArtifact(toolRoot, "3.3.4",
-		Catalog334Binary, Catalog334Checksum, Catalog334Signature,
-		Catalog334Description, Catalog334DescriptionSig)
+	err = writeCatalogArtifact(toolRoot, NewVersion,
+		Catalog200Binary, Catalog200Checksum, Catalog200Signature,
+		Catalog200Description, Catalog200DescriptionSig)
 	if err != nil {
 		return truststoreContent, err
 	}
 
-	err = writeCatalogArtifact(toolRoot, "3.7.3",
-		Catalog373Binary, Catalog373Checksum, Catalog373Signature,
-		Catalog373Description, Catalog373DescriptionSig)
+	err = writeCatalogArtifact(toolRoot, LatestVersion,
+		Catalog300Binary, Catalog300Checksum, Catalog300Signature,
+		Catalog300Description, Catalog300DescriptionSig)
 	if err != nil {
 		return truststoreContent, err
 	}
