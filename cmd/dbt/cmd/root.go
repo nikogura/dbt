@@ -52,7 +52,7 @@ Server selection priority: CLI flag (-s) > environment variable (DBT_SERVER) > c
 
 `,
 	Example: "dbt -s prod -- catalog list",
-	Version: "3.7.1",
+	Version: "3.7.2",
 	Run:     Run,
 }
 
