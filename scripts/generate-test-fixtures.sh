@@ -4,6 +4,10 @@
 #
 # This script generates pre-built test artifacts to avoid slow gomason compilation
 # during tests. The artifacts are signed with a test GPG key.
+#
+# IMPORTANT: These fixtures use static version numbers (1.0.0, 2.0.0, 3.0.0)
+# that never change. They are decoupled from actual release versions.
+# Tests use these to verify the "find latest" logic works correctly.
 
 set -e
 
@@ -13,14 +17,19 @@ FIXTURE_DIR="$PROJECT_ROOT/pkg/dbt/testfixtures"
 GPG_DIR="$FIXTURE_DIR/gpg"
 REPO_DIR="$FIXTURE_DIR/repo"
 
+# Static test fixture versions - these never change
+OLD_VERSION="1.0.0"
+NEW_VERSION="2.0.0"
+LATEST_VERSION="3.0.0"
+
 # Create directories
 mkdir -p "$GPG_DIR"
-mkdir -p "$REPO_DIR/dbt/3.0.2/linux/amd64"
-mkdir -p "$REPO_DIR/dbt/3.3.4/linux/amd64"
-mkdir -p "$REPO_DIR/dbt/3.7.3/linux/amd64"
-mkdir -p "$REPO_DIR/dbt-tools/catalog/3.0.2/linux/amd64"
-mkdir -p "$REPO_DIR/dbt-tools/catalog/3.3.4/linux/amd64"
-mkdir -p "$REPO_DIR/dbt-tools/catalog/3.7.3/linux/amd64"
+mkdir -p "$REPO_DIR/dbt/$OLD_VERSION/linux/amd64"
+mkdir -p "$REPO_DIR/dbt/$NEW_VERSION/linux/amd64"
+mkdir -p "$REPO_DIR/dbt/$LATEST_VERSION/linux/amd64"
+mkdir -p "$REPO_DIR/dbt-tools/catalog/$OLD_VERSION/linux/amd64"
+mkdir -p "$REPO_DIR/dbt-tools/catalog/$NEW_VERSION/linux/amd64"
+mkdir -p "$REPO_DIR/dbt-tools/catalog/$LATEST_VERSION/linux/amd64"
 
 # Create a temporary GNUPGHOME to avoid polluting user's keyring
 export GNUPGHOME=$(mktemp -d)
@@ -59,8 +68,8 @@ cp "$GPG_DIR/public-key.asc" "$REPO_DIR/dbt/truststore"
 
 echo "=== Generating dummy binaries ==="
 
-# Generate dbt binaries for each version
-for VERSION in "3.0.2" "3.3.4" "3.7.3"; do
+# Generate dbt binaries for each test version
+for VERSION in "$OLD_VERSION" "$NEW_VERSION" "$LATEST_VERSION"; do
     BINARY="$REPO_DIR/dbt/$VERSION/linux/amd64/dbt"
 
     # Create a unique binary for each version (just text, tests only check checksums)
@@ -81,8 +90,8 @@ EOF
     echo "Created dbt $VERSION binary with checksum and signature"
 done
 
-# Generate catalog binaries for each version
-for VERSION in "3.0.2" "3.3.4" "3.7.3"; do
+# Generate catalog binaries for each test version
+for VERSION in "$OLD_VERSION" "$NEW_VERSION" "$LATEST_VERSION"; do
     CATALOG_DIR="$REPO_DIR/dbt-tools/catalog/$VERSION"
     BINARY="$CATALOG_DIR/linux/amd64/catalog"
     DESC="$CATALOG_DIR/description.txt"
@@ -137,6 +146,11 @@ sha256sum "$REPO_DIR/dbt/install_dbt_mac_keychain.sh" | cut -d' ' -f1 > "$REPO_D
 gpg --batch --yes --armor --detach-sign --local-user tester@nikogura.com "$REPO_DIR/dbt/install_dbt_mac_keychain.sh"
 
 echo "=== Test fixtures generated successfully ==="
+echo ""
+echo "Test fixture versions (static, never change):"
+echo "  OLD_VERSION:    $OLD_VERSION"
+echo "  NEW_VERSION:    $NEW_VERSION"
+echo "  LATEST_VERSION: $LATEST_VERSION"
 echo ""
 echo "Generated files:"
 find "$FIXTURE_DIR" -type f | sort

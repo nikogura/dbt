@@ -50,8 +50,11 @@ const ConfigFilePath = ConfigDir + "/dbt.json"
 // TruststorePath is the actual file path to the downloaded trust store.
 const TruststorePath = TrustDir + "/truststore"
 
-// VERSION is DBT's version.
-const VERSION = "3.7.3"
+// VERSION is DBT's version. Set to "dev" by default, injected at build time via ldflags.
+// Build with: go build -ldflags "-X github.com/nikogura/dbt/pkg/dbt.VERSION=X.Y.Z".
+//
+//nolint:gochecknoglobals // Must be a var to allow ldflags injection at build time.
+var VERSION = "dev"
 
 // DBT is the dbt object itself.
 type DBT struct {

@@ -110,18 +110,30 @@ curl https://your-dbt-repo.com/install_dbt.sh | bash
 ```bash
 git clone https://github.com/nikogura/dbt.git
 cd dbt
-# Edit metadata.json with your repository URLs
-go install github.com/nikogura/gomason@latest
-gomason publish -sl
-./install_dbt.sh
+go build -o dbt ./cmd/dbt
+go build -o catalog ./cmd/catalog
 ```
 
-### Build Configuration
+To build with a specific version embedded:
+```bash
+VERSION=1.2.3
+go build -ldflags "-X github.com/nikogura/dbt/pkg/dbt.VERSION=${VERSION}" -o dbt ./cmd/dbt
+```
 
-If building from source, edit `metadata.json` to configure your repositories:
+### Fork Configuration
 
+If forking DBT for your organization:
+
+1. Fork the repository
+2. Create a `metadata.json` for use with [Gomason](https://github.com/nikogura/gomason)
+3. **Do not commit `metadata.json`** - it's in `.gitignore` so you can pull upstream changes without conflicts
+
+Example `metadata.json`:
 ```json
 {
+  "name": "dbt",
+  "version": "1.0.0",
+  "package": "github.com/your-org/dbt",
   "repository": "https://your-dbt-repo.com/dbt",
   "tool-repository": "https://your-dbt-repo.com/dbt-tools"
 }

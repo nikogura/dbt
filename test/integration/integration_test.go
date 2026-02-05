@@ -37,6 +37,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nikogura/dbt/pkg/dbt/testfixtures"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -480,8 +481,8 @@ func TestIntegrationSuite(t *testing.T) {
 		})
 
 		t.Run("ReposerverServesBinaries", func(t *testing.T) {
-			// Check that binaries are accessible
-			versions := []string{"3.0.2", "3.3.4", "3.7.3"}
+			// Check that binaries are accessible (using static test fixture versions)
+			versions := []string{testfixtures.OldVersion, testfixtures.NewVersion, testfixtures.LatestVersion}
 			for _, version := range versions {
 				url := fmt.Sprintf("%s/dbt/%s/linux/amd64/dbt", tc.reposerverURL, version)
 				resp, err := http.Get(url)
@@ -506,14 +507,14 @@ func TestIntegrationSuite(t *testing.T) {
 		})
 
 		t.Run("ReposerverServesTools", func(t *testing.T) {
-			// Check catalog tool
-			resp, err := http.Get(tc.reposerverURL + "/dbt-tools/catalog/3.7.3/linux/amd64/catalog")
+			// Check catalog tool (using latest test fixture version)
+			resp, err := http.Get(tc.reposerverURL + "/dbt-tools/catalog/" + testfixtures.LatestVersion + "/linux/amd64/catalog")
 			require.NoError(t, err, "should be able to fetch catalog binary")
 			defer resp.Body.Close()
 			assert.Equal(t, http.StatusOK, resp.StatusCode, "catalog binary should return 200")
 
 			// Check description
-			resp, err = http.Get(tc.reposerverURL + "/dbt-tools/catalog/3.7.3/description.txt")
+			resp, err = http.Get(tc.reposerverURL + "/dbt-tools/catalog/" + testfixtures.LatestVersion + "/description.txt")
 			require.NoError(t, err, "should be able to fetch catalog description")
 			defer resp.Body.Close()
 			assert.Equal(t, http.StatusOK, resp.StatusCode, "catalog description should return 200")
@@ -594,8 +595,8 @@ func TestReposerverDirectAccess(t *testing.T) {
 
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		// Should contain version directories
-		assert.Contains(t, string(body), "3.0.2", "should list version 3.0.2")
+		// Should contain version directories (using static test fixture versions)
+		assert.Contains(t, string(body), testfixtures.OldVersion, "should list version "+testfixtures.OldVersion)
 	})
 
 	t.Run("NotFoundReturns404", func(t *testing.T) {
@@ -606,17 +607,17 @@ func TestReposerverDirectAccess(t *testing.T) {
 	})
 
 	t.Run("BinaryContent", func(t *testing.T) {
-		resp, err := http.Get(tc.reposerverURL + "/dbt/3.7.3/linux/amd64/dbt")
+		resp, err := http.Get(tc.reposerverURL + "/dbt/" + testfixtures.LatestVersion + "/linux/amd64/dbt")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		assert.Contains(t, string(body), "dbt version 3.7.3", "binary should contain version string")
+		assert.Contains(t, string(body), "dbt version "+testfixtures.LatestVersion, "binary should contain version string")
 	})
 
 	t.Run("ChecksumContent", func(t *testing.T) {
-		resp, err := http.Get(tc.reposerverURL + "/dbt/3.7.3/linux/amd64/dbt.sha256")
+		resp, err := http.Get(tc.reposerverURL + "/dbt/" + testfixtures.LatestVersion + "/linux/amd64/dbt.sha256")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -628,7 +629,7 @@ func TestReposerverDirectAccess(t *testing.T) {
 	})
 
 	t.Run("SignatureContent", func(t *testing.T) {
-		resp, err := http.Get(tc.reposerverURL + "/dbt/3.7.3/linux/amd64/dbt.asc")
+		resp, err := http.Get(tc.reposerverURL + "/dbt/" + testfixtures.LatestVersion + "/linux/amd64/dbt.asc")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 

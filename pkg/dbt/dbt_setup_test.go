@@ -56,9 +56,9 @@ var (
 	toolRoot          string
 	trustFile         string
 	setup             bool
-	oldVersion        = "3.0.2"
-	newVersion        = "3.3.4"
-	latestVersion     = "3.7.3"
+	oldVersion        = testfixtures.OldVersion
+	newVersion        = testfixtures.NewVersion
+	latestVersion     = testfixtures.LatestVersion
 	testServer        *httptest.Server
 	s3Config          *aws.Config
 	s3Session         *session.Session

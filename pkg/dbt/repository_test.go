@@ -103,14 +103,14 @@ func TestToolVersionExists(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			toolName := "catalog"
 
-			ok, err := tc.obj.ToolVersionExists(toolName, VERSION)
+			ok, err := tc.obj.ToolVersionExists(toolName, latestVersion)
 			if err != nil {
 				log.Printf("Error checking if version exists: %s", err)
 				t.Fail()
 			}
 
 			if !ok {
-				fmt.Printf("Tool %q version %q does not exist in repo %s", toolName, VERSION, tc.obj.Config.Tools.Repo)
+				fmt.Printf("Tool %q version %q does not exist in repo %s", toolName, latestVersion, tc.obj.Config.Tools.Repo)
 				t.Fail()
 			}
 
@@ -333,7 +333,7 @@ func TestFindLatestVersion(t *testing.T) {
 				t.Errorf("Error finding latest version: %s", err)
 			}
 
-			assert.Equal(t, VERSION, latest, "Latest version meets expectations.")
+			assert.Equal(t, latestVersion, latest, "Latest version meets expectations.")
 
 		})
 	}

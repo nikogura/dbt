@@ -1,0 +1,4 @@
+#!/bin/bash
+# Catalog Test Binary v1.0.0
+# This is a test fixture, not a real executable
+echo "catalog version 1.0.0"

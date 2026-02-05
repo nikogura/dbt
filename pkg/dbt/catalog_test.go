@@ -33,7 +33,8 @@ func TestFetchDescription(t *testing.T) {
 	}
 
 	for _, tc := range inputs {
-		desc, err := tc.obj.FetchToolDescription("catalog", VERSION)
+		// Use test fixture version, not the release VERSION constant
+		desc, err := tc.obj.FetchToolDescription("catalog", latestVersion)
 		if err != nil {
 			t.Errorf("Error fetching description for 'catalog': %s", err)
 		}

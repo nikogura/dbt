@@ -219,7 +219,7 @@ func TestDbtIsCurrent(t *testing.T) {
 			},
 			homeDirRepoServer,
 			fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, oldVersion, runtime.GOOS),
-			fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, VERSION, runtime.GOOS),
+			fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, latestVersion, runtime.GOOS),
 		},
 		{
 			"s3",
@@ -230,7 +230,7 @@ func TestDbtIsCurrent(t *testing.T) {
 			},
 			homeDirS3,
 			fmt.Sprintf("https://dbt.s3.us-east-1.amazonaws.com/%s/%s/amd64/dbt", oldVersion, runtime.GOOS),
-			fmt.Sprintf("https://dbt.s3.us-east-1.amazonaws.com/%s/%s/amd64/dbt", VERSION, runtime.GOOS),
+			fmt.Sprintf("https://dbt.s3.us-east-1.amazonaws.com/%s/%s/amd64/dbt", latestVersion, runtime.GOOS),
 		},
 	}
 
@@ -287,7 +287,7 @@ func TestDbtUpgradeInPlace(t *testing.T) {
 			},
 			homeDirRepoServer,
 			fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, oldVersion, runtime.GOOS),
-			fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, VERSION, runtime.GOOS),
+			fmt.Sprintf("http://127.0.0.1:%d/dbt/%s/%s/amd64/dbt", port, latestVersion, runtime.GOOS),
 		},
 		{
 			"s3",
@@ -298,7 +298,7 @@ func TestDbtUpgradeInPlace(t *testing.T) {
 			},
 			homeDirS3,
 			fmt.Sprintf("https://dbt.s3.us-east-1.amazonaws.com/%s/%s/amd64/dbt", oldVersion, runtime.GOOS),
-			fmt.Sprintf("https://dbt.s3.us-east-1.amazonaws.com/%s/%s/amd64/dbt", VERSION, runtime.GOOS),
+			fmt.Sprintf("https://dbt.s3.us-east-1.amazonaws.com/%s/%s/amd64/dbt", latestVersion, runtime.GOOS),
 		},
 	}
 

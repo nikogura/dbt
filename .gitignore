@@ -68,3 +68,7 @@ fabric.properties
 *.iml
 .claude/
 boilerplate
+
+# Gomason metadata file - forks should create their own and not commit it
+# This allows pulling upstream changes without conflicts
+metadata.json
