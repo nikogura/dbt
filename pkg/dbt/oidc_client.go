@@ -16,15 +16,11 @@ package dbt
 
 import (
 	"context"
-	"encoding/json"
-	"io"
-	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/nikogura/jwt-ssh-agent-go/pkg/agentjwt"
+	"github.com/nikogura/kubectl-ssh-oidc/pkg/kubectl"
 	"github.com/pkg/errors"
 )
 
@@ -109,66 +105,33 @@ func (c *OIDCClient) GetToken(ctx context.Context) (token string, err error) {
 	return token, err
 }
 
-// exchangeToken performs the SSH-to-OIDC token exchange via RFC 8693.
-func (c *OIDCClient) exchangeToken(ctx context.Context) (token string, expiresIn int, err error) {
-	// Create SSH-signed JWT
-	sshJWT, sshErr := c.createSSHSignedJWT()
-	if sshErr != nil {
-		err = errors.Wrap(sshErr, "failed to create SSH-signed JWT")
-		return token, expiresIn, err
+// exchangeToken performs the SSH-to-OIDC token exchange via kubectl-ssh-oidc.
+func (c *OIDCClient) exchangeToken(_ context.Context) (token string, expiresIn int, err error) {
+	// Create kubectl-ssh-oidc config
+	config := &kubectl.Config{
+		DexURL:         c.IssuerURL,
+		Username:       c.Username,
+		DexInstanceID:  c.IssuerURL, // SSH JWT audience is the Dex instance
+		TargetAudience: c.Audience,  // Final OIDC token audience
+		UseAgent:       true,        // Use SSH agent for key discovery
 	}
 
-	// Exchange with OIDC provider
-	tokenURL := c.IssuerURL + "/token"
-	formData := url.Values{
-		"grant_type":           {"urn:ietf:params:oauth:grant-type:token-exchange"},
-		"subject_token_type":   {"urn:ietf:params:oauth:token-type:jwt"},
-		"subject_token":        {sshJWT},
-		"requested_token_type": {"urn:ietf:params:oauth:token-type:id_token"},
-		"scope":                {"openid"},
-	}
-
-	// Add connector_id if configured (e.g., "ssh" for Dex)
-	if c.ConnectorID != "" {
-		formData.Set("connector_id", c.ConnectorID)
-	}
-
+	// If client ID is set, use it
 	if c.ClientID != "" {
-		formData.Set("client_id", c.ClientID)
+		config.ClientID = c.ClientID
 	}
 
-	req, reqErr := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(formData.Encode()))
-	if reqErr != nil {
-		err = errors.Wrap(reqErr, "failed to create token exchange request")
+	// Create SSH-signed JWT using kubectl-ssh-oidc (handles SSH agent key discovery)
+	sshJWT, jwtErr := kubectl.CreateSSHSignedJWT(config)
+	if jwtErr != nil {
+		err = errors.Wrap(jwtErr, "failed to create SSH-signed JWT")
 		return token, expiresIn, err
 	}
 
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Accept", "application/json")
-
-	httpClient := &http.Client{Timeout: 30 * time.Second}
-	resp, doErr := httpClient.Do(req)
-	if doErr != nil {
-		err = errors.Wrap(doErr, "failed to exchange token with OIDC provider")
-		return token, expiresIn, err
-	}
-	defer resp.Body.Close()
-
-	body, readErr := io.ReadAll(resp.Body)
-	if readErr != nil {
-		err = errors.Wrap(readErr, "failed to read token response")
-		return token, expiresIn, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		err = errors.Errorf("token exchange failed (%d): %s", resp.StatusCode, string(body))
-		return token, expiresIn, err
-	}
-
-	var tokenResp TokenResponse
-	unmarshalErr := json.Unmarshal(body, &tokenResp)
-	if unmarshalErr != nil {
-		err = errors.Wrap(unmarshalErr, "failed to parse token response")
+	// Exchange with Dex for OIDC token
+	tokenResp, exchangeErr := kubectl.ExchangeWithDex(config, sshJWT)
+	if exchangeErr != nil {
+		err = errors.Wrap(exchangeErr, "failed to exchange JWT with Dex")
 		return token, expiresIn, err
 	}
 
@@ -185,20 +148,6 @@ func (c *OIDCClient) exchangeToken(ctx context.Context) (token string, expiresIn
 	}
 
 	return token, expiresIn, err
-}
-
-// createSSHSignedJWT creates a JWT signed with the SSH agent.
-func (c *OIDCClient) createSSHSignedJWT() (jwtString string, err error) {
-	// Use the jwt-ssh-agent-go library to create the SSH-signed JWT.
-	// The audience for the SSH JWT is the OIDC issuer.
-	// The subject is the username.
-	jwtString, err = agentjwt.SignedJwtToken(c.Username, c.IssuerURL, "")
-	if err != nil {
-		err = errors.Wrap(err, "failed to sign JWT with SSH agent")
-		return jwtString, err
-	}
-
-	return jwtString, err
 }
 
 func (tc *tokenCache) get() (token string, valid bool) {

@@ -47,16 +47,16 @@ var Dbt334Checksum string
 //go:embed repo/dbt/3.3.4/linux/amd64/dbt.asc
 var Dbt334Signature string
 
-// Dbt371Binary is the DBT binary for version 3.7.0.
+// Dbt372Binary is the DBT binary for version 3.7.0.
 //
-//go:embed repo/dbt/3.7.1/linux/amd64/dbt
-var Dbt371Binary []byte
+//go:embed repo/dbt/3.7.2/linux/amd64/dbt
+var Dbt372Binary []byte
 
-//go:embed repo/dbt/3.7.1/linux/amd64/dbt.sha256
-var Dbt371Checksum string
+//go:embed repo/dbt/3.7.2/linux/amd64/dbt.sha256
+var Dbt372Checksum string
 
-//go:embed repo/dbt/3.7.1/linux/amd64/dbt.asc
-var Dbt371Signature string
+//go:embed repo/dbt/3.7.2/linux/amd64/dbt.asc
+var Dbt372Signature string
 
 // Catalog302Binary is the catalog binary for version 3.0.2.
 //
@@ -92,22 +92,22 @@ var Catalog334Description string
 //go:embed repo/dbt-tools/catalog/3.3.4/description.txt.asc
 var Catalog334DescriptionSig string
 
-// Catalog371Binary is the catalog binary for version 3.7.0.
+// Catalog372Binary is the catalog binary for version 3.7.0.
 //
-//go:embed repo/dbt-tools/catalog/3.7.1/linux/amd64/catalog
-var Catalog371Binary []byte
+//go:embed repo/dbt-tools/catalog/3.7.2/linux/amd64/catalog
+var Catalog372Binary []byte
 
-//go:embed repo/dbt-tools/catalog/3.7.1/linux/amd64/catalog.sha256
-var Catalog371Checksum string
+//go:embed repo/dbt-tools/catalog/3.7.2/linux/amd64/catalog.sha256
+var Catalog372Checksum string
 
-//go:embed repo/dbt-tools/catalog/3.7.1/linux/amd64/catalog.asc
-var Catalog371Signature string
+//go:embed repo/dbt-tools/catalog/3.7.2/linux/amd64/catalog.asc
+var Catalog372Signature string
 
-//go:embed repo/dbt-tools/catalog/3.7.1/description.txt
-var Catalog371Description string
+//go:embed repo/dbt-tools/catalog/3.7.2/description.txt
+var Catalog372Description string
 
-//go:embed repo/dbt-tools/catalog/3.7.1/description.txt.asc
-var Catalog371DescriptionSig string
+//go:embed repo/dbt-tools/catalog/3.7.2/description.txt.asc
+var Catalog372DescriptionSig string
 
 // Truststore is the GPG truststore (same as public key).
 //

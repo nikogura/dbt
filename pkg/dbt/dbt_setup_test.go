@@ -58,7 +58,7 @@ var (
 	setup             bool
 	oldVersion        = "3.0.2"
 	newVersion        = "3.3.4"
-	latestVersion     = "3.7.1"
+	latestVersion     = "3.7.2"
 	testServer        *httptest.Server
 	s3Config          *aws.Config
 	s3Session         *session.Session
