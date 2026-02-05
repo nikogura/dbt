@@ -157,12 +157,24 @@ func (d *DBTRepoServer) setupGetRoutes(r *mux.Router, oidcValidator *OIDCValidat
 	return err
 }
 
+// HealthHandler handles health check requests without authentication.
+func (d *DBTRepoServer) HealthHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	_, writeErr := w.Write([]byte("ok"))
+	if writeErr != nil {
+		log.Errorf("failed to write health check response: %v", writeErr)
+	}
+}
+
 // RunRepoServer Run runs the test repository server.
 func (d *DBTRepoServer) RunRepoServer() (err error) {
 	log.Printf("Running dbt artifact server on %s port %d.  Serving tree at: %s", d.Address, d.Port, d.ServerRoot)
 
 	fullAddress := fmt.Sprintf("%s:%s", d.Address, strconv.Itoa(d.Port))
 	r := mux.NewRouter()
+
+	// Health check endpoint - no auth required
+	r.HandleFunc("/healthz", d.HealthHandler).Methods("GET", "HEAD")
 
 	// Initialize OIDC validators if needed
 	oidcValidatorPut, oidcValidatorGet, initErr := d.initOIDCValidators()
