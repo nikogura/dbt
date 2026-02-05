@@ -1,4 +1,4 @@
 #!/bin/bash
-# DBT Test Binary v3.7.2
+# DBT Test Binary v3.7.3
 # This is a test fixture, not a real executable
-echo "dbt version 3.7.2"
+echo "dbt version 3.7.3"

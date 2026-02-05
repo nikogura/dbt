@@ -27,7 +27,7 @@ func TestRootCmdStructure(t *testing.T) {
 	assert.Equal(t, "dbt", rootCmd.Use, "Command use should be 'dbt'")
 	assert.Equal(t, "Dynamic Binary Toolkit", rootCmd.Short, "Short description should match")
 	assert.Contains(t, rootCmd.Long, "self-updating signed binaries", "Long description should mention self-updating")
-	assert.Equal(t, "3.7.2", rootCmd.Version, "Version should be set")
+	assert.Equal(t, "3.7.3", rootCmd.Version, "Version should be set")
 }
 
 func TestRootCmdFlags(t *testing.T) {
@@ -80,7 +80,7 @@ func TestRootCmdVersion(t *testing.T) {
 	// Test that version is properly set on the command
 	// Note: The --version flag output goes to stdout, not the command's Out writer
 	// So we verify the version is set correctly on the command itself
-	assert.Equal(t, "3.7.2", rootCmd.Version, "Version should be 3.7.2")
+	assert.Equal(t, "3.7.3", rootCmd.Version, "Version should be 3.7.3")
 }
 
 func TestRootCmdExample(t *testing.T) {
