@@ -128,9 +128,9 @@ main() {
     update_file "$PROJECT_ROOT/cmd/dbt/cmd/root.go" \
         "s/Version: *\"[^\"]*\"/Version: \"$NEW_VERSION\"/"
 
-    # 4. cmd/dbt/cmd/root_test.go - expected version
+    # 4. cmd/dbt/cmd/root_test.go - all version references
     update_file "$PROJECT_ROOT/cmd/dbt/cmd/root_test.go" \
-        "s/expected := \"[^\"]*\"/expected := \"$NEW_VERSION\"/"
+        "s/$CURRENT_VERSION/$NEW_VERSION/g"
 
     # 5. pkg/dbt/dbt_setup_test.go - latestVersion
     update_file "$PROJECT_ROOT/pkg/dbt/dbt_setup_test.go" \
@@ -218,6 +218,19 @@ EOF
 
     # Regenerate test fixtures (this will update checksums and signatures)
     "$SCRIPT_DIR/generate-test-fixtures.sh"
+
+    echo ""
+    info "=== Running gofmt on modified Go files ==="
+
+    # Run gofmt on all Go files that may have been modified
+    gofmt -w "$PROJECT_ROOT/pkg/dbt/dbt.go"
+    gofmt -w "$PROJECT_ROOT/pkg/dbt/dbt_setup_test.go"
+    gofmt -w "$PROJECT_ROOT/pkg/dbt/testfixtures/fixtures.go"
+    gofmt -w "$PROJECT_ROOT/pkg/dbt/testfixtures/setup.go"
+    gofmt -w "$PROJECT_ROOT/cmd/dbt/cmd/root.go"
+    gofmt -w "$PROJECT_ROOT/cmd/dbt/cmd/root_test.go"
+    gofmt -w "$PROJECT_ROOT/test/integration/integration_test.go"
+    info "Go files formatted"
 
     echo ""
     info "=== Version bump complete ==="

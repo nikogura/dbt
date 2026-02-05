@@ -17,10 +17,10 @@ REPO_DIR="$FIXTURE_DIR/repo"
 mkdir -p "$GPG_DIR"
 mkdir -p "$REPO_DIR/dbt/3.0.2/linux/amd64"
 mkdir -p "$REPO_DIR/dbt/3.3.4/linux/amd64"
-mkdir -p "$REPO_DIR/dbt/3.7.0/linux/amd64"
+mkdir -p "$REPO_DIR/dbt/3.7.1/linux/amd64"
 mkdir -p "$REPO_DIR/dbt-tools/catalog/3.0.2/linux/amd64"
 mkdir -p "$REPO_DIR/dbt-tools/catalog/3.3.4/linux/amd64"
-mkdir -p "$REPO_DIR/dbt-tools/catalog/3.7.0/linux/amd64"
+mkdir -p "$REPO_DIR/dbt-tools/catalog/3.7.1/linux/amd64"
 
 # Create a temporary GNUPGHOME to avoid polluting user's keyring
 export GNUPGHOME=$(mktemp -d)
@@ -60,7 +60,7 @@ cp "$GPG_DIR/public-key.asc" "$REPO_DIR/dbt/truststore"
 echo "=== Generating dummy binaries ==="
 
 # Generate dbt binaries for each version
-for VERSION in "3.0.2" "3.3.4" "3.7.0"; do
+for VERSION in "3.0.2" "3.3.4" "3.7.1"; do
     BINARY="$REPO_DIR/dbt/$VERSION/linux/amd64/dbt"
 
     # Create a unique binary for each version (just text, tests only check checksums)
@@ -82,7 +82,7 @@ EOF
 done
 
 # Generate catalog binaries for each version
-for VERSION in "3.0.2" "3.3.4" "3.7.0"; do
+for VERSION in "3.0.2" "3.3.4" "3.7.1"; do
     CATALOG_DIR="$REPO_DIR/dbt-tools/catalog/$VERSION"
     BINARY="$CATALOG_DIR/linux/amd64/catalog"
     DESC="$CATALOG_DIR/description.txt"

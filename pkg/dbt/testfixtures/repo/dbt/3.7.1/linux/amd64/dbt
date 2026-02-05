@@ -1,4 +1,4 @@
 #!/bin/bash
-# Catalog Test Binary v3.7.0
+# DBT Test Binary v3.7.1
 # This is a test fixture, not a real executable
-echo "catalog version 3.7.0"
+echo "dbt version 3.7.1"

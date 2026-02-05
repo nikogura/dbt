@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"regexp"
@@ -541,4 +542,28 @@ func TestRepoServerAuth(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHealthHandler(t *testing.T) {
+	server := &DBTRepoServer{
+		Address:    "127.0.0.1",
+		Port:       8080,
+		ServerRoot: "/tmp",
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
+	w := httptest.NewRecorder()
+
+	server.HealthHandler(w, req)
+
+	resp := w.Result()
+	defer resp.Body.Close()
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "Health check should return 200 OK")
+
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		t.Fatalf("Failed to read response body: %s", readErr)
+	}
+	assert.Equal(t, "ok", string(body), "Health check should return 'ok'")
 }
