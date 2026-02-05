@@ -78,10 +78,12 @@ type Config struct {
 	PubkeyPath   string      `json:"pubkeypath,omitempty"`
 	PubkeyFunc   string      `json:"pubkeyfunc,omitempty"`
 	// OIDC authentication options (RFC 8693 token exchange)
-	AuthType     string `json:"authType,omitempty"`     // "oidc" for OIDC auth, empty for legacy SSH-agent auth
-	IssuerURL    string `json:"issuerUrl,omitempty"`    // OIDC issuer URL for token exchange
-	OIDCAudience string `json:"oidcAudience,omitempty"` // Target audience for OIDC tokens (e.g., "dbt-server")
-	ConnectorID  string `json:"connectorId,omitempty"`  // Connector ID for providers that support it (e.g., "ssh" for Dex)
+	AuthType         string `json:"authType,omitempty"`         // "oidc" for OIDC auth, empty for legacy SSH-agent auth
+	IssuerURL        string `json:"issuerUrl,omitempty"`        // OIDC issuer URL for token exchange
+	OIDCAudience     string `json:"oidcAudience,omitempty"`     // Target audience for OIDC tokens (e.g., "dbt-server")
+	OIDCClientID     string `json:"oidcClientId,omitempty"`     // OAuth2 client ID for token exchange
+	OIDCClientSecret string `json:"oidcClientSecret,omitempty"` // OAuth2 client secret for token exchange
+	ConnectorID      string `json:"connectorId,omitempty"`      // Connector ID for providers that support it (e.g., "ssh" for Dex)
 }
 
 // DbtConfig is the internal config of dbt.
@@ -97,13 +99,15 @@ type ToolsConfig struct {
 
 // ServerConfig holds configuration for a single dbt server.
 type ServerConfig struct {
-	Repository      string `json:"repository"`
-	Truststore      string `json:"truststore,omitempty"`
-	ToolsRepository string `json:"toolsRepository,omitempty"`
-	AuthType        string `json:"authType,omitempty"`
-	IssuerURL       string `json:"issuerUrl,omitempty"`
-	OIDCAudience    string `json:"oidcAudience,omitempty"`
-	ConnectorID     string `json:"connectorId,omitempty"`
+	Repository       string `json:"repository"`
+	Truststore       string `json:"truststore,omitempty"`
+	ToolsRepository  string `json:"toolsRepository,omitempty"`
+	AuthType         string `json:"authType,omitempty"`
+	IssuerURL        string `json:"issuerUrl,omitempty"`
+	OIDCAudience     string `json:"oidcAudience,omitempty"`
+	OIDCClientID     string `json:"oidcClientId,omitempty"`
+	OIDCClientSecret string `json:"oidcClientSecret,omitempty"`
+	ConnectorID      string `json:"connectorId,omitempty"`
 }
 
 // MultiServerConfig holds the top-level config with multiple servers.
@@ -114,17 +118,19 @@ type MultiServerConfig struct {
 	Dbt   *DbtConfig   `json:"dbt,omitempty"`
 	Tools *ToolsConfig `json:"tools,omitempty"`
 	// Legacy auth fields
-	Username     string `json:"username,omitempty"`
-	Password     string `json:"password,omitempty"`
-	UsernameFunc string `json:"usernamefunc,omitempty"`
-	PasswordFunc string `json:"passwordfunc,omitempty"`
-	Pubkey       string `json:"pubkey,omitempty"`
-	PubkeyPath   string `json:"pubkeypath,omitempty"`
-	PubkeyFunc   string `json:"pubkeyfunc,omitempty"`
-	AuthType     string `json:"authType,omitempty"`
-	IssuerURL    string `json:"issuerUrl,omitempty"`
-	OIDCAudience string `json:"oidcAudience,omitempty"`
-	ConnectorID  string `json:"connectorId,omitempty"`
+	Username         string `json:"username,omitempty"`
+	Password         string `json:"password,omitempty"`
+	UsernameFunc     string `json:"usernamefunc,omitempty"`
+	PasswordFunc     string `json:"passwordfunc,omitempty"`
+	Pubkey           string `json:"pubkey,omitempty"`
+	PubkeyPath       string `json:"pubkeypath,omitempty"`
+	PubkeyFunc       string `json:"pubkeyfunc,omitempty"`
+	AuthType         string `json:"authType,omitempty"`
+	IssuerURL        string `json:"issuerUrl,omitempty"`
+	OIDCAudience     string `json:"oidcAudience,omitempty"`
+	OIDCClientID     string `json:"oidcClientId,omitempty"`
+	OIDCClientSecret string `json:"oidcClientSecret,omitempty"`
+	ConnectorID      string `json:"connectorId,omitempty"`
 }
 
 // DbtServerEnv is the environment variable for selecting a server.
@@ -198,6 +204,8 @@ func (c *MultiServerConfig) toLegacyServer() (server ServerConfig) {
 	server.AuthType = c.AuthType
 	server.IssuerURL = c.IssuerURL
 	server.OIDCAudience = c.OIDCAudience
+	server.OIDCClientID = c.OIDCClientID
+	server.OIDCClientSecret = c.OIDCClientSecret
 	server.ConnectorID = c.ConnectorID
 	return server
 }
@@ -234,6 +242,16 @@ func (c *MultiServerConfig) ToConfig(server ServerConfig) (config Config) {
 		config.OIDCAudience = server.OIDCAudience
 	} else {
 		config.OIDCAudience = c.OIDCAudience
+	}
+	if server.OIDCClientID != "" {
+		config.OIDCClientID = server.OIDCClientID
+	} else {
+		config.OIDCClientID = c.OIDCClientID
+	}
+	if server.OIDCClientSecret != "" {
+		config.OIDCClientSecret = server.OIDCClientSecret
+	} else {
+		config.OIDCClientSecret = c.OIDCClientSecret
 	}
 	if server.ConnectorID != "" {
 		config.ConnectorID = server.ConnectorID
@@ -279,10 +297,12 @@ func NewDbt(homedir string) (dbt *DBT, err error) {
 	// Initialize OIDC client if configured
 	if config.AuthType == "oidc" {
 		oidcConfig := &OIDCClientConfig{
-			IssuerURL:    config.IssuerURL,
-			OIDCAudience: config.OIDCAudience,
-			OIDCUsername: config.Username,
-			ConnectorID:  config.ConnectorID,
+			IssuerURL:        config.IssuerURL,
+			OIDCAudience:     config.OIDCAudience,
+			OIDCClientID:     config.OIDCClientID,
+			OIDCClientSecret: config.OIDCClientSecret,
+			OIDCUsername:     config.Username,
+			ConnectorID:      config.ConnectorID,
 		}
 		oidcClient, oidcErr := NewOIDCClient(oidcConfig)
 		if oidcErr != nil {
@@ -338,10 +358,12 @@ func NewDbtWithServer(homedir string, serverFlag string) (dbt *DBT, serverName s
 	// Initialize OIDC client if configured
 	if config.AuthType == "oidc" {
 		oidcConfig := &OIDCClientConfig{
-			IssuerURL:    config.IssuerURL,
-			OIDCAudience: config.OIDCAudience,
-			OIDCUsername: config.Username,
-			ConnectorID:  config.ConnectorID,
+			IssuerURL:        config.IssuerURL,
+			OIDCAudience:     config.OIDCAudience,
+			OIDCClientID:     config.OIDCClientID,
+			OIDCClientSecret: config.OIDCClientSecret,
+			OIDCUsername:     config.Username,
+			ConnectorID:      config.ConnectorID,
 		}
 		oidcClient, oidcErr := NewOIDCClient(oidcConfig)
 		if oidcErr != nil {

@@ -140,8 +140,8 @@ func TestTokenCache(t *testing.T) {
 	})
 }
 
-// TestTokenResponse tests the OIDC token response parsing.
-func TestTokenResponse(t *testing.T) {
+// TestDexTokenResponse tests the OIDC token response parsing.
+func TestDexTokenResponse(t *testing.T) {
 	t.Run("parse with id_token", func(t *testing.T) {
 		jsonResp := `{
 			"access_token": "access-token-123",
@@ -150,7 +150,7 @@ func TestTokenResponse(t *testing.T) {
 			"id_token": "id-token-456"
 		}`
 
-		var resp TokenResponse
+		var resp DexTokenResponse
 		err := json.Unmarshal([]byte(jsonResp), &resp)
 		require.NoError(t, err)
 
@@ -167,7 +167,7 @@ func TestTokenResponse(t *testing.T) {
 			"expires_in": 3600
 		}`
 
-		var resp TokenResponse
+		var resp DexTokenResponse
 		err := json.Unmarshal([]byte(jsonResp), &resp)
 		require.NoError(t, err)
 
