@@ -481,7 +481,7 @@ func TestIntegrationSuite(t *testing.T) {
 
 		t.Run("ReposerverServesBinaries", func(t *testing.T) {
 			// Check that binaries are accessible
-			versions := []string{"3.0.2", "3.3.4", "3.7.2"}
+			versions := []string{"3.0.2", "3.3.4", "3.7.3"}
 			for _, version := range versions {
 				url := fmt.Sprintf("%s/dbt/%s/linux/amd64/dbt", tc.reposerverURL, version)
 				resp, err := http.Get(url)
@@ -507,13 +507,13 @@ func TestIntegrationSuite(t *testing.T) {
 
 		t.Run("ReposerverServesTools", func(t *testing.T) {
 			// Check catalog tool
-			resp, err := http.Get(tc.reposerverURL + "/dbt-tools/catalog/3.7.2/linux/amd64/catalog")
+			resp, err := http.Get(tc.reposerverURL + "/dbt-tools/catalog/3.7.3/linux/amd64/catalog")
 			require.NoError(t, err, "should be able to fetch catalog binary")
 			defer resp.Body.Close()
 			assert.Equal(t, http.StatusOK, resp.StatusCode, "catalog binary should return 200")
 
 			// Check description
-			resp, err = http.Get(tc.reposerverURL + "/dbt-tools/catalog/3.7.2/description.txt")
+			resp, err = http.Get(tc.reposerverURL + "/dbt-tools/catalog/3.7.3/description.txt")
 			require.NoError(t, err, "should be able to fetch catalog description")
 			defer resp.Body.Close()
 			assert.Equal(t, http.StatusOK, resp.StatusCode, "catalog description should return 200")
@@ -606,17 +606,17 @@ func TestReposerverDirectAccess(t *testing.T) {
 	})
 
 	t.Run("BinaryContent", func(t *testing.T) {
-		resp, err := http.Get(tc.reposerverURL + "/dbt/3.7.2/linux/amd64/dbt")
+		resp, err := http.Get(tc.reposerverURL + "/dbt/3.7.3/linux/amd64/dbt")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		assert.Contains(t, string(body), "dbt version 3.7.2", "binary should contain version string")
+		assert.Contains(t, string(body), "dbt version 3.7.3", "binary should contain version string")
 	})
 
 	t.Run("ChecksumContent", func(t *testing.T) {
-		resp, err := http.Get(tc.reposerverURL + "/dbt/3.7.2/linux/amd64/dbt.sha256")
+		resp, err := http.Get(tc.reposerverURL + "/dbt/3.7.3/linux/amd64/dbt.sha256")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
@@ -628,7 +628,7 @@ func TestReposerverDirectAccess(t *testing.T) {
 	})
 
 	t.Run("SignatureContent", func(t *testing.T) {
-		resp, err := http.Get(tc.reposerverURL + "/dbt/3.7.2/linux/amd64/dbt.asc")
+		resp, err := http.Get(tc.reposerverURL + "/dbt/3.7.3/linux/amd64/dbt.asc")
 		require.NoError(t, err)
 		defer resp.Body.Close()
 
