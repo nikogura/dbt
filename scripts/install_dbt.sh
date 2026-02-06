@@ -4,11 +4,17 @@
 # Fully userspace installation - no sudo required.
 # Automatically configures shell PATH.
 #
-# Quick install (pipe to bash):
+# Supports both HTTP and S3 backends.
+#
+# Quick install (HTTP):
 #   curl -fsSL https://dbt.example.com/install_dbt.sh | bash -s -- --url https://dbt.example.com
+#
+# Quick install (S3):
+#   aws s3 cp s3://your-bucket/install_dbt.sh - | bash -s -- --url s3://your-bucket
 #
 # Or download and run:
 #   ./install_dbt.sh --url https://dbt.example.com
+#   ./install_dbt.sh --url s3://your-bucket
 #
 # Installation modes:
 #   Fresh install (default) - Downloads dbt, creates config, updates shell PATH
@@ -54,13 +60,17 @@ Options:
     -y, --yes               Non-interactive mode
     -h, --help              Show this help
 
-Quick install:
+Quick install (HTTP):
     curl -fsSL https://dbt.example.com/install_dbt.sh | bash -s -- --url https://dbt.example.com
+
+Quick install (S3):
+    aws s3 cp s3://your-dbt-bucket/install_dbt.sh - | bash -s -- --url s3://your-dbt-bucket
 
 Examples:
     $0 --url https://dbt.example.com
     $0 --url https://dbt.example.com --oidc-issuer https://dex.example.com
     $0 --url https://dbt.staging.example.com --name staging --add
+    $0 --url s3://your-dbt-bucket                    # S3 backend (requires AWS CLI)
 EOF
 }
 
@@ -98,15 +108,52 @@ done
 # Normalize URL
 SERVER_URL="${SERVER_URL%/}"
 
+# Detect if this is an S3 URL
+IS_S3=false
+if [[ "$SERVER_URL" == s3://* ]]; then
+    IS_S3=true
+    command -v aws >/dev/null 2>&1 || error "AWS CLI required for S3 URLs"
+fi
+
+# Download helper - uses aws s3 cp for S3, curl for HTTP
+fetch() {
+    local src="$1"
+    local dst="$2"
+    if [[ "$IS_S3" == "true" ]]; then
+        aws s3 cp "$src" "$dst" --quiet
+    else
+        curl -fsSL -o "$dst" "$src"
+    fi
+}
+
+# Fetch to stdout helper
+fetch_content() {
+    local src="$1"
+    if [[ "$IS_S3" == "true" ]]; then
+        aws s3 cp "$src" -
+    else
+        curl -fsSL "$src"
+    fi
+}
+
 # Derive server name from URL if not provided
 if [[ -z "$SERVER_NAME" ]]; then
-    HOSTNAME=$(echo "$SERVER_URL" | sed -E 's|^https?://||' | cut -d'/' -f1 | cut -d':' -f1)
-    FIRST=$(echo "$HOSTNAME" | cut -d'.' -f1)
-    if [[ "$FIRST" == "dbt" ]]; then
-        SECOND=$(echo "$HOSTNAME" | cut -d'.' -f2)
-        [[ -n "$SECOND" && "$SECOND" != "example" && "$SECOND" != "com" ]] && SERVER_NAME="$SECOND" || SERVER_NAME="default"
+    if [[ "$IS_S3" == "true" ]]; then
+        # S3 URL: s3://bucket-name -> use bucket name
+        BUCKET=$(echo "$SERVER_URL" | sed -E 's|^s3://||' | cut -d'/' -f1)
+        # Strip common prefixes/suffixes
+        SERVER_NAME=$(echo "$BUCKET" | sed -E 's/^(terrace-|company-)?dbt(-prod|-dev|-staging)?$/\2/' | sed 's/^-//' | sed 's/-$//')
+        [[ -z "$SERVER_NAME" ]] && SERVER_NAME="default"
     else
-        SERVER_NAME="$FIRST"
+        # HTTP URL
+        HOSTNAME=$(echo "$SERVER_URL" | sed -E 's|^https?://||' | cut -d'/' -f1 | cut -d':' -f1)
+        FIRST=$(echo "$HOSTNAME" | cut -d'.' -f1)
+        if [[ "$FIRST" == "dbt" ]]; then
+            SECOND=$(echo "$HOSTNAME" | cut -d'.' -f2)
+            [[ -n "$SECOND" && "$SECOND" != "example" && "$SECOND" != "com" ]] && SERVER_NAME="$SECOND" || SERVER_NAME="default"
+        else
+            SERVER_NAME="$FIRST"
+        fi
     fi
 fi
 
@@ -165,20 +212,29 @@ fi
 mkdir -p "$INSTALL_DIR"
 mkdir -p "$CONFIG_DIR"
 
+# Get latest version
+step "Fetching latest version..."
+LATEST_URL="${SERVER_URL}/latest"
+VERSION=$(fetch_content "$LATEST_URL" 2>/dev/null)
+if [[ -z "$VERSION" ]]; then
+    error "Failed to fetch latest version from $LATEST_URL"
+fi
+info "Latest version: $VERSION"
+
 # Download dbt
 step "Downloading dbt..."
-DBT_URL="${SERVER_URL}/dbt/${OS}/${ARCH}/dbt"
+DBT_URL="${SERVER_URL}/${VERSION}/${OS}/${ARCH}/dbt"
 CHECKSUM_URL="${DBT_URL}.sha256"
 
 TEMP_DIR=$(mktemp -d)
 trap "rm -rf $TEMP_DIR" EXIT
 
-if ! curl -fsSL -o "$TEMP_DIR/dbt" "$DBT_URL" 2>/dev/null; then
+if ! fetch "$DBT_URL" "$TEMP_DIR/dbt" 2>/dev/null; then
     error "Failed to download from $DBT_URL"
 fi
 
 # Verify checksum
-if curl -fsSL -o "$TEMP_DIR/dbt.sha256" "$CHECKSUM_URL" 2>/dev/null; then
+if fetch "$CHECKSUM_URL" "$TEMP_DIR/dbt.sha256" 2>/dev/null; then
     EXPECTED=$(cat "$TEMP_DIR/dbt.sha256")
     if command -v sha256sum &>/dev/null; then
         ACTUAL=$(sha256sum "$TEMP_DIR/dbt" | cut -d' ' -f1)

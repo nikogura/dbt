@@ -850,8 +850,21 @@ if [[ "$PUBLISH_INSTALLERS" == "true" ]]; then
     publish_installer_scripts
 fi
 
+# Update latest version marker
+if [[ ${#ARTIFACTS[@]} -gt 0 ]]; then
+    echo ""
+    info "Updating latest version marker..."
+    echo -n "$VERSION" > "$WORK_DIR/latest"
+    if [[ "$UPLOAD_METHOD" == "http" ]]; then
+        upload_to_http "$WORK_DIR/latest" "/dbt/latest"
+    else
+        upload_to_s3 "$WORK_DIR/latest" "s3://$DBT_S3_BUCKET/latest"
+    fi
+fi
+
 echo ""
 info "=== Publish complete ==="
 info "Artifacts: $SUCCESS success, $FAILED failed"
 [[ ${#ARTIFACTS[@]} -gt 0 ]] && info "Tool metadata: published"
 [[ "$PUBLISH_INSTALLERS" == "true" ]] && info "Installer scripts: published"
+[[ ${#ARTIFACTS[@]} -gt 0 ]] && info "Latest marker: $VERSION"
