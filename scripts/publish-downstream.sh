@@ -55,6 +55,15 @@ DEFAULT_ARTIFACTS=(
     "catalog:catalog_linux_amd64:linux/amd64/catalog"
 )
 
+# Installer scripts to publish (from local scripts/ directory)
+INSTALLER_SCRIPTS=(
+    "install_dbt.sh"
+    "install_dbt_mac_keychain.sh"
+)
+
+# Publish installer scripts by default
+PUBLISH_INSTALLERS=true
+
 # =============================================================================
 # END CONFIGURATION
 # =============================================================================
@@ -83,6 +92,8 @@ Options:
     -y, --yes               Skip confirmation prompts
     --include PATTERN       Only include artifacts matching pattern (can repeat)
     --exclude PATTERN       Exclude artifacts matching pattern (can repeat)
+    --no-installers         Don't publish installer scripts
+    --installers-only       Only publish installer scripts (skip binaries)
     --list-artifacts        List available artifacts and exit
     --verbose               Verbose output
     -h, --help              Show this help message
@@ -160,6 +171,7 @@ SKIP_CONFIRM=false
 VERBOSE=false
 INCLUDE_PATTERNS=()
 EXCLUDE_PATTERNS=()
+INSTALLERS_ONLY=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -186,6 +198,14 @@ while [[ $# -gt 0 ]]; do
         --list-artifacts)
             list_artifacts
             exit 0
+            ;;
+        --no-installers)
+            PUBLISH_INSTALLERS=false
+            shift
+            ;;
+        --installers-only)
+            INSTALLERS_ONLY=true
+            shift
             ;;
         --verbose)
             VERBOSE=true
@@ -651,28 +671,86 @@ process_artifact() {
     return 0
 }
 
+# Publish installer scripts
+publish_installer_scripts() {
+    # Find scripts directory relative to this script
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+    info "Publishing installer scripts..."
+
+    for script_name in "${INSTALLER_SCRIPTS[@]}"; do
+        local script_path="$script_dir/$script_name"
+
+        if [[ ! -f "$script_path" ]]; then
+            warn "Installer script not found: $script_path"
+            continue
+        fi
+
+        info "Processing: $script_name"
+
+        # Copy to work directory
+        local work_file="$WORK_DIR/$script_name"
+        cp "$script_path" "$work_file"
+        chmod 755 "$work_file"
+
+        # Sign
+        sign_file "$work_file"
+
+        # Generate checksums
+        generate_checksums "$work_file"
+
+        # Upload based on method
+        if [[ "$UPLOAD_METHOD" == "http" ]]; then
+            upload_to_http "$work_file" "/dbt/$script_name"
+            upload_to_http "${work_file}.asc" "/dbt/${script_name}.asc"
+            upload_to_http "${work_file}.md5" "/dbt/${script_name}.md5"
+            upload_to_http "${work_file}.sha1" "/dbt/${script_name}.sha1"
+            upload_to_http "${work_file}.sha256" "/dbt/${script_name}.sha256"
+        else
+            upload_to_s3 "$work_file" "s3://$DBT_S3_BUCKET/$script_name"
+            upload_to_s3 "${work_file}.asc" "s3://$DBT_S3_BUCKET/${script_name}.asc"
+            upload_to_s3 "${work_file}.md5" "s3://$DBT_S3_BUCKET/${script_name}.md5"
+            upload_to_s3 "${work_file}.sha1" "s3://$DBT_S3_BUCKET/${script_name}.sha1"
+            upload_to_s3 "${work_file}.sha256" "s3://$DBT_S3_BUCKET/${script_name}.sha256"
+        fi
+    done
+}
+
 # Main
 get_release_info
 
-# Filter artifacts
+# Filter artifacts (skip if installers-only)
 ARTIFACTS=()
-for artifact in "${DEFAULT_ARTIFACTS[@]}"; do
-    if should_include_artifact "$artifact"; then
-        ARTIFACTS+=("$artifact")
-    fi
-done
+if [[ "$INSTALLERS_ONLY" != "true" ]]; then
+    for artifact in "${DEFAULT_ARTIFACTS[@]}"; do
+        if should_include_artifact "$artifact"; then
+            ARTIFACTS+=("$artifact")
+        fi
+    done
+fi
 
-if [[ ${#ARTIFACTS[@]} -eq 0 ]]; then
-    error "No artifacts selected after applying include/exclude filters"
+# Check we have something to do
+if [[ ${#ARTIFACTS[@]} -eq 0 && "$PUBLISH_INSTALLERS" != "true" ]]; then
+    error "No artifacts selected and installer publishing disabled"
 fi
 
 # Show what will be published
 echo ""
-info "Will publish ${#ARTIFACTS[@]} artifacts for version $VERSION:"
-for artifact in "${ARTIFACTS[@]}"; do
-    IFS=':' read -r type source dest <<< "$artifact"
-    echo "  - $source -> $dest"
-done
+if [[ ${#ARTIFACTS[@]} -gt 0 ]]; then
+    info "Will publish ${#ARTIFACTS[@]} artifacts for version $VERSION:"
+    for artifact in "${ARTIFACTS[@]}"; do
+        IFS=':' read -r type source dest <<< "$artifact"
+        echo "  - $source -> $dest"
+    done
+fi
+
+if [[ "$PUBLISH_INSTALLERS" == "true" ]]; then
+    info "Will publish installer scripts:"
+    for script in "${INSTALLER_SCRIPTS[@]}"; do
+        echo "  - $script"
+    done
+fi
 echo ""
 
 if [[ "$UPLOAD_METHOD" == "http" ]]; then
@@ -705,16 +783,26 @@ fi
 echo ""
 SUCCESS=0
 FAILED=0
-for artifact in "${ARTIFACTS[@]}"; do
-    IFS=':' read -r type source dest <<< "$artifact"
-    info "Processing: $source"
-    if process_artifact "$artifact"; then
-        SUCCESS=$((SUCCESS + 1))
-    else
-        FAILED=$((FAILED + 1))
-    fi
-done
+
+if [[ ${#ARTIFACTS[@]} -gt 0 ]]; then
+    for artifact in "${ARTIFACTS[@]}"; do
+        IFS=':' read -r type source dest <<< "$artifact"
+        info "Processing: $source"
+        if process_artifact "$artifact"; then
+            SUCCESS=$((SUCCESS + 1))
+        else
+            FAILED=$((FAILED + 1))
+        fi
+    done
+fi
+
+# Publish installer scripts
+if [[ "$PUBLISH_INSTALLERS" == "true" ]]; then
+    echo ""
+    publish_installer_scripts
+fi
 
 echo ""
 info "=== Publish complete ==="
-info "Success: $SUCCESS, Failed: $FAILED"
+info "Artifacts: $SUCCESS success, $FAILED failed"
+[[ "$PUBLISH_INSTALLERS" == "true" ]] && info "Installer scripts: published"
