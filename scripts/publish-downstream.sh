@@ -64,6 +64,12 @@ INSTALLER_SCRIPTS=(
 # Publish installer scripts by default
 PUBLISH_INSTALLERS=true
 
+# Tool metadata (description.txt for each tool)
+# Format: "toolname:description"
+TOOL_METADATA=(
+    "catalog:Tool for showing available DBT tools."
+)
+
 # =============================================================================
 # END CONFIGURATION
 # =============================================================================
@@ -717,6 +723,42 @@ publish_installer_scripts() {
     done
 }
 
+# Publish tool metadata (description.txt for each tool)
+publish_tool_metadata() {
+    info "Publishing tool metadata..."
+
+    for entry in "${TOOL_METADATA[@]}"; do
+        IFS=':' read -r tool_name description <<< "$entry"
+
+        info "Processing metadata: $tool_name"
+
+        # Create description.txt
+        local desc_file="$WORK_DIR/${tool_name}_description.txt"
+        echo "$description" > "$desc_file"
+
+        # Sign
+        sign_file "$desc_file"
+
+        # Generate checksums
+        generate_checksums "$desc_file"
+
+        # Upload based on method
+        if [[ "$UPLOAD_METHOD" == "http" ]]; then
+            upload_to_http "$desc_file" "/dbt-tools/$tool_name/$VERSION/description.txt"
+            upload_to_http "${desc_file}.asc" "/dbt-tools/$tool_name/$VERSION/description.txt.asc"
+            upload_to_http "${desc_file}.md5" "/dbt-tools/$tool_name/$VERSION/description.txt.md5"
+            upload_to_http "${desc_file}.sha1" "/dbt-tools/$tool_name/$VERSION/description.txt.sha1"
+            upload_to_http "${desc_file}.sha256" "/dbt-tools/$tool_name/$VERSION/description.txt.sha256"
+        else
+            upload_to_s3 "$desc_file" "s3://$TOOLS_S3_BUCKET/$tool_name/$VERSION/description.txt"
+            upload_to_s3 "${desc_file}.asc" "s3://$TOOLS_S3_BUCKET/$tool_name/$VERSION/description.txt.asc"
+            upload_to_s3 "${desc_file}.md5" "s3://$TOOLS_S3_BUCKET/$tool_name/$VERSION/description.txt.md5"
+            upload_to_s3 "${desc_file}.sha1" "s3://$TOOLS_S3_BUCKET/$tool_name/$VERSION/description.txt.sha1"
+            upload_to_s3 "${desc_file}.sha256" "s3://$TOOLS_S3_BUCKET/$tool_name/$VERSION/description.txt.sha256"
+        fi
+    done
+}
+
 # Main
 get_release_info
 
@@ -796,6 +838,12 @@ if [[ ${#ARTIFACTS[@]} -gt 0 ]]; then
     done
 fi
 
+# Publish tool metadata (description.txt)
+if [[ ${#ARTIFACTS[@]} -gt 0 ]]; then
+    echo ""
+    publish_tool_metadata
+fi
+
 # Publish installer scripts
 if [[ "$PUBLISH_INSTALLERS" == "true" ]]; then
     echo ""
@@ -805,4 +853,5 @@ fi
 echo ""
 info "=== Publish complete ==="
 info "Artifacts: $SUCCESS success, $FAILED failed"
+[[ ${#ARTIFACTS[@]} -gt 0 ]] && info "Tool metadata: published"
 [[ "$PUBLISH_INSTALLERS" == "true" ]] && info "Installer scripts: published"
