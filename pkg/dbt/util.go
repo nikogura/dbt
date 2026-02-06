@@ -15,6 +15,7 @@
 package dbt
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -34,18 +35,6 @@ import (
 	"github.com/nikogura/jwt-ssh-agent-go/pkg/agentjwt"
 	"github.com/pkg/errors"
 )
-
-// StringInSlice returns true if the given string is in the given slice.
-func StringInSlice(a string, list []string) (found bool) {
-	for _, b := range list {
-		if b == a {
-			found = true
-			return found
-		}
-	}
-	found = false
-	return found
-}
 
 // SemverParse breaks apart a semantic version string and returns a slice of ints holding the parts.
 func SemverParse(version string) (parts []int, err error) {
@@ -95,14 +84,14 @@ func VersionAIsNewerThanB(a string, b string) (result bool) {
 		return result
 	}
 
-	major := Spaceship(aParts[0], bParts[0])
+	major := cmp.Compare(aParts[0], bParts[0])
 
 	//nolint:nestif // semantic version comparison requires nested major/minor/patch checks
 	if major == 0 {
-		minor := Spaceship(aParts[1], bParts[1])
+		minor := cmp.Compare(aParts[1], bParts[1])
 
 		if minor == 0 {
-			patch := Spaceship(aParts[2], bParts[2])
+			patch := cmp.Compare(aParts[2], bParts[2])
 
 			if patch == 0 {
 				result = false
@@ -129,21 +118,6 @@ func VersionAIsNewerThanB(a string, b string) (result bool) {
 		return result
 	}
 	result = false
-	return result
-}
-
-// Spaceship is a simple implementation of the spaceship operator.
-// Returns 1 if a > b, -1 if a < b, and 0 if a == b.
-func Spaceship(a int, b int) (result int) {
-	if a < b {
-		result = -1
-		return result
-	}
-	if a > b {
-		result = 1
-		return result
-	}
-	result = 0
 	return result
 }
 

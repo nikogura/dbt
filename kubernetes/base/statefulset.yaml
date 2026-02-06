@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: reposerver
+  labels:
+    app.kubernetes.io/name: dbt
+    app.kubernetes.io/component: reposerver
+spec:
+  replicas: 1
+  serviceName: reposerver
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dbt
+      app.kubernetes.io/component: reposerver
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dbt
+        app.kubernetes.io/component: reposerver
+    spec:
+      containers:
+        - name: reposerver
+          image: ghcr.io/nikogura/dbt-reposerver
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-a"
+            - "0.0.0.0"
+            - "-p"
+            - "9999"
+            - "-r"
+            - "/var/dbt"
+            - "-f"
+            - "/etc/dbt/reposerver.json"
+          ports:
+            - containerPort: 9999
+              name: http
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/dbt
+            - name: config
+              mountPath: /etc/dbt
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: reposerver
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi

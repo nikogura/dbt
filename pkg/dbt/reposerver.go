@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	auth "github.com/abbot/go-http-auth"
 	"github.com/gorilla/mux"
@@ -33,6 +34,9 @@ const AUTH_BASIC_LDAP = "basic-ldap"
 //nolint:revive,staticcheck // AUTH_SSH_AGENT_LDAP is a public API constant
 const AUTH_SSH_AGENT_LDAP = "ssh-agent-ldap"
 
+//nolint:revive,staticcheck // AUTH_STATIC_TOKEN is a public API constant
+const AUTH_STATIC_TOKEN = "static-token"
+
 //nolint:gochecknoinits // logrus configuration needs to happen at package init
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})
@@ -52,9 +56,11 @@ type DBTRepoServer struct {
 
 // AuthOpts is a struct for holding Auth options.
 type AuthOpts struct {
-	IdpFile string        `json:"idpFile"`
-	IdpFunc string        `json:"idpFunc,omitempty"`
-	OIDC    *OIDCAuthOpts `json:"oidc,omitempty"`
+	IdpFile        string        `json:"idpFile"`
+	IdpFunc        string        `json:"idpFunc,omitempty"`
+	OIDC           *OIDCAuthOpts `json:"oidc,omitempty"`
+	StaticToken    string        `json:"staticToken,omitempty"`    // Static bearer token for CI/CD automation
+	StaticTokenEnv string        `json:"staticTokenEnv,omitempty"` // Environment variable containing the static token
 }
 
 // NewRepoServer creates a new DBTRepoServer object from the config file provided.
@@ -121,6 +127,8 @@ func (d *DBTRepoServer) setupPutRoutes(r *mux.Router, oidcValidator *OIDCValidat
 		r.PathPrefix("/").HandlerFunc(d.PutHandlerPubkeyFunc).Methods("PUT")
 	case AUTH_OIDC:
 		r.PathPrefix("/").HandlerFunc(d.PutHandlerOIDC(oidcValidator)).Methods("PUT")
+	case AUTH_STATIC_TOKEN:
+		r.PathPrefix("/").HandlerFunc(d.PutHandlerStaticToken()).Methods("PUT")
 	default:
 		err = errors.New(fmt.Sprintf("unsupported auth method: %s", d.AuthTypePut))
 		return err
@@ -149,6 +157,8 @@ func (d *DBTRepoServer) setupGetRoutes(r *mux.Router, oidcValidator *OIDCValidat
 		r.PathPrefix("/").Handler(d.CheckPubkeysGetFunc(fileServer.ServeHTTP)).Methods("GET", "HEAD")
 	case AUTH_OIDC:
 		r.PathPrefix("/").Handler(d.CheckOIDCGet(fileServer.ServeHTTP, oidcValidator)).Methods("GET", "HEAD")
+	case AUTH_STATIC_TOKEN:
+		r.PathPrefix("/").Handler(d.CheckStaticTokenGet(fileServer.ServeHTTP)).Methods("GET", "HEAD")
 	default:
 		err = errors.New(fmt.Sprintf("unsupported auth method: %s", d.AuthTypeGet))
 		return err
@@ -605,3 +615,132 @@ func (l *LogrusAdapter) Debug(msg string, args ...any) {
 // read the file, and decide what type of auth it is based on contents.
 
 // AuthFunc should expect to take a username, and return *something* that can be parsed as either an htpasswd hash or a public key.
+
+// getStaticToken retrieves the static token from config or environment variable.
+// Environment variable takes precedence if StaticTokenEnv is configured.
+func (d *DBTRepoServer) getStaticTokenPut() (token string) {
+	// Check environment variable first if configured
+	if d.AuthOptsPut.StaticTokenEnv != "" {
+		token = os.Getenv(d.AuthOptsPut.StaticTokenEnv)
+		if token != "" {
+			return token
+		}
+	}
+
+	// Fall back to config value
+	token = d.AuthOptsPut.StaticToken
+	return token
+}
+
+// getStaticTokenGet retrieves the static token for GET requests.
+func (d *DBTRepoServer) getStaticTokenGet() (token string) {
+	// Check environment variable first if configured
+	if d.AuthOptsGet.StaticTokenEnv != "" {
+		token = os.Getenv(d.AuthOptsGet.StaticTokenEnv)
+		if token != "" {
+			return token
+		}
+	}
+
+	// Fall back to config value
+	token = d.AuthOptsGet.StaticToken
+	return token
+}
+
+// CheckStaticTokenAuth validates a static bearer token from the Authorization header.
+// Returns the username "static-token" if valid, empty string if invalid.
+func CheckStaticTokenAuth(w http.ResponseWriter, r *http.Request, expectedToken string) (username string) {
+	if expectedToken == "" {
+		log.Error("Static token auth configured but no token set (check staticToken or staticTokenEnv)")
+		w.WriteHeader(http.StatusInternalServerError)
+		return username
+	}
+
+	// Extract token from Authorization header
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		log.Info("Static Token Auth Failed: no Authorization header")
+		w.WriteHeader(http.StatusUnauthorized)
+		return username
+	}
+
+	// Expect "Bearer <token>" format
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		log.Info("Static Token Auth Failed: Authorization header is not Bearer token")
+		w.WriteHeader(http.StatusUnauthorized)
+		return username
+	}
+
+	providedToken := strings.TrimPrefix(authHeader, "Bearer ")
+	if providedToken == "" {
+		log.Info("Static Token Auth Failed: empty Bearer token")
+		w.WriteHeader(http.StatusUnauthorized)
+		return username
+	}
+
+	// Constant-time comparison to prevent timing attacks
+	if !constantTimeCompare(providedToken, expectedToken) {
+		log.Info("Static Token Auth Failed: invalid token")
+		w.WriteHeader(http.StatusUnauthorized)
+		return username
+	}
+
+	// Token is valid - use the auth type as the username
+	username = AUTH_STATIC_TOKEN
+	log.Infof("Static Token: successfully authenticated")
+
+	return username
+}
+
+// constantTimeCompare performs a constant-time string comparison to prevent timing attacks.
+func constantTimeCompare(a, b string) (equal bool) {
+	if len(a) != len(b) {
+		equal = false
+		return equal
+	}
+
+	var result byte
+	for i := range len(a) {
+		result |= a[i] ^ b[i]
+	}
+
+	equal = result == 0
+	return equal
+}
+
+// PutHandlerStaticToken handles PUT requests with static token authentication.
+func (d *DBTRepoServer) PutHandlerStaticToken() (handler http.HandlerFunc) {
+	handler = func(w http.ResponseWriter, r *http.Request) {
+		expectedToken := d.getStaticTokenPut()
+		username := CheckStaticTokenAuth(w, r, expectedToken)
+		if username == "" {
+			return // Auth failed, response already sent
+		}
+
+		err := d.HandlePut(r.URL.Path, r.Body, r.Header.Get("X-Checksum-Md5"), r.Header.Get("X-Checksum-Sha1"), r.Header.Get("X-Checksum-Sha256"))
+		if err != nil {
+			errWrapped := errors.Wrapf(err, "failed writing file %s", r.URL.Path)
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Error(errWrapped)
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+	}
+	return handler
+}
+
+// CheckStaticTokenGet wraps a handler function with static token authentication for GET requests.
+func (d *DBTRepoServer) CheckStaticTokenGet(wrapped http.HandlerFunc) (handler http.HandlerFunc) {
+	handler = func(w http.ResponseWriter, r *http.Request) {
+		expectedToken := d.getStaticTokenGet()
+		username := CheckStaticTokenAuth(w, r, expectedToken)
+		if username == "" {
+			return // Auth failed, response already sent
+		}
+
+		r.Header.Set("X-Authenticated-Username", username)
+		wrapped(w, r)
+	}
+	return handler
+}
