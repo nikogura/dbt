@@ -1,21 +1,22 @@
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: dbt
-  namespace: dbt
+  name: reposerver
+  labels:
+    app.kubernetes.io/name: dbt
+    app.kubernetes.io/component: reposerver
 data:
   reposerver.json: |
     {
       "address": "0.0.0.0",
       "port": 9999,
       "serverRoot": "/var/dbt",
-      "authType": "basic-htpasswd",
       "authGets": false,
-      "authOpts": {
+      "authTypePut": "basic-htpasswd",
+      "authOptsPut": {
         "idpFile": "/etc/dbt/htpasswd"
       }
     }
-
   htpasswd: |
-    nik:$apr1$ytmDEY.X$LJt5T3fWtswK3KF5iINxT1
+    # Add users with: htpasswd -n username
+    # Example: admin:$apr1$xyz...

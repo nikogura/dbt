@@ -1,0 +1,23 @@
+{
+  "address": "0.0.0.0",
+  "port": 9999,
+  "serverRoot": "/var/dbt",
+  "authGets": true,
+  "authTypeGet": "oidc",
+  "authOptsGet": {
+    "oidc": {
+      "issuerUrl": "https://dex.example.com",
+      "audiences": ["dbt-server"],
+      "usernameClaimKey": "email"
+    }
+  },
+  "authTypePut": "oidc",
+  "authOptsPut": {
+    "oidc": {
+      "issuerUrl": "https://dex.example.com",
+      "audiences": ["dbt-server"],
+      "usernameClaimKey": "email",
+      "allowedGroups": ["dbt-admins"]
+    }
+  }
+}

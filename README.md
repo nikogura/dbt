@@ -571,6 +571,67 @@ Existing SSH-agent configurations continue to work unchanged:
 }
 ```
 
+### Static Token Authentication (CI/CD)
+
+For CI/CD pipelines and automated publishing (e.g., with gomason), use a static bearer token. The token can be configured directly or loaded from an environment variable.
+
+**Server configuration**:
+```json
+{
+  "address": "0.0.0.0",
+  "port": 9999,
+  "serverRoot": "/var/dbt",
+  "authGets": false,
+  "authTypePut": "static-token",
+  "authOptsPut": {
+    "staticTokenEnv": "DBT_PUBLISH_TOKEN"
+  }
+}
+```
+
+**Configuration options**:
+- `staticToken`: The token value directly in config (not recommended for production)
+- `staticTokenEnv`: Environment variable name containing the token (recommended)
+
+When both are set, the environment variable takes precedence.
+
+**Client usage** (curl example):
+```bash
+# Set the token
+export DBT_PUBLISH_TOKEN="your-secret-token"
+
+# Upload with bearer token
+curl -X PUT \
+  -H "Authorization: Bearer $DBT_PUBLISH_TOKEN" \
+  -H "X-Checksum-Sha256: $(sha256sum file | cut -d' ' -f1)" \
+  --data-binary @file \
+  https://dbt.example.com/dbt/1.0.0/linux/amd64/dbt
+```
+
+**Combined OIDC + Static Token** (users via OIDC, CI/CD via static token):
+
+You can use different auth methods for GET and PUT. For example, OIDC for user downloads and static token for CI/CD publishing:
+
+```json
+{
+  "address": "0.0.0.0",
+  "port": 9999,
+  "serverRoot": "/var/dbt",
+  "authGets": true,
+  "authTypeGet": "oidc",
+  "authOptsGet": {
+    "oidc": {
+      "issuerUrl": "https://dex.example.com",
+      "audiences": ["dbt-server"]
+    }
+  },
+  "authTypePut": "static-token",
+  "authOptsPut": {
+    "staticTokenEnv": "DBT_PUBLISH_TOKEN"
+  }
+}
+```
+
 ## Advanced Topics
 
 ### Process Management
@@ -694,6 +755,104 @@ Gomason handles the complete release pipeline including:
 - Checksum and signature generation
 
 Manual builds are possible with standard `go build`, but gomason is recommended for consistent, reproducible releases with proper signing and publishing workflows.
+
+## Downstream Publishing
+
+Organizations can republish DBT releases to their own infrastructure using the included `scripts/publish-downstream.sh` script. This downloads artifacts from GitHub releases, signs them with your GPG key, and uploads to your reposerver or S3 buckets.
+
+### HTTP Upload (Default)
+
+Upload directly to a reposerver via HTTP PUT:
+
+```bash
+# With OIDC authentication (interactive browser auth)
+./publish-downstream.sh --http https://dbt.example.com \
+  --auth oidc --oidc-issuer https://dex.example.com
+
+# With bearer token (for CI/CD)
+./publish-downstream.sh --http https://dbt.example.com \
+  --auth bearer --token "$MY_TOKEN"
+
+# Publish specific version
+./publish-downstream.sh --http https://dbt.example.com \
+  --auth oidc --oidc-issuer https://dex.example.com -v 3.7.5
+```
+
+### S3 Upload
+
+For S3-based repositories, configure the buckets and use `--s3`:
+
+```bash
+# Edit configuration in script or use environment variables
+export DBT_S3_BUCKET="your-dbt-bucket"
+export TOOLS_S3_BUCKET="your-dbt-tools-bucket"
+export S3_REGION="us-east-1"
+
+# Publish to S3
+./publish-downstream.sh --s3 -v 3.7.5 -y
+```
+
+### Common Options
+
+```bash
+# Dry run (see what would be published)
+./publish-downstream.sh --http https://dbt.example.com --auth oidc \
+  --oidc-issuer https://dex.example.com -d
+
+# Only publish dbt binaries (not catalog)
+./publish-downstream.sh --http https://dbt.example.com \
+  --auth bearer --token "$TOKEN" --include dbt -y
+
+# Only publish Linux artifacts
+./publish-downstream.sh --http https://dbt.example.com \
+  --auth bearer --token "$TOKEN" --include linux -y
+
+# Skip confirmation prompts
+./publish-downstream.sh --http https://dbt.example.com \
+  --auth bearer --token "$TOKEN" -y
+```
+
+### Authentication Options
+
+| Method | Flag | Description |
+|--------|------|-------------|
+| OIDC | `--auth oidc` | Interactive browser auth via device code flow |
+| Bearer | `--auth bearer --token TOKEN` | Static token (for CI/CD pipelines) |
+| Basic | `--auth basic` | Username/password (via env vars) |
+| None | `--auth none` | No authentication |
+
+### Requirements
+
+- `curl`, `jq` - HTTP and JSON processing
+- `gpg` - Artifact signing
+- `aws` - S3 uploads (only if using `--s3`)
+
+## Kubernetes Deployment
+
+The `kubernetes/` directory contains Kustomize manifests for deploying the reposerver.
+
+### Quick Start
+
+```bash
+# Deploy base configuration
+kubectl apply -k kubernetes/base
+
+# Or create a customized overlay
+cp -r kubernetes/overlays/example kubernetes/overlays/prod
+# Edit kustomization.yaml and reposerver.json
+kubectl apply -k kubernetes/overlays/prod
+```
+
+### Setting the Version
+
+```yaml
+# In your overlay's kustomization.yaml
+images:
+  - name: ghcr.io/nikogura/dbt-reposerver
+    newTag: "3.7.5"
+```
+
+See `kubernetes/README.md` for full documentation on configuration options, OIDC setup, and ingress configuration.
 
 ## Contributing
 

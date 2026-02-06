@@ -15,8 +15,10 @@
 package dbt
 
 import (
+	"cmp"
 	"fmt"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,10 +41,11 @@ func TestLatestVersion(t *testing.T) {
 	assert.Equal(t, testLatestVersion(), latest, "Latest version found matches expectations.")
 }
 
-func TestSpaceship(t *testing.T) {
-	assert.Equal(t, 1, Spaceship(1, 0))
-	assert.Equal(t, -1, Spaceship(2, 3))
-	assert.Equal(t, 0, Spaceship(1, 1))
+func TestCmpCompare(t *testing.T) {
+	// Test that cmp.Compare works as expected (replaces old Spaceship function)
+	assert.Equal(t, 1, cmp.Compare(1, 0))
+	assert.Equal(t, -1, cmp.Compare(2, 3))
+	assert.Equal(t, 0, cmp.Compare(1, 1))
 }
 
 func TestVersionIsNewerThan(t *testing.T) {
@@ -94,9 +97,10 @@ func TestFileSha1(t *testing.T) {
 
 }
 
-func TestStringInSlice(t *testing.T) {
-	assert.True(t, StringInSlice(testStringTrue(), exampleSlice()), "Expected string found in slice")
-	assert.False(t, StringInSlice(testStringFalse(), exampleSlice()), "Unexpected string not found in slice")
+func TestSlicesContains(t *testing.T) {
+	// Test that slices.Contains works as expected (replaces old StringInSlice function)
+	assert.True(t, slices.Contains(exampleSlice(), testStringTrue()), "Expected string found in slice")
+	assert.False(t, slices.Contains(exampleSlice(), testStringFalse()), "Unexpected string not found in slice")
 }
 func exampleVersion() (version string) {
 	version = "1.2.3"

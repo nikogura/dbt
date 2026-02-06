@@ -3,6 +3,8 @@ package dbt
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"html/template"
 	"io"
@@ -22,6 +24,19 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/stretchr/testify/assert"
 )
+
+// generateTestToken creates a random token for testing.
+func generateTestToken() (token string) {
+	b := make([]byte, 32)
+	_, err := rand.Read(b)
+	if err != nil {
+		// fallback to a static test token
+		token = "test-static-token-12345"
+		return token
+	}
+	token = hex.EncodeToString(b)
+	return token
+}
 
 // testKeyPair holds a generated SSH key pair.
 type testKeyPair struct {
@@ -242,6 +257,48 @@ func TestRepoServerAuth(t *testing.T) {
 				credential: "{{GENERATED_PUBLIC_KEY}}",
 			},
 		},
+		{
+			"static-token",
+			`{
+	"address": "127.0.0.1",
+  "port": {{.Port}},
+  "serverRoot": "{{.ServerRoot}}",
+  "authTypeGet": "static-token",
+  "authGets": true,
+  "authOptsGet": {
+    "staticToken": "{{.StaticToken}}"
+  },
+  "authOptsPut": {
+    "staticToken": "{{.StaticToken}}"
+  },
+	"authTypePut": "static-token"
+}`,
+			"static-token",
+			"", // No auth file needed for static token
+			authinfo{
+				user:       "static-token",
+				credential: "{{STATIC_TOKEN}}",
+			},
+			[]testfile{
+				{
+					name:     "foo",
+					contents: "frobnitz ene woo",
+					result:   401,
+					auth:     false,
+				},
+				{
+					name:     "bar",
+					contents: "frobnitz ene woo",
+					result:   201,
+					auth:     true,
+				},
+			},
+			"static-token",
+			authinfo{
+				user:       "static-token",
+				credential: "{{STATIC_TOKEN}}",
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -373,22 +430,35 @@ func TestRepoServerAuth(t *testing.T) {
 				defer cleanupSSH()
 				t.Cleanup(cleanupSSH)
 			} else {
-				// For non-pubkey tests, write auth file as is
-				err = os.WriteFile(idpFile, []byte(tc.AuthFile), 0644)
-				if err != nil {
-					t.Fatalf("Failed creating get auth file %s: %s", idpFile, err)
+				// For non-pubkey tests, write auth file as is (if auth file is specified)
+				if tc.AuthFile != "" {
+					err = os.WriteFile(idpFile, []byte(tc.AuthFile), 0644)
+					if err != nil {
+						t.Fatalf("Failed creating get auth file %s: %s", idpFile, err)
+					}
 				}
+			}
+
+			// Generate static token for static-token auth tests
+			var staticToken string
+			if tc.Name == "static-token" {
+				staticToken = generateTestToken()
+				// Update test case credentials to use generated token
+				tc.AuthPut.credential = staticToken
+				tc.AuthGet.credential = staticToken
 			}
 
 			// write config file
 			tmplData := struct {
-				Port       int
-				IdpFile    string
-				ServerRoot string
+				Port        int
+				IdpFile     string
+				ServerRoot  string
+				StaticToken string
 			}{
-				Port:       port,
-				IdpFile:    idpFile,
-				ServerRoot: repoDir,
+				Port:        port,
+				IdpFile:     idpFile,
+				ServerRoot:  repoDir,
+				StaticToken: staticToken,
 			}
 
 			tmpl, err := template.New(tc.Name).Parse(tc.ConfigTemplate)
@@ -458,6 +528,10 @@ func TestRepoServerAuth(t *testing.T) {
 							fmt.Printf("Adding token header to request.\n")
 							req.Header.Add("Token", token)
 						}
+
+					case "static-token":
+						fmt.Printf("Static Token Authed Request.\n")
+						req.Header.Add("Authorization", "Bearer "+tc.AuthPut.credential)
 					}
 				} else {
 					fmt.Printf("Unauthenticated Request.\n")
@@ -513,6 +587,10 @@ func TestRepoServerAuth(t *testing.T) {
 								fmt.Printf("Adding token header to request.\n")
 								req.Header.Add("Token", token)
 							}
+
+						case "static-token":
+							fmt.Printf("Static Token Authed Request.\n")
+							req.Header.Add("Authorization", "Bearer "+tc.AuthGet.credential)
 						}
 					} else {
 						fmt.Printf("Unauthenticated Request.\n")
@@ -542,6 +620,129 @@ func TestRepoServerAuth(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestStaticTokenAuth(t *testing.T) {
+	testToken := "test-secret-token-12345"
+
+	tests := []struct {
+		name           string
+		authHeader     string
+		expectedToken  string
+		expectedStatus int
+		expectUsername bool
+	}{
+		{
+			name:           "valid token",
+			authHeader:     "Bearer test-secret-token-12345",
+			expectedToken:  testToken,
+			expectedStatus: 0, // No status set means auth passed
+			expectUsername: true,
+		},
+		{
+			name:           "no auth header",
+			authHeader:     "",
+			expectedToken:  testToken,
+			expectedStatus: http.StatusUnauthorized,
+			expectUsername: false,
+		},
+		{
+			name:           "wrong auth type",
+			authHeader:     "Basic dXNlcjpwYXNz",
+			expectedToken:  testToken,
+			expectedStatus: http.StatusUnauthorized,
+			expectUsername: false,
+		},
+		{
+			name:           "invalid token",
+			authHeader:     "Bearer wrong-token",
+			expectedToken:  testToken,
+			expectedStatus: http.StatusUnauthorized,
+			expectUsername: false,
+		},
+		{
+			name:           "empty bearer token",
+			authHeader:     "Bearer ",
+			expectedToken:  testToken,
+			expectedStatus: http.StatusUnauthorized,
+			expectUsername: false,
+		},
+		{
+			name:           "no expected token configured",
+			authHeader:     "Bearer some-token",
+			expectedToken:  "",
+			expectedStatus: http.StatusInternalServerError,
+			expectUsername: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/test", nil)
+			if tt.authHeader != "" {
+				req.Header.Set("Authorization", tt.authHeader)
+			}
+
+			w := httptest.NewRecorder()
+			username := CheckStaticTokenAuth(w, req, tt.expectedToken)
+
+			resp := w.Result()
+			defer resp.Body.Close()
+
+			if tt.expectUsername {
+				assert.Equal(t, "static-token", username, "Expected username 'static-token' for valid auth")
+				assert.Equal(t, http.StatusOK, resp.StatusCode, "Expected 200 OK for valid auth")
+			} else {
+				assert.Empty(t, username, "Expected empty username for failed auth")
+				assert.Equal(t, tt.expectedStatus, resp.StatusCode, "Status code mismatch")
+			}
+		})
+	}
+}
+
+func TestStaticTokenEnvVar(t *testing.T) {
+	// Test that environment variable takes precedence over config
+	envVarName := "DBT_TEST_STATIC_TOKEN"
+	envVarToken := "token-from-env-var"
+	configToken := "token-from-config"
+
+	server := &DBTRepoServer{
+		AuthOptsPut: AuthOpts{
+			StaticToken:    configToken,
+			StaticTokenEnv: envVarName,
+		},
+		AuthOptsGet: AuthOpts{
+			StaticToken:    configToken,
+			StaticTokenEnv: envVarName,
+		},
+	}
+
+	// Test without env var set - should use config value
+	os.Unsetenv(envVarName)
+	tokenPut := server.getStaticTokenPut()
+	assert.Equal(t, configToken, tokenPut, "Should use config token when env var not set")
+
+	tokenGet := server.getStaticTokenGet()
+	assert.Equal(t, configToken, tokenGet, "Should use config token when env var not set")
+
+	// Test with env var set - should use env var value
+	os.Setenv(envVarName, envVarToken)
+	defer os.Unsetenv(envVarName)
+
+	tokenPut = server.getStaticTokenPut()
+	assert.Equal(t, envVarToken, tokenPut, "Should use env var token when set")
+
+	tokenGet = server.getStaticTokenGet()
+	assert.Equal(t, envVarToken, tokenGet, "Should use env var token when set")
+}
+
+func TestConstantTimeCompare(t *testing.T) {
+	// Test that constant time compare works correctly
+	assert.True(t, constantTimeCompare("abc", "abc"), "Equal strings should match")
+	assert.False(t, constantTimeCompare("abc", "def"), "Different strings should not match")
+	assert.False(t, constantTimeCompare("abc", "abcd"), "Different length strings should not match")
+	assert.False(t, constantTimeCompare("", "a"), "Empty vs non-empty should not match")
+	assert.True(t, constantTimeCompare("", ""), "Two empty strings should match")
 }
 
 func TestHealthHandler(t *testing.T) {

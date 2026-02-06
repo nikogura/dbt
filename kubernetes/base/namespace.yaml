@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dbt
+  labels:
+    app.kubernetes.io/name: dbt
+    app.kubernetes.io/component: reposerver
