@@ -13,7 +13,7 @@
 # Installation modes:
 #   Fresh install (default) - Downloads dbt, creates config, updates shell PATH
 #   Add server (--add)      - Adds a new server to existing multi-server config
-#   Clobber (--replace)     - Replaces everything (binary + config)
+#   Replace (--replace)     - Replaces everything (binary + config)
 
 set -e
 
