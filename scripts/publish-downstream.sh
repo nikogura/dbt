@@ -61,6 +61,18 @@ INSTALLER_SCRIPTS=(
     "install_dbt_mac_keychain.sh"
 )
 
+# Installer binaries to publish (built via 'make build-installer' with org-specific config)
+# These are found in dist/installer/<os>/<arch>/dbt-installer
+# Format: "source_path:dest_path"
+INSTALLER_BINARIES=(
+    "dist/installer/darwin/amd64/dbt-installer:darwin/amd64/dbt-installer"
+    "dist/installer/darwin/arm64/dbt-installer:darwin/arm64/dbt-installer"
+    "dist/installer/linux/amd64/dbt-installer:linux/amd64/dbt-installer"
+)
+
+# Publish installer binaries by default (requires build-installer to have been run)
+PUBLISH_INSTALLER_BINARIES=true
+
 # Publish installer scripts by default
 PUBLISH_INSTALLERS=true
 
@@ -99,6 +111,7 @@ Options:
     --include PATTERN       Only include artifacts matching pattern (can repeat)
     --exclude PATTERN       Exclude artifacts matching pattern (can repeat)
     --no-installers         Don't publish installer scripts
+    --no-installer-binaries Don't publish installer binaries (built via make build-installer)
     --installers-only       Only publish installer scripts (skip binaries)
     --list-artifacts        List available artifacts and exit
     --verbose               Verbose output
@@ -207,6 +220,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --no-installers)
             PUBLISH_INSTALLERS=false
+            shift
+            ;;
+        --no-installer-binaries)
+            PUBLISH_INSTALLER_BINARIES=false
             shift
             ;;
         --installers-only)
@@ -723,6 +740,66 @@ publish_installer_scripts() {
     done
 }
 
+# Publish installer binaries (built via 'make build-installer')
+publish_installer_binaries() {
+    # Find dist directory relative to this script (assumes script is in scripts/)
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local base_dir
+    base_dir="$(cd "$script_dir/.." && pwd)"
+
+    info "Publishing installer binaries..."
+
+    local found_any=false
+    for entry in "${INSTALLER_BINARIES[@]}"; do
+        IFS=':' read -r source_path dest_path <<< "$entry"
+
+        local full_path="$base_dir/$source_path"
+
+        if [[ ! -f "$full_path" ]]; then
+            warn "Installer binary not found: $full_path"
+            warn "  Run 'make build-installer' with your org-specific config first"
+            continue
+        fi
+
+        found_any=true
+        info "Processing: $source_path"
+
+        # Copy to work directory with unique name (os-arch-binary)
+        local os_part=$(echo "$dest_path" | cut -d'/' -f1)
+        local arch_part=$(echo "$dest_path" | cut -d'/' -f2)
+        local work_file="$WORK_DIR/dbt-installer-${os_part}-${arch_part}"
+        cp "$full_path" "$work_file"
+        chmod 755 "$work_file"
+
+        # Sign
+        sign_file "$work_file"
+
+        # Generate checksums
+        generate_checksums "$work_file"
+
+        # Upload based on method
+        if [[ "$UPLOAD_METHOD" == "http" ]]; then
+            upload_to_http "$work_file" "/dbt/installer/$dest_path"
+            upload_to_http "${work_file}.asc" "/dbt/installer/${dest_path}.asc"
+            upload_to_http "${work_file}.md5" "/dbt/installer/${dest_path}.md5"
+            upload_to_http "${work_file}.sha1" "/dbt/installer/${dest_path}.sha1"
+            upload_to_http "${work_file}.sha256" "/dbt/installer/${dest_path}.sha256"
+        else
+            upload_to_s3 "$work_file" "s3://$DBT_S3_BUCKET/installer/$dest_path"
+            upload_to_s3 "${work_file}.asc" "s3://$DBT_S3_BUCKET/installer/${dest_path}.asc"
+            upload_to_s3 "${work_file}.md5" "s3://$DBT_S3_BUCKET/installer/${dest_path}.md5"
+            upload_to_s3 "${work_file}.sha1" "s3://$DBT_S3_BUCKET/installer/${dest_path}.sha1"
+            upload_to_s3 "${work_file}.sha256" "s3://$DBT_S3_BUCKET/installer/${dest_path}.sha256"
+        fi
+    done
+
+    if [[ "$found_any" == "false" ]]; then
+        warn "No installer binaries found. Skipping."
+        warn "To build installer binaries, run: make build-installer SERVER_URL=... [ISSUER_URL=...] ..."
+    fi
+}
+
 # Publish tool metadata (description.txt for each tool)
 publish_tool_metadata() {
     info "Publishing tool metadata..."
@@ -793,6 +870,14 @@ if [[ "$PUBLISH_INSTALLERS" == "true" ]]; then
         echo "  - $script"
     done
 fi
+
+if [[ "$PUBLISH_INSTALLER_BINARIES" == "true" ]]; then
+    info "Will publish installer binaries (if built):"
+    for entry in "${INSTALLER_BINARIES[@]}"; do
+        IFS=':' read -r source_path dest_path <<< "$entry"
+        echo "  - $source_path -> installer/$dest_path"
+    done
+fi
 echo ""
 
 if [[ "$UPLOAD_METHOD" == "http" ]]; then
@@ -850,6 +935,12 @@ if [[ "$PUBLISH_INSTALLERS" == "true" ]]; then
     publish_installer_scripts
 fi
 
+# Publish installer binaries (built via make build-installer)
+if [[ "$PUBLISH_INSTALLER_BINARIES" == "true" ]]; then
+    echo ""
+    publish_installer_binaries
+fi
+
 # Update latest version marker
 if [[ ${#ARTIFACTS[@]} -gt 0 ]]; then
     echo ""
@@ -867,4 +958,5 @@ info "=== Publish complete ==="
 info "Artifacts: $SUCCESS success, $FAILED failed"
 [[ ${#ARTIFACTS[@]} -gt 0 ]] && info "Tool metadata: published"
 [[ "$PUBLISH_INSTALLERS" == "true" ]] && info "Installer scripts: published"
+[[ "$PUBLISH_INSTALLER_BINARIES" == "true" ]] && info "Installer binaries: published (if found)"
 [[ ${#ARTIFACTS[@]} -gt 0 ]] && info "Latest marker: $VERSION"

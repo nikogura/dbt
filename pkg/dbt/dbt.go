@@ -107,6 +107,7 @@ type ServerConfig struct {
 	OIDCAudience     string `json:"oidcAudience,omitempty"`
 	OIDCClientID     string `json:"oidcClientId,omitempty"`
 	OIDCClientSecret string `json:"oidcClientSecret,omitempty"`
+	OIDCUsername     string `json:"oidcUsername,omitempty"`
 	ConnectorID      string `json:"connectorId,omitempty"`
 }
 
@@ -219,8 +220,12 @@ func (c *MultiServerConfig) ToConfig(server ServerConfig) (config Config) {
 	config.Tools = ToolsConfig{
 		Repo: server.ToolsRepository,
 	}
-	// Copy legacy auth fields
-	config.Username = c.Username
+	// Copy legacy auth fields, prefer per-server username if set
+	if server.OIDCUsername != "" {
+		config.Username = server.OIDCUsername
+	} else {
+		config.Username = c.Username
+	}
 	config.Password = c.Password
 	config.UsernameFunc = c.UsernameFunc
 	config.PasswordFunc = c.PasswordFunc

@@ -101,12 +101,28 @@ DBT can distribute any single-file executable:
 
 ## Installation
 
-### Option 1: Use Pre-built Installer (Recommended)
+### Option 1: Organization-Specific Installer (Recommended)
+
+Organizations can build custom installers with pre-configured settings. Users simply download and run:
+
+```bash
+./dbt-installer
+```
+
+The installer:
+- Prompts for OIDC username (if SSH-OIDC is configured)
+- Authenticates to the repository
+- Downloads and installs the latest dbt
+- Configures `~/.dbt/conf/dbt.json` automatically
+
+See [Building Organization Installers](#building-organization-installers) for how to create these.
+
+### Option 2: Shell Script Installer
 ```bash
 curl https://your-dbt-repo.com/install_dbt.sh | bash
 ```
 
-### Option 2: Build from Source
+### Option 3: Build from Source
 ```bash
 git clone https://github.com/nikogura/dbt.git
 cd dbt
@@ -146,9 +162,138 @@ Example `metadata.json`:
 dbt catalog list
 ```
 
+## Building Organization Installers
+
+The `cmd/dbt-installer` package creates standalone installers with your organization's configuration baked in. Users download a single binary and run it - no configuration required.
+
+### Basic Build
+
+```bash
+go build -ldflags "-X main.serverURL=https://dbt.example.com" \
+    -o dbt-installer ./cmd/dbt-installer
+```
+
+### Build with OIDC Authentication
+
+For repositories requiring SSH-OIDC authentication:
+
+```bash
+go build -ldflags "\
+    -X main.serverURL=https://dbt.example.com \
+    -X main.serverName=prod \
+    -X main.toolsURL=https://dbt.example.com/dbt-tools \
+    -X main.issuerURL=https://dex.example.com \
+    -X main.oidcAudience=https://dbt.example.com \
+    -X main.oidcClientID=dbt-ssh \
+    -X main.connectorID=ssh" \
+    -o dbt-installer ./cmd/dbt-installer
+```
+
+### Build for S3 Repository
+
+```bash
+go build -ldflags "\
+    -X main.serverURL=s3://my-dbt-bucket \
+    -X main.toolsURL=s3://my-dbt-tools-bucket \
+    -X main.serverName=prod" \
+    -o dbt-installer ./cmd/dbt-installer
+```
+
+### Available Build Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `main.serverURL` | Yes | Base URL of dbt repository (`https://...` or `s3://...`) |
+| `main.serverName` | No | Alias for this server in config (defaults to hostname) |
+| `main.toolsURL` | No | Tools repository URL (defaults to `serverURL/dbt-tools`) |
+| `main.issuerURL` | No | OIDC issuer URL (enables OIDC auth) |
+| `main.oidcAudience` | No | OIDC token audience (defaults to serverURL) |
+| `main.oidcClientID` | No | OAuth2 client ID (defaults to `dbt-ssh` for SSH-OIDC) |
+| `main.oidcClientSecret` | No | OAuth2 client secret (if required) |
+| `main.connectorID` | No | OIDC connector ID (`ssh` for SSH-OIDC with Dex) |
+| `main.s3Region` | No | AWS region for S3 (auto-detected if not set) |
+
+### Cross-Platform Builds
+
+Build installers for all platforms:
+
+```bash
+# Linux AMD64
+GOOS=linux GOARCH=amd64 go build -ldflags "..." -o dbt-installer-linux-amd64 ./cmd/dbt-installer
+
+# Linux ARM64
+GOOS=linux GOARCH=arm64 go build -ldflags "..." -o dbt-installer-linux-arm64 ./cmd/dbt-installer
+
+# macOS AMD64
+GOOS=darwin GOARCH=amd64 go build -ldflags "..." -o dbt-installer-darwin-amd64 ./cmd/dbt-installer
+
+# macOS ARM64 (Apple Silicon)
+GOOS=darwin GOARCH=arm64 go build -ldflags "..." -o dbt-installer-darwin-arm64 ./cmd/dbt-installer
+
+# Windows
+GOOS=windows GOARCH=amd64 go build -ldflags "..." -o dbt-installer-windows-amd64.exe ./cmd/dbt-installer
+```
+
+### How the Installer Works
+
+1. **Authentication**: For SSH-OIDC, prompts for username and authenticates via SSH keys in your agent. For S3, uses AWS credentials from `~/.aws/`.
+
+2. **Version Discovery**: Lists available versions from the repository (parses directory listing for HTTP, reads `latest` file for S3).
+
+3. **Download & Verify**: Downloads the dbt binary and verifies its SHA256 checksum.
+
+4. **Install**: Copies dbt to `~/.local/bin/dbt` and makes it executable.
+
+5. **Configure**: Creates/updates `~/.dbt/conf/dbt.json` with the server configuration.
+
+6. **PATH Setup**: Adds `~/.local/bin` to the user's shell profile if needed.
+
 ## Configuration
 
-DBT uses a config file at `~/.dbt/conf/dbt.json`, created automatically by the installer:
+DBT uses a config file at `~/.dbt/conf/dbt.json`, created automatically by the installer.
+
+### Multi-Server Configuration (Recommended)
+
+Configure multiple servers with independent authentication:
+
+```json
+{
+  "servers": {
+    "prod": {
+      "repository": "https://dbt.prod.example.com/dbt",
+      "truststore": "https://dbt.prod.example.com/dbt/truststore",
+      "toolsRepository": "https://dbt.prod.example.com/dbt-tools",
+      "authType": "oidc",
+      "issuerUrl": "https://dex.example.com",
+      "oidcAudience": "https://dbt.prod.example.com",
+      "oidcClientId": "dbt-ssh",
+      "oidcUsername": "jdoe",
+      "connectorId": "ssh"
+    },
+    "dev": {
+      "repository": "https://dbt.dev.example.com/dbt",
+      "truststore": "https://dbt.dev.example.com/dbt/truststore",
+      "toolsRepository": "https://dbt.dev.example.com/dbt-tools"
+    },
+    "s3": {
+      "repository": "https://my-bucket.s3.us-east-1.amazonaws.com",
+      "truststore": "https://my-bucket.s3.us-east-1.amazonaws.com/truststore",
+      "toolsRepository": "https://my-tools-bucket.s3.us-east-1.amazonaws.com"
+    }
+  },
+  "defaultServer": "prod"
+}
+```
+
+**Server selection priority**:
+1. CLI flag: `dbt -s dev -- catalog list`
+2. Environment variable: `DBT_SERVER=dev dbt -- catalog list`
+3. Config default: `defaultServer` field
+4. First server in the map
+
+### Legacy Single-Server Configuration
+
+The legacy format is still supported for backward compatibility:
 
 ```json
 {
@@ -168,11 +313,28 @@ DBT uses a config file at `~/.dbt/conf/dbt.json`, created automatically by the i
 
 ### Configuration Options
 
-#### dbt section
+#### Per-Server Fields (Multi-Server Config)
+
+| Field | Description |
+|-------|-------------|
+| `repository` | URL of the dbt binary repository |
+| `truststore` | URL containing public keys of trusted authors |
+| `toolsRepository` | URL where tools are stored |
+| `authType` | Set to `"oidc"` to enable OIDC authentication |
+| `issuerUrl` | OIDC provider URL for token exchange |
+| `oidcAudience` | Target audience for OIDC tokens |
+| `oidcClientId` | OAuth2 client ID |
+| `oidcClientSecret` | OAuth2 client secret (if required) |
+| `oidcUsername` | Username for OIDC authentication (per-server) |
+| `connectorId` | Connector ID (e.g., `"ssh"` for Dex SSH-OIDC) |
+
+#### Legacy Fields (Single-Server Config)
+
+**dbt section**:
 - **repository**: URL of the trusted repository for DBT binaries
 - **truststore**: URL containing public keys of trusted DBT binary authors
 
-#### tools section
+**tools section**:
 - **repository**: URL where tools are stored and discovered
 
 #### Authentication (Optional)
@@ -185,6 +347,7 @@ DBT uses a config file at `~/.dbt/conf/dbt.json`, created automatically by the i
 - **authType**: Set to `"oidc"` to enable OIDC authentication
 - **issuerUrl**: OIDC provider URL for token exchange
 - **oidcAudience**: Target audience for OIDC tokens (e.g., `"dbt-server"`)
+- **oidcUsername**: Username for OIDC authentication
 - **connectorId**: Optional connector ID for providers that support it (e.g., `"ssh"` for Dex)
 
 #### OIDC Client Configuration Example
@@ -826,6 +989,107 @@ export S3_REGION="us-east-1"
 - `curl`, `jq` - HTTP and JSON processing
 - `gpg` - Artifact signing
 - `aws` - S3 uploads (only if using `--s3`)
+
+### Publishing Organization Installers
+
+In addition to dbt binaries and tools, you can publish pre-configured installer binaries for your organization. This gives users a single download that installs dbt with all your organization's settings pre-configured.
+
+#### Step 1: Build Installers with Your Configuration
+
+Use the `make build-installer` target with your organization's settings:
+
+```bash
+# HTTP/Reposerver with SSH-OIDC
+make build-installer \
+  SERVER_URL=https://dbt.example.com \
+  SERVER_NAME=prod \
+  ISSUER_URL=https://dex.example.com \
+  OIDC_AUDIENCE=https://dbt.example.com \
+  OIDC_CLIENT_ID=dbt-ssh \
+  CONNECTOR_ID=ssh \
+  INSTALLER_VERSION=1.0.0
+
+# S3 repository
+make build-installer \
+  SERVER_URL=s3://my-dbt-bucket \
+  SERVER_NAME=prod \
+  TOOLS_URL=s3://my-dbt-tools-bucket \
+  S3_REGION=us-east-1 \
+  INSTALLER_VERSION=1.0.0
+```
+
+This creates platform-specific binaries in `dist/installer/`:
+```
+dist/installer/
+├── darwin/amd64/dbt-installer
+├── darwin/arm64/dbt-installer
+└── linux/amd64/dbt-installer
+```
+
+#### Step 2: Publish with the Downstream Script
+
+Run `publish-downstream.sh` to upload everything including the installers:
+
+```bash
+./scripts/publish-downstream.sh --http https://dbt.example.com \
+  --auth oidc --oidc-issuer https://dex.example.com -v 3.7.5 -y
+```
+
+Installers are published to `<repo>/installer/<os>/<arch>/dbt-installer`.
+
+#### Step 3: Distribute to Users
+
+Users download and run the installer for their platform:
+
+```bash
+# Linux/macOS
+curl -O https://dbt.example.com/dbt/installer/linux/amd64/dbt-installer
+chmod +x dbt-installer
+./dbt-installer
+```
+
+#### Downstream Makefile Example
+
+For organizations maintaining their own downstream, create a `Makefile` with your settings:
+
+```makefile
+# Your organization's dbt configuration
+SERVER_URL     := https://dbt.example.com
+SERVER_NAME    := prod
+ISSUER_URL     := https://dex.example.com
+OIDC_AUDIENCE  := https://dbt.example.com
+OIDC_CLIENT_ID := dbt-ssh
+CONNECTOR_ID   := ssh
+
+# Build version
+INSTALLER_VERSION := $(shell date +%Y%m%d)
+
+.PHONY: build-installer publish
+
+build-installer:
+	cd /path/to/nikogura/dbt && make build-installer \
+		SERVER_URL=$(SERVER_URL) \
+		SERVER_NAME=$(SERVER_NAME) \
+		ISSUER_URL=$(ISSUER_URL) \
+		OIDC_AUDIENCE=$(OIDC_AUDIENCE) \
+		OIDC_CLIENT_ID=$(OIDC_CLIENT_ID) \
+		CONNECTOR_ID=$(CONNECTOR_ID) \
+		INSTALLER_VERSION=$(INSTALLER_VERSION)
+
+publish: build-installer
+	./scripts/publish-downstream.sh --http $(SERVER_URL) \
+		--auth oidc --oidc-issuer $(ISSUER_URL) -y
+```
+
+#### Skipping Installer Binaries
+
+If you don't need to publish installer binaries:
+
+```bash
+./scripts/publish-downstream.sh --http https://dbt.example.com \
+  --auth oidc --oidc-issuer https://dex.example.com \
+  --no-installer-binaries -y
+```
 
 ## Kubernetes Deployment
 
