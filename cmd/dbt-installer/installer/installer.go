@@ -186,30 +186,18 @@ func (i *Installer) setupS3() (err error) {
 	parts := strings.SplitN(urlWithoutScheme, "/", 2)
 	i.s3Bucket = parts[0]
 
-	// Create session with shared config enabled (reads ~/.aws/config for SSO, profiles, etc.)
-	sess, sessErr := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	})
-	if sessErr != nil {
-		err = fmt.Errorf("failed to create AWS session: %w", sessErr)
-		return err
-	}
-
-	// Get bucket region
-	region, regionErr := s3.New(sess).GetBucketLocation(&s3.GetBucketLocationInput{
-		Bucket: aws.String(i.s3Bucket),
-	})
-	if regionErr != nil {
-		// Default to us-east-1 if we can't detect
-		i.s3Region = "us-east-1"
-	} else if region.LocationConstraint == nil || *region.LocationConstraint == "" {
-		i.s3Region = "us-east-1"
+	// Use build-time injected region if available, otherwise auto-detect
+	if i.config.S3Region != "" {
+		i.s3Region = i.config.S3Region
 	} else {
-		i.s3Region = *region.LocationConstraint
+		i.s3Region, err = i.detectBucketRegion()
+		if err != nil {
+			return err
+		}
 	}
 
-	// Create S3 client with correct region and shared config
-	sess, sessErr = session.NewSessionWithOptions(session.Options{
+	// Create S3 client with resolved region and shared config
+	sess, sessErr := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 		Config: aws.Config{
 			Region: aws.String(i.s3Region),
@@ -235,6 +223,41 @@ func (i *Installer) setupS3() (err error) {
 	fmt.Printf("  S3 bucket: %s (region: %s)\n", i.s3Bucket, i.s3Region)
 
 	return err
+}
+
+// detectBucketRegion auto-detects the S3 bucket region via GetBucketLocation.
+// Falls back to us-east-1 if detection fails (e.g. missing permissions or no default region).
+func (i *Installer) detectBucketRegion() (detectedRegion string, err error) {
+	sess, sessErr := session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	})
+	if sessErr != nil {
+		err = fmt.Errorf("failed to create AWS session: %w", sessErr)
+		return detectedRegion, err
+	}
+
+	detectedRegion = regionFromBucket(sess, i.s3Bucket)
+
+	return detectedRegion, err
+}
+
+// regionFromBucket queries S3 for the bucket's region, returning us-east-1 on any failure.
+func regionFromBucket(sess *session.Session, bucket string) (detectedRegion string) {
+	region, regionErr := s3.New(sess).GetBucketLocation(&s3.GetBucketLocationInput{
+		Bucket: aws.String(bucket),
+	})
+	if regionErr != nil {
+		detectedRegion = "us-east-1"
+		return detectedRegion
+	}
+
+	if region.LocationConstraint == nil || *region.LocationConstraint == "" {
+		detectedRegion = "us-east-1"
+	} else {
+		detectedRegion = *region.LocationConstraint
+	}
+
+	return detectedRegion
 }
 
 // promptForUsername prompts the user for their OIDC username.
