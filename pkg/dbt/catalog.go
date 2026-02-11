@@ -49,7 +49,6 @@ func (dbt *DBT) FetchCatalog(showVersions bool) (err error) {
 
 	fmt.Printf("Commands:\n\n")
 	fmt.Printf("\tCommand Name\t\tLatest Version\t\tDescription\n\n")
-	fmt.Printf("\n\n")
 
 	for _, tool := range tools {
 		version, versionErr := dbt.FindLatestVersion(tool.Name)
@@ -138,7 +137,7 @@ func (dbt *DBT) FetchToolDescription(tool string, version string) (description s
 			return description, err
 		}
 
-		description = string(responseBytes)
+		description = strings.TrimSpace(string(responseBytes))
 	}
 
 	return description, err
@@ -258,7 +257,7 @@ func (dbt *DBT) S3FetchDescription(meta S3Meta) (description string, err error) 
 		return description, err
 	}
 
-	description = string(buf.Bytes())
+	description = strings.TrimSpace(string(buf.Bytes()))
 
 	return description, err
 }

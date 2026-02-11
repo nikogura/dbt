@@ -827,6 +827,44 @@ func (dbt *DBT) S3VerifyFileVersion(filePath string, meta S3Meta) (success bool,
 	return success, err
 }
 
+// DeletePath sends an authenticated DELETE request to the given URL.
+func (dbt *DBT) DeletePath(targetURL string) (statusCode int, err error) {
+	client := &http.Client{
+		Timeout: defaultRequestTimeout,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), defaultRequestTimeout)
+	defer cancel()
+
+	req, reqErr := http.NewRequestWithContext(ctx, http.MethodDelete, targetURL, nil)
+	if reqErr != nil {
+		err = errors.Wrapf(reqErr, "failed to create DELETE request for url: %s", targetURL)
+		return statusCode, err
+	}
+
+	err = dbt.AuthHeaders(req)
+	if err != nil {
+		err = errors.Wrapf(err, "failed adding auth headers for DELETE")
+		return statusCode, err
+	}
+
+	resp, doErr := client.Do(req)
+	if doErr != nil {
+		err = errors.Wrapf(doErr, "error sending DELETE request to %s", targetURL)
+		return statusCode, err
+	}
+	defer resp.Body.Close()
+
+	statusCode = resp.StatusCode
+
+	if statusCode >= 400 {
+		err = fmt.Errorf("DELETE %s returned status %d", targetURL, statusCode)
+		return statusCode, err
+	}
+
+	return statusCode, err
+}
+
 // S3FetchToolVersions fetches available versions for a tool from S3.
 func (dbt *DBT) S3FetchToolVersions(meta S3Meta) (versions []string, err error) {
 	versions = make([]string, 0)

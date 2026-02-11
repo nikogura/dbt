@@ -111,6 +111,8 @@ func (d *DBTRepoServer) initOIDCValidators() (putValidator *OIDCValidator, getVa
 }
 
 // setupPutRoutes configures PUT routes based on auth type.
+//
+//nolint:dupl // mirrors setupDeleteRoutes intentionally; they must evolve in parallel
 func (d *DBTRepoServer) setupPutRoutes(r *mux.Router, oidcValidator *OIDCValidator) (err error) {
 	if d.AuthTypePut == "" {
 		return err
@@ -193,13 +195,25 @@ func (d *DBTRepoServer) RunRepoServer() (err error) {
 		return err
 	}
 
+	// Setup API routes (must be before catch-all GET routes)
+	err = d.setupAPIRoutes(r, oidcValidatorGet)
+	if err != nil {
+		return err
+	}
+
 	// Setup PUT routes
 	err = d.setupPutRoutes(r, oidcValidatorPut)
 	if err != nil {
 		return err
 	}
 
-	// Setup GET routes
+	// Setup DELETE routes (reuses PUT auth)
+	err = d.setupDeleteRoutes(r, oidcValidatorPut)
+	if err != nil {
+		return err
+	}
+
+	// Setup GET routes (catch-all, must be last)
 	err = d.setupGetRoutes(r, oidcValidatorGet)
 	if err != nil {
 		return err
