@@ -694,8 +694,14 @@ func (i *Installer) installBinary(sourcePath string) (installPath string, err er
 	return installPath, err
 }
 
-// configure creates or updates the dbt configuration file.
+// configure creates dbt directories and the configuration file.
 func (i *Installer) configure(username string) (err error) {
+	dirsErr := ensureDirectories()
+	if dirsErr != nil {
+		err = fmt.Errorf("failed to create dbt directories: %w", dirsErr)
+		return err
+	}
+
 	configPath, pathErr := GetConfigPath()
 	if pathErr != nil {
 		err = pathErr
@@ -741,6 +747,34 @@ func (i *Installer) configure(username string) (err error) {
 	}
 
 	fmt.Printf("  Config: %s\n", configPath)
+
+	return err
+}
+
+// ensureDirectories creates all required dbt directories (~/.dbt/trust, ~/.dbt/tools, ~/.dbt/conf).
+func ensureDirectories() (err error) {
+	homeDir, homeErr := os.UserHomeDir()
+	if homeErr != nil {
+		err = fmt.Errorf("failed to get home directory: %w", homeErr)
+		return err
+	}
+
+	dirs := []string{
+		filepath.Join(homeDir, ".dbt"),
+		filepath.Join(homeDir, ".dbt", "trust"),
+		filepath.Join(homeDir, ".dbt", "tools"),
+		filepath.Join(homeDir, ".dbt", "conf"),
+	}
+
+	for _, dir := range dirs {
+		mkdirErr := os.MkdirAll(dir, 0755)
+		if mkdirErr != nil {
+			err = fmt.Errorf("failed to create directory %s: %w", dir, mkdirErr)
+			return err
+		}
+
+		fmt.Printf("  %s\n", dir)
+	}
 
 	return err
 }
