@@ -83,11 +83,12 @@ func NewRepoServer(configFilePath string) (server *DBTRepoServer, err error) {
 
 // initOIDCValidators creates OIDC validators for PUT and GET if configured.
 func (d *DBTRepoServer) initOIDCValidators() (putValidator *OIDCValidator, getValidator *OIDCValidator, err error) {
-	if d.AuthTypePut == AUTH_OIDC {
+	if containsAuthType(d.AuthTypePut, AUTH_OIDC) {
 		if d.AuthOptsPut.OIDC == nil {
 			err = errors.New("OIDC auth type requires oidc configuration in authOptsPut")
 			return putValidator, getValidator, err
 		}
+
 		putValidator, err = NewOIDCValidator(context.Background(), d.AuthOptsPut.OIDC)
 		if err != nil {
 			err = errors.Wrap(err, "failed to create OIDC validator for PUT")
@@ -95,11 +96,12 @@ func (d *DBTRepoServer) initOIDCValidators() (putValidator *OIDCValidator, getVa
 		}
 	}
 
-	if d.AuthTypeGet == AUTH_OIDC && d.AuthGets {
+	if containsAuthType(d.AuthTypeGet, AUTH_OIDC) && d.AuthGets {
 		if d.AuthOptsGet.OIDC == nil {
 			err = errors.New("OIDC auth type requires oidc configuration in authOptsGet")
 			return putValidator, getValidator, err
 		}
+
 		getValidator, err = NewOIDCValidator(context.Background(), d.AuthOptsGet.OIDC)
 		if err != nil {
 			err = errors.Wrap(err, "failed to create OIDC validator for GET")
@@ -111,10 +113,24 @@ func (d *DBTRepoServer) initOIDCValidators() (putValidator *OIDCValidator, getVa
 }
 
 // setupPutRoutes configures PUT routes based on auth type.
+// Supports comma-separated auth types for multi-auth (e.g. "static-token,oidc").
 //
 //nolint:dupl // mirrors setupDeleteRoutes intentionally; they must evolve in parallel
 func (d *DBTRepoServer) setupPutRoutes(r *mux.Router, oidcValidator *OIDCValidator) (err error) {
 	if d.AuthTypePut == "" {
+		return err
+	}
+
+	authTypes := parseAuthTypes(d.AuthTypePut)
+	if len(authTypes) > 1 {
+		check, buildErr := d.buildMultiAuthCheck(authTypes, d.AuthOptsPut, oidcValidator, true)
+		if buildErr != nil {
+			err = buildErr
+			return err
+		}
+
+		r.PathPrefix("/").HandlerFunc(d.PutHandlerMultiAuth(check)).Methods("PUT")
+
 		return err
 	}
 
@@ -140,11 +156,25 @@ func (d *DBTRepoServer) setupPutRoutes(r *mux.Router, oidcValidator *OIDCValidat
 }
 
 // setupGetRoutes configures GET routes based on auth type.
+// Supports comma-separated auth types for multi-auth (e.g. "static-token,oidc").
 func (d *DBTRepoServer) setupGetRoutes(r *mux.Router, oidcValidator *OIDCValidator) (err error) {
 	fileServer := http.FileServer(http.Dir(d.ServerRoot))
 
 	if d.AuthTypeGet == "" || !d.AuthGets {
 		r.PathPrefix("/").Handler(fileServer).Methods("GET", "HEAD")
+		return err
+	}
+
+	authTypes := parseAuthTypes(d.AuthTypeGet)
+	if len(authTypes) > 1 {
+		check, buildErr := d.buildMultiAuthCheck(authTypes, d.AuthOptsGet, oidcValidator, false)
+		if buildErr != nil {
+			err = buildErr
+			return err
+		}
+
+		r.PathPrefix("/").Handler(d.CheckMultiAuthGet(fileServer.ServeHTTP, check)).Methods("GET", "HEAD")
+
 		return err
 	}
 

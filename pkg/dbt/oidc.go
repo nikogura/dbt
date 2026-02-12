@@ -246,6 +246,41 @@ func (v *OIDCValidator) validateGroupMembership(userGroups []string) (err error)
 	return err
 }
 
+// TryOIDCAuth attempts OIDC token authentication without writing to the response.
+// Returns the username if authenticated, empty string otherwise.
+func TryOIDCAuth(r *http.Request, validator *OIDCValidator) (username string) {
+	if validator == nil {
+		return username
+	}
+
+	authHeader := r.Header.Get("Authorization")
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		return username
+	}
+
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenString == "" {
+		return username
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	claims, validateErr := validator.ValidateToken(ctx, tokenString)
+	if validateErr != nil {
+		return username
+	}
+
+	username = validator.GetUsername(claims)
+	if username == "" {
+		return username
+	}
+
+	log.Infof("OIDC: Subject %s successfully authenticated (multi-auth)", username)
+
+	return username
+}
+
 // CheckOIDCAuth validates the OIDC token from the Authorization header.
 // Returns the username if valid, empty string if invalid.
 func CheckOIDCAuth(w http.ResponseWriter, r *http.Request, validator *OIDCValidator) (username string) {

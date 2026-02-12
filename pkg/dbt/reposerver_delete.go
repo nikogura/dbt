@@ -85,10 +85,24 @@ func (d *DBTRepoServer) HandleDelete(requestPath string) (statusCode int, err er
 
 // setupDeleteRoutes configures DELETE routes based on auth type.
 // DELETE reuses PUT auth configuration since it is a write operation.
+// Supports comma-separated auth types for multi-auth (e.g. "static-token,oidc").
 //
 //nolint:dupl // mirrors setupPutRoutes intentionally; they must evolve in parallel
 func (d *DBTRepoServer) setupDeleteRoutes(r *mux.Router, oidcValidator *OIDCValidator) (err error) {
 	if d.AuthTypePut == "" {
+		return err
+	}
+
+	authTypes := parseAuthTypes(d.AuthTypePut)
+	if len(authTypes) > 1 {
+		check, buildErr := d.buildMultiAuthCheck(authTypes, d.AuthOptsPut, oidcValidator, true)
+		if buildErr != nil {
+			err = buildErr
+			return err
+		}
+
+		r.PathPrefix("/").HandlerFunc(d.DeleteHandlerMultiAuth(check)).Methods("DELETE")
+
 		return err
 	}
 

@@ -119,12 +119,27 @@ func (d *DBTRepoServer) APIToolVersionsHandler(w http.ResponseWriter, r *http.Re
 
 // setupAPIRoutes configures the API routes under /-/api/.
 // These routes use GET auth configuration since they are read-only.
+// Supports comma-separated auth types for multi-auth (e.g. "static-token,oidc").
 func (d *DBTRepoServer) setupAPIRoutes(r *mux.Router, oidcValidator *OIDCValidator) (err error) {
 	apiRouter := r.PathPrefix("/-/api").Subrouter()
 
 	if d.AuthTypeGet == "" || !d.AuthGets {
 		apiRouter.HandleFunc("/tools", d.APIToolsHandler).Methods("GET")
 		apiRouter.HandleFunc("/tools/{name}/versions", d.APIToolVersionsHandler).Methods("GET")
+		return err
+	}
+
+	authTypes := parseAuthTypes(d.AuthTypeGet)
+	if len(authTypes) > 1 {
+		check, buildErr := d.buildMultiAuthCheck(authTypes, d.AuthOptsGet, oidcValidator, false)
+		if buildErr != nil {
+			err = buildErr
+			return err
+		}
+
+		apiRouter.Handle("/tools", d.CheckMultiAuthGet(d.APIToolsHandler, check)).Methods("GET")
+		apiRouter.Handle("/tools/{name}/versions", d.CheckMultiAuthGet(d.APIToolVersionsHandler, check)).Methods("GET")
+
 		return err
 	}
 
