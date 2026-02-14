@@ -81,6 +81,120 @@ func NewRepoServer(configFilePath string) (server *DBTRepoServer, err error) {
 	return server, err
 }
 
+// NewRepoServerFromEnv builds a DBTRepoServer from REPOSERVER_ environment variables.
+// This allows container deployments to configure the reposerver without a JSON config file.
+func NewRepoServerFromEnv() (server *DBTRepoServer, err error) {
+	server = &DBTRepoServer{
+		Address:     envOrDefault("REPOSERVER_ADDRESS", "0.0.0.0"),
+		Port:        envInt("REPOSERVER_PORT", 9999),
+		ServerRoot:  os.Getenv("REPOSERVER_ROOT"),
+		AuthGets:    envBool("REPOSERVER_AUTH_GETS"),
+		AuthTypeGet: os.Getenv("REPOSERVER_AUTH_TYPE_GET"),
+		AuthTypePut: os.Getenv("REPOSERVER_AUTH_TYPE_PUT"),
+		AuthOptsGet: AuthOpts{
+			IdpFile:     os.Getenv("REPOSERVER_IDP_FILE_GET"),
+			IdpFunc:     os.Getenv("REPOSERVER_IDP_FUNC_GET"),
+			StaticToken: os.Getenv("REPOSERVER_STATIC_TOKEN_GET"),
+		},
+		AuthOptsPut: AuthOpts{
+			IdpFile:     os.Getenv("REPOSERVER_IDP_FILE_PUT"),
+			IdpFunc:     os.Getenv("REPOSERVER_IDP_FUNC_PUT"),
+			StaticToken: os.Getenv("REPOSERVER_STATIC_TOKEN_PUT"),
+		},
+	}
+
+	oidcGet := oidcOptsFromEnv("GET")
+	if oidcGet != nil {
+		server.AuthOptsGet.OIDC = oidcGet
+	}
+
+	oidcPut := oidcOptsFromEnv("PUT")
+	if oidcPut != nil {
+		server.AuthOptsPut.OIDC = oidcPut
+	}
+
+	return server, err
+}
+
+// envOrDefault returns the value of the environment variable named by key,
+// or defaultValue if the variable is not set or empty.
+func envOrDefault(key, defaultValue string) (value string) {
+	value = os.Getenv(key)
+	if value == "" {
+		value = defaultValue
+	}
+
+	return value
+}
+
+// envBool returns true if the environment variable named by key is set to "true" (case-insensitive).
+func envBool(key string) (result bool) {
+	result = strings.EqualFold(os.Getenv(key), "true")
+
+	return result
+}
+
+// envInt returns the integer value of the environment variable named by key,
+// or defaultValue if the variable is not set, empty, or not a valid integer.
+func envInt(key string, defaultValue int) (result int) {
+	raw := os.Getenv(key)
+	if raw == "" {
+		result = defaultValue
+		return result
+	}
+
+	parsed, parseErr := strconv.Atoi(raw)
+	if parseErr != nil {
+		result = defaultValue
+		return result
+	}
+
+	result = parsed
+
+	return result
+}
+
+// envSlice splits the value of the environment variable named by key on commas.
+// Returns nil if the variable is not set or empty.
+func envSlice(key string) (result []string) {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return result
+	}
+
+	parts := strings.Split(raw, ",")
+	result = make([]string, 0, len(parts))
+
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+
+	return result
+}
+
+// oidcOptsFromEnv builds an OIDCAuthOpts from REPOSERVER_OIDC_*_{suffix} environment variables.
+// Returns nil if REPOSERVER_OIDC_ISSUER_URL_{suffix} is not set.
+func oidcOptsFromEnv(suffix string) (opts *OIDCAuthOpts) {
+	issuerURL := os.Getenv("REPOSERVER_OIDC_ISSUER_URL_" + suffix)
+	if issuerURL == "" {
+		return opts
+	}
+
+	opts = &OIDCAuthOpts{
+		IssuerURL:        issuerURL,
+		Audiences:        envSlice("REPOSERVER_OIDC_AUDIENCES_" + suffix),
+		UsernameClaimKey: os.Getenv("REPOSERVER_OIDC_USERNAME_CLAIM_" + suffix),
+		AllowedGroups:    envSlice("REPOSERVER_OIDC_ALLOWED_GROUPS_" + suffix),
+		SkipIssuerVerify: envBool("REPOSERVER_OIDC_SKIP_ISSUER_VERIFY_" + suffix),
+		JWKSCacheSeconds: envInt("REPOSERVER_OIDC_JWKS_CACHE_"+suffix, 0),
+	}
+
+	return opts
+}
+
 // initOIDCValidators creates OIDC validators for PUT and GET if configured.
 func (d *DBTRepoServer) initOIDCValidators() (putValidator *OIDCValidator, getValidator *OIDCValidator, err error) {
 	if containsAuthType(d.AuthTypePut, AUTH_OIDC) {

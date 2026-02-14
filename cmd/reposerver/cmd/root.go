@@ -68,23 +68,7 @@ func Execute() {
 
 // Run runs the reposerver.
 func Run(cmd *cobra.Command, args []string) {
-	var repo *dbt.DBTRepoServer
-
-	if configFile != "" {
-		r, err := dbt.NewRepoServer(configFile)
-		if err != nil {
-			log.Fatalf("Failed to create reposerver from file: %s", err)
-		}
-
-		repo = r
-
-	} else {
-		repo = &dbt.DBTRepoServer{
-			Address:    address,
-			Port:       port,
-			ServerRoot: serverRoot,
-		}
-	}
+	repo := buildRepoServer(cmd)
 
 	if repo == nil {
 		log.Fatalf("Failed to initialize reposerver object.  Cannot continue.")
@@ -93,5 +77,50 @@ func Run(cmd *cobra.Command, args []string) {
 	err := repo.RunRepoServer()
 	if err != nil {
 		log.Fatalf("Error running server: %s", err)
+	}
+}
+
+// buildRepoServer creates a DBTRepoServer from config file, env vars, or CLI flags.
+// Priority: config file (-f) wins outright; otherwise env vars provide the base
+// and CLI flags override address/port/root on top.
+func buildRepoServer(cmd *cobra.Command) (repo *dbt.DBTRepoServer) {
+	if configFile != "" {
+		r, err := dbt.NewRepoServer(configFile)
+		if err != nil {
+			log.Fatalf("Failed to create reposerver from file: %s", err)
+		}
+
+		repo = r
+
+		return repo
+	}
+
+	// Build from env vars, then apply any CLI flag overrides.
+	// This allows Docker CMD defaults (e.g. -a 0.0.0.0 -p 9999 -r /var/dbt)
+	// to coexist with REPOSERVER_* env vars for auth configuration.
+	r, err := dbt.NewRepoServerFromEnv()
+	if err != nil {
+		log.Fatalf("Failed to create reposerver from environment: %s", err)
+	}
+
+	repo = r
+
+	applyCLIOverrides(cmd, repo)
+
+	return repo
+}
+
+// applyCLIOverrides applies CLI flag values to the server config when explicitly set.
+func applyCLIOverrides(cmd *cobra.Command, repo *dbt.DBTRepoServer) {
+	if cmd.Flags().Changed("address") {
+		repo.Address = address
+	}
+
+	if cmd.Flags().Changed("port") {
+		repo.Port = port
+	}
+
+	if cmd.Flags().Changed("root") {
+		repo.ServerRoot = serverRoot
 	}
 }

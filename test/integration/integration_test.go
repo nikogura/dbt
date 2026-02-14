@@ -775,6 +775,101 @@ func TestReposerverStaticTokenAuth(t *testing.T) {
 	})
 }
 
+// TestReposerverEnvVarConfig tests that the reposerver can be configured entirely via environment variables.
+func TestReposerverEnvVarConfig(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	_, dockerErr := exec.LookPath("docker")
+	if dockerErr != nil {
+		t.Skip("docker not found, skipping integration tests")
+	}
+
+	tc := newTestContext(t)
+	defer tc.cleanup()
+
+	// Setup
+	require.NoError(t, tc.buildDockerImage())
+	require.NoError(t, tc.setupTestRepository())
+
+	// Start reposerver with env vars only — no config file, no CLI flags
+	staticToken := "env-var-test-token-67890"
+	require.NoError(t, tc.startReposerverWithEnv(map[string]string{
+		"REPOSERVER_ADDRESS":          "0.0.0.0",
+		"REPOSERVER_PORT":             "9999",
+		"REPOSERVER_ROOT":             "/var/dbt",
+		"REPOSERVER_AUTH_TYPE_PUT":     "static-token",
+		"REPOSERVER_STATIC_TOKEN_PUT": staticToken,
+	}))
+
+	t.Run("GETWithoutAuthSucceeds", func(t *testing.T) {
+		resp, err := http.Get(tc.reposerverURL + "/dbt/truststore")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode, "GET should succeed without auth")
+	})
+
+	t.Run("PUTWithoutAuthFails", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodPut, tc.reposerverURL+"/test-envvar.txt", strings.NewReader("test"))
+		require.NoError(t, err)
+
+		client := &http.Client{Timeout: 5 * time.Second}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "PUT without auth should return 401")
+	})
+
+	t.Run("PUTWithEnvConfiguredTokenSucceeds", func(t *testing.T) {
+		testContent := "content uploaded via env-var-configured server"
+		req, err := http.NewRequest(http.MethodPut, tc.reposerverURL+"/test-envvar-auth.txt", strings.NewReader(testContent))
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+staticToken)
+
+		client := &http.Client{Timeout: 5 * time.Second}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusCreated, resp.StatusCode, "PUT with valid token should return 201")
+
+		// Verify file was created by reading it back
+		getResp, err := http.Get(tc.reposerverURL + "/test-envvar-auth.txt")
+		require.NoError(t, err)
+		defer getResp.Body.Close()
+
+		body, err := io.ReadAll(getResp.Body)
+		require.NoError(t, err)
+		assert.Equal(t, testContent, string(body), "file content should match")
+	})
+
+	t.Run("PUTWithWrongTokenFails", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodPut, tc.reposerverURL+"/test-envvar-bad.txt", strings.NewReader("bad"))
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer wrong-token")
+
+		client := &http.Client{Timeout: 5 * time.Second}
+		resp, err := client.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode, "PUT with wrong token should return 401")
+	})
+
+	t.Run("DirectoryListingWorks", func(t *testing.T) {
+		resp, err := http.Get(tc.reposerverURL + "/dbt/")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode, "directory listing should work")
+
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		assert.Contains(t, string(body), testfixtures.LatestVersion, "should list versions")
+	})
+}
+
 // TestReposerverOIDCTokenExchange tests OIDC authentication using OAuth2 Token Exchange (RFC 8693).
 //
 // This is NOT the standard OIDC Authorization Code flow. Instead, it uses:
@@ -1368,6 +1463,60 @@ func (m *sshRSASigningMethod) Sign(signingString string, key interface{}) ([]byt
 	}
 
 	return []byte(base64.StdEncoding.EncodeToString(sigData.Blob)), nil
+}
+
+// startReposerverWithEnv starts the reposerver container using only REPOSERVER_ environment variables (no config file).
+func (tc *TestContext) startReposerverWithEnv(envVars map[string]string) (err error) {
+	tc.t.Helper()
+	tc.t.Log("Starting reposerver container with env vars...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+
+	_ = exec.CommandContext(ctx, "docker", "rm", "-f", containerName).Run()
+
+	// Make the repo directory writable by the container's nonroot user (uid 65532)
+	chmodCmd := exec.CommandContext(ctx, "chmod", "-R", "777", tc.repoDir)
+	if chmodErr := chmodCmd.Run(); chmodErr != nil {
+		return fmt.Errorf("failed to chmod repo dir: %w", chmodErr)
+	}
+
+	// Build docker run args with env vars
+	args := []string{
+		"run", "-d",
+		"--name", containerName,
+		"-p", fmt.Sprintf("%s:9999", reposerverPort),
+		"-v", fmt.Sprintf("%s:/var/dbt", tc.repoDir),
+	}
+	for k, v := range envVars {
+		args = append(args, "-e", fmt.Sprintf("%s=%s", k, v))
+	}
+	args = append(args, reposerverImage)
+	// No -f flag, no CLI flags — rely entirely on env vars
+
+	cmd := exec.CommandContext(ctx, "docker", args...)
+
+	output, err := cmd.Output()
+	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			tc.t.Logf("Docker run stderr:\n%s", string(exitErr.Stderr))
+		}
+		return fmt.Errorf("docker run failed: %w", err)
+	}
+
+	tc.containerID = strings.TrimSpace(string(output))
+	tc.t.Logf("Started container %s", tc.containerID[:12])
+
+	err = tc.waitForHealthy()
+	if err != nil {
+		logCmd := exec.Command("docker", "logs", tc.containerID)
+		logs, _ := logCmd.CombinedOutput()
+		tc.t.Logf("Container logs:\n%s", string(logs))
+		return err
+	}
+
+	return err
 }
 
 // startReposerverWithAuth starts the reposerver container with authentication configured.
