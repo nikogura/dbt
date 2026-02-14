@@ -578,15 +578,13 @@ dist/installer/
 
 #### Distribute the Installer
 
-Publish the installer binaries to your repository (the downstream script does this automatically), or distribute them however makes sense for your organization — GitHub releases, internal downloads page, etc.
+The recommended approach is to maintain a **downstream repository** (see `examples/downstream-repo/`) with CI that automatically builds installers and publishes them as GitHub releases.  Direct your team to the releases page:
 
-Users install by downloading and running:
-
-```bash
-curl -O https://dbt.example.com/dbt/installer/linux/amd64/dbt-installer
-chmod +x dbt-installer
-./dbt-installer
 ```
+https://github.com/your-org/dbt/releases/latest
+```
+
+Users download the installer for their platform and run it.  Alternatively, publish the installer binaries to your reposerver (the downstream script does this automatically) or distribute them however makes sense for your organization.
 
 The installer:
 1. Authenticates to your repository (prompts for OIDC username if configured)
@@ -613,11 +611,8 @@ This requires manual configuration of `~/.dbt/conf/dbt.json` (see [Client Config
 Once installed, users interact with dbt like this:
 
 ```bash
-# List available tools
-dbt catalog list
-
-# Run a tool
-dbt -- mytool arg1 arg2
+# Run a tool (positional arguments only — no -- needed)
+dbt mytool arg1 arg2
 
 # Run a tool with flags (-- separates dbt flags from tool flags)
 dbt -- mytool --verbose file.txt
@@ -628,18 +623,17 @@ dbt -v 1.2.3 -- mytool --help
 # Verbose dbt output (for debugging)
 dbt -V -- mytool file.txt
 
+# List available tools
+dbt catalog list
+
 # Select a specific server (multi-server config)
-dbt -s dev -- catalog list
+dbt -s dev catalog list
 
 # Offline mode (use cached tools)
-dbt -o -- mytool file.txt
+dbt -o mytool file.txt
 ```
 
-If your tool has no flags, only positional arguments, you can omit the `--`:
-
-```bash
-dbt mytool file.txt
-```
+The `--` separator is only needed when the tool has flags (like `--verbose` or `--help`) that could be confused with dbt's own flags.  When a tool takes only positional arguments, `--` is unnecessary.
 
 DBT checks for updates on every invocation by default.  When the repository is unreachable, it falls back to cached tools.
 
@@ -755,8 +749,8 @@ DBT uses a config file at `~/.dbt/conf/dbt.json`, created automatically by the i
 ```
 
 **Server selection priority:**
-1. CLI flag: `dbt -s dev -- catalog list`
-2. Environment variable: `DBT_SERVER=dev dbt -- catalog list`
+1. CLI flag: `dbt -s dev catalog list`
+2. Environment variable: `DBT_SERVER=dev dbt catalog list`
 3. Config default: `defaultServer` field
 4. First server in the map
 
@@ -963,7 +957,9 @@ If any verification fails, DBT stops immediately.
 
 ## CI/CD Integration
 
-### Automated Publishing with GitHub Actions
+See `examples/downstream-repo/` for a complete, copy-pasteable downstream repository with a Makefile, GitHub Actions workflow, and installer builds.  Copy it into your own GitHub org and customize the variables.
+
+The key pattern for any CI/CD pipeline is importing the GPG signing key at runtime:
 
 ```yaml
 - name: Import GPG key
@@ -971,41 +967,9 @@ If any verification fails, DBT stops immediately.
     echo -n "${{ secrets.GPG_SIGNING_KEY }}" | base64 -d | gpg --batch --import
     FPR=$(gpg --list-secret-keys --with-colons | grep '^fpr:' | head -1 | cut -d: -f10)
     echo "${FPR}:6:" | gpg --batch --import-ownertrust
-
-- name: Publish to reposerver
-  run: ./scripts/publish-downstream.sh --http https://dbt.example.com --auth bearer --token "${{ secrets.DBT_PUBLISH_TOKEN }}" -y
-  env:
-    GPG_IDENTITY: ${{ secrets.SIGNING_EMAIL }}
 ```
 
-### Downstream Makefile Example
-
-For organizations maintaining their own downstream repository:
-
-```makefile
-SERVER_URL     := https://dbt.example.com
-SERVER_NAME    := prod
-ISSUER_URL     := https://dex.example.com
-OIDC_AUDIENCE  := https://dbt.example.com
-OIDC_CLIENT_ID := dbt-ssh
-CONNECTOR_ID   := ssh
-
-.PHONY: build-installer publish
-
-build-installer:
-	cd /path/to/nikogura/dbt && make build-installer \
-		SERVER_URL=$(SERVER_URL) \
-		SERVER_NAME=$(SERVER_NAME) \
-		ISSUER_URL=$(ISSUER_URL) \
-		OIDC_AUDIENCE=$(OIDC_AUDIENCE) \
-		OIDC_CLIENT_ID=$(OIDC_CLIENT_ID) \
-		CONNECTOR_ID=$(CONNECTOR_ID) \
-		INSTALLER_VERSION=$(INSTALLER_VERSION)
-
-publish: build-installer
-	./scripts/publish-downstream.sh --http $(SERVER_URL) \
-		--auth oidc --oidc-issuer $(ISSUER_URL) -y
-```
+Store the GPG private key as a base64-encoded secret: `gpg --export-secret-keys <email> | base64`
 
 ## Troubleshooting
 
@@ -1021,7 +985,7 @@ publish: build-installer
 - Verify the truststore URL is accessible
 
 **Repository unreachable:**
-- DBT can work offline with cached tools (`dbt -o -- tool`)
+- DBT can work offline with cached tools (`dbt -o tool`)
 - Check network connectivity and repository URL
 - Verify authentication credentials if required
 
@@ -1057,7 +1021,7 @@ When repositories are unreachable, DBT uses previously downloaded tools from its
 
 ```bash
 # Always get latest (default)
-dbt -- tool args
+dbt tool args
 
 # Pin to specific version
 dbt -v 1.2.3 -- tool args
@@ -1066,7 +1030,7 @@ dbt -v 1.2.3 -- tool args
 ### Purging Cached Tools
 
 ```bash
-dbt -- catalog purge
+dbt catalog purge
 ```
 
 ### Fork Configuration
