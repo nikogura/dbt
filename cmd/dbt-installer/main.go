@@ -29,7 +29,7 @@
 package main
 
 import (
-	"github.com/nikogura/dbt/cmd/dbt-installer/installer"
+	"github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer"
 )
 
 // Build-time configuration injected via ldflags.

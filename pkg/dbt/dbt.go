@@ -68,7 +68,7 @@ var ConfigFilePath = BrandDir + "/conf/" + BrandConfigFile
 var TruststorePath = BrandDir + "/trust/truststore"
 
 // VERSION is DBT's version. Set to "dev" by default, injected at build time via ldflags.
-// Build with: go build -ldflags "-X github.com/nikogura/dbt/pkg/dbt.VERSION=X.Y.Z".
+// Build with: go build -ldflags "-X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.VERSION=X.Y.Z".
 //
 //nolint:gochecknoglobals // Must be a var to allow ldflags injection at build time.
 var VERSION = "dev"

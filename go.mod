@@ -1,4 +1,4 @@
-module github.com/nikogura/dbt
+module github.com/nikogura/dynamic-binary-toolkit
 
 require (
 	github.com/abbot/go-http-auth v0.4.0

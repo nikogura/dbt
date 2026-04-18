@@ -5,9 +5,9 @@
 DBT automatically downloads, verifies, and runs signed executables from a trusted repository, ensuring your team always uses the latest, secure versions of your tools without manual intervention.
 
 [![Current Release](https://img.shields.io/github/release/nikogura/dbt.svg)](https://img.shields.io/github/release/nikogura/dbt.svg)
-[![CI](https://github.com/nikogura/dbt/actions/workflows/ci.yml/badge.svg)](https://github.com/nikogura/dbt/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/nikogura/dbt)](https://goreportcard.com/report/github.com/nikogura/dbt)
-[![Go Doc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/nikogura/dbt/pkg/dbt)
+[![CI](https://github.com/nikogura/dynamic-binary-toolkit/actions/workflows/ci.yml/badge.svg)](https://github.com/nikogura/dynamic-binary-toolkit/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/nikogura/dynamic-binary-toolkit)](https://goreportcard.com/report/github.com/nikogura/dynamic-binary-toolkit)
+[![Go Doc](https://img.shields.io/badge/godoc-reference-blue.svg?style=flat-square)](http://godoc.org/github.com/nikogura/dynamic-binary-toolkit/pkg/dbt)
 [![Coverage Status](https://codecov.io/gh/nikogura/dbt/branch/master/graph/badge.svg)](https://codecov.io/gh/nikogura/dbt)
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)
 
@@ -591,7 +591,7 @@ The installer:
 Users can also install from source without the installer:
 
 ```bash
-git clone https://github.com/nikogura/dbt.git
+git clone https://github.com/nikogura/dynamic-binary-toolkit.git
 cd dbt
 go build -o dbt ./cmd/dbt
 go build -o catalog ./cmd/catalog
@@ -1055,24 +1055,24 @@ Installer-specific (in `cmd/dbt-installer/installer`):
 ```bash
 # Core binary
 go build -ldflags "\
-  -X github.com/nikogura/dbt/pkg/dbt.BrandName=myorg \
-  -X github.com/nikogura/dbt/pkg/dbt.BrandDir=.myorg \
-  -X github.com/nikogura/dbt/pkg/dbt.BrandBinary=myorg \
-  -X github.com/nikogura/dbt/pkg/dbt.BrandConfigFile=myorg.json \
-  -X github.com/nikogura/dbt/pkg/dbt.BrandToolsPath=myorg-tools \
-  -X github.com/nikogura/dbt/pkg/dbt.BrandEnvPrefix=MYORG \
-  -X github.com/nikogura/dbt/pkg/dbt.VERSION=1.0.0" \
+  -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandName=myorg \
+  -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandDir=.myorg \
+  -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandBinary=myorg \
+  -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandConfigFile=myorg.json \
+  -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandToolsPath=myorg-tools \
+  -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandEnvPrefix=MYORG \
+  -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.VERSION=1.0.0" \
   -o myorg ./cmd/dbt/
 
 # Installer
 go build -ldflags "\
-  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandName=myorg \
-  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandDir=.myorg \
-  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandBinary=myorg \
-  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandConfigFile=myorg.json \
-  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandToolsPath=myorg-tools \
-  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandOIDCClientID=myorg \
-  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandOIDCSSHClientID=myorg-ssh" \
+  -X github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer.BrandName=myorg \
+  -X github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer.BrandDir=.myorg \
+  -X github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer.BrandBinary=myorg \
+  -X github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer.BrandConfigFile=myorg.json \
+  -X github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer.BrandToolsPath=myorg-tools \
+  -X github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer.BrandOIDCClientID=myorg \
+  -X github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer.BrandOIDCSSHClientID=myorg-ssh" \
   -o myorg-installer ./cmd/dbt-installer/
 ```
 
@@ -1102,13 +1102,13 @@ BRAND_TOOLS    ?= myorg-tools
 BRAND_ENV      ?= MYORG
 VERSION        ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 
-LDFLAGS = -X github.com/nikogura/dbt/pkg/dbt.BrandName=$(BRAND_NAME) \
-          -X github.com/nikogura/dbt/pkg/dbt.BrandDir=$(BRAND_DIR) \
-          -X github.com/nikogura/dbt/pkg/dbt.BrandBinary=$(BRAND_BINARY) \
-          -X github.com/nikogura/dbt/pkg/dbt.BrandConfigFile=$(BRAND_CONFIG) \
-          -X github.com/nikogura/dbt/pkg/dbt.BrandToolsPath=$(BRAND_TOOLS) \
-          -X github.com/nikogura/dbt/pkg/dbt.BrandEnvPrefix=$(BRAND_ENV) \
-          -X github.com/nikogura/dbt/pkg/dbt.VERSION=$(VERSION)
+LDFLAGS = -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandName=$(BRAND_NAME) \
+          -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandDir=$(BRAND_DIR) \
+          -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandBinary=$(BRAND_BINARY) \
+          -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandConfigFile=$(BRAND_CONFIG) \
+          -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandToolsPath=$(BRAND_TOOLS) \
+          -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandEnvPrefix=$(BRAND_ENV) \
+          -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.VERSION=$(VERSION)
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o $(BRAND_BINARY) ./cmd/dbt/
@@ -1134,7 +1134,7 @@ With an embedded version:
 
 ```bash
 VERSION=1.2.3
-go build -ldflags "-X github.com/nikogura/dbt/pkg/dbt.VERSION=${VERSION}" -o dbt ./cmd/dbt
+go build -ldflags "-X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.VERSION=${VERSION}" -o dbt ./cmd/dbt
 ```
 
 ### Run Tests

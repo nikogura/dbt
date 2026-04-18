@@ -19,13 +19,13 @@ package installer
 // Build with:
 //
 //	go build -ldflags "\
-//	  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandName=myorg \
-//	  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandDir=.myorg \
-//	  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandBinary=myorg \
-//	  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandConfigFile=myorg.json \
-//	  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandToolsPath=myorg-tools \
-//	  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandOIDCClientID=myorg \
-//	  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandOIDCSSHClientID=myorg-ssh"
+//	  -X github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer.BrandName=myorg \
+//	  -X github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer.BrandDir=.myorg \
+//	  -X github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer.BrandBinary=myorg \
+//	  -X github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer.BrandConfigFile=myorg.json \
+//	  -X github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer.BrandToolsPath=myorg-tools \
+//	  -X github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer.BrandOIDCClientID=myorg \
+//	  -X github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer.BrandOIDCSSHClientID=myorg-ssh"
 
 // BrandName is the human-readable name of the tool.
 //

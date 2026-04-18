@@ -260,7 +260,7 @@ jobs:
     - name: Build binaries with version
       run: |
         VERSION=${{ steps.bump.outputs.version }}
-        LDFLAGS="-X github.com/nikogura/dbt/pkg/dbt.VERSION=${VERSION}"
+        LDFLAGS="-X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.VERSION=${VERSION}"
 
         # Build dbt
         CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "$LDFLAGS" -o dbt_linux_amd64 ./cmd/dbt

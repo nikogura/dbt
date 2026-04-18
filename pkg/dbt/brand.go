@@ -19,12 +19,12 @@ package dbt
 // Build with:
 //
 //	go build -ldflags "\
-//	  -X github.com/nikogura/dbt/pkg/dbt.BrandName=myorg \
-//	  -X github.com/nikogura/dbt/pkg/dbt.BrandDir=.myorg \
-//	  -X github.com/nikogura/dbt/pkg/dbt.BrandBinary=myorg \
-//	  -X github.com/nikogura/dbt/pkg/dbt.BrandConfigFile=myorg.json \
-//	  -X github.com/nikogura/dbt/pkg/dbt.BrandToolsPath=myorg-tools \
-//	  -X github.com/nikogura/dbt/pkg/dbt.BrandEnvPrefix=MYORG"
+//	  -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandName=myorg \
+//	  -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandDir=.myorg \
+//	  -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandBinary=myorg \
+//	  -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandConfigFile=myorg.json \
+//	  -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandToolsPath=myorg-tools \
+//	  -X github.com/nikogura/dynamic-binary-toolkit/pkg/dbt.BrandEnvPrefix=MYORG"
 
 // BrandName is the human-readable name of the tool.
 //

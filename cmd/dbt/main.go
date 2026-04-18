@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/nikogura/dbt/cmd/dbt/cmd"
+	"github.com/nikogura/dynamic-binary-toolkit/cmd/dbt/cmd"
 )
 
 func main() {

@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/nikogura/dbt/pkg/dbt"
+	"github.com/nikogura/dynamic-binary-toolkit/pkg/dbt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

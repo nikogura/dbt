@@ -1,10 +1,10 @@
 # Downstream DBT Repository (Template)
 
-This is a template for organizations that maintain their own [DBT](https://github.com/nikogura/dbt) deployment. Copy this directory into your own GitHub repository and customize it.
+This is a template for organizations that maintain their own [DBT](https://github.com/nikogura/dynamic-binary-toolkit) deployment. Copy this directory into your own GitHub repository and customize it.
 
 ## What This Repo Does
 
-1. **Downloads** release artifacts from upstream [nikogura/dbt](https://github.com/nikogura/dbt) GitHub releases
+1. **Downloads** release artifacts from upstream [nikogura/dbt](https://github.com/nikogura/dynamic-binary-toolkit) GitHub releases
 2. **Signs** artifacts with your organization's GPG key
 3. **Uploads** signed artifacts to your reposerver via HTTP PUT with bearer token auth
 4. **Builds** platform-specific installer binaries with your server configuration baked in

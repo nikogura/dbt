@@ -43,7 +43,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/nikogura/dbt/pkg/dbt/testfixtures"
+	"github.com/nikogura/dynamic-binary-toolkit/pkg/dbt/testfixtures"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/ssh"
@@ -132,7 +132,7 @@ func findProjectRoot() (root string, err error) {
 		if statErr == nil {
 			// Check if this is the dbt project
 			modBytes, readErr := os.ReadFile(filepath.Join(dir, "go.mod"))
-			if readErr == nil && strings.Contains(string(modBytes), "github.com/nikogura/dbt") {
+			if readErr == nil && strings.Contains(string(modBytes), "github.com/nikogura/dynamic-binary-toolkit") {
 				root = dir
 				return root, err
 			}
@@ -140,7 +140,7 @@ func findProjectRoot() (root string, err error) {
 
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			err = errors.New("could not find project root (go.mod with github.com/nikogura/dbt)")
+			err = errors.New("could not find project root (go.mod with github.com/nikogura/dynamic-binary-toolkit)")
 			return root, err
 		}
 		dir = parent

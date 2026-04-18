@@ -16,7 +16,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/nikogura/dbt/pkg/dbt"
+	"github.com/nikogura/dynamic-binary-toolkit/pkg/dbt"
 	"github.com/spf13/cobra"
 	"log"
 	"os"

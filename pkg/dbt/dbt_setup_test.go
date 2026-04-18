@@ -34,7 +34,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/johannesboyne/gofakes3"
 	"github.com/johannesboyne/gofakes3/backend/s3mem"
-	"github.com/nikogura/dbt/pkg/dbt/testfixtures"
+	"github.com/nikogura/dynamic-binary-toolkit/pkg/dbt/testfixtures"
 	"github.com/phayes/freeport"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
