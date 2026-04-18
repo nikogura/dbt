@@ -15,3 +15,5 @@
 reposerver
 /dbt
 .claude/
+bin/
+dist/
