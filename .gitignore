@@ -13,5 +13,5 @@
 *.out
 
 reposerver
-dbt
+/dbt
 .claude/
