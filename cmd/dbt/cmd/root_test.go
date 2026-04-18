@@ -18,14 +18,15 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/nikogura/dbt/pkg/dbt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRootCmdStructure(t *testing.T) {
 	// Test that the root command is properly configured
-	assert.Equal(t, "dbt", rootCmd.Use, "Command use should be 'dbt'")
-	assert.Equal(t, "Dynamic Binary Toolkit", rootCmd.Short, "Short description should match")
+	assert.Equal(t, dbt.BrandBinary, rootCmd.Use, "Command use should match brand binary")
+	assert.Contains(t, rootCmd.Short, "Dynamic Binary Toolkit", "Short description should contain toolkit name")
 	assert.Contains(t, rootCmd.Long, "self-updating signed binaries", "Long description should mention self-updating")
 	assert.NotEmpty(t, rootCmd.Version, "Version should be set")
 }

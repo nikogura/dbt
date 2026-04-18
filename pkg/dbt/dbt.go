@@ -32,23 +32,40 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DbtDir is the standard dbt directory.  Usually ~/.dbt.
-const DbtDir = ".dbt"
+// Legacy constants — kept for backward compatibility.
+// New code should use the brand functions: GetBrandDir(), GetTrustDir(), etc.
+// These are now computed from brand variables and can be overridden at build time
+// via ldflags (see brand.go).
 
-// TrustDir is the directory under the dbt dir where the trust store is downloaded to.
-const TrustDir = DbtDir + "/trust"
+// DbtDir is the standard directory. Usually ~/.dbt. Use GetBrandDir() instead.
+//
+//nolint:gochecknoglobals // Backward compatibility — use GetBrandDir() in new code.
+var DbtDir = BrandDir
 
-// ToolDir is the directory where tools get downloaded to.
-const ToolDir = DbtDir + "/tools"
+// TrustDir is the trust store directory. Use GetTrustDir() instead.
+//
+//nolint:gochecknoglobals // Backward compatibility — use GetTrustDir() in new code.
+var TrustDir = BrandDir + "/trust"
 
-// ConfigDir is the directory where Dbt expects to find configuration info.
-const ConfigDir = DbtDir + "/conf"
+// ToolDir is the tool directory. Use GetToolDir() instead.
+//
+//nolint:gochecknoglobals // Backward compatibility — use GetToolDir() in new code.
+var ToolDir = BrandDir + "/tools"
 
-// ConfigFilePath is the actual dbt config file path.
-const ConfigFilePath = ConfigDir + "/dbt.json"
+// ConfigDir is the configuration directory. Use GetConfigDir() instead.
+//
+//nolint:gochecknoglobals // Backward compatibility — use GetConfigDir() in new code.
+var ConfigDir = BrandDir + "/conf"
 
-// TruststorePath is the actual file path to the downloaded trust store.
-const TruststorePath = TrustDir + "/truststore"
+// ConfigFilePath is the config file path. Use GetConfigFilePath() instead.
+//
+//nolint:gochecknoglobals // Backward compatibility — use GetConfigFilePath() in new code.
+var ConfigFilePath = BrandDir + "/conf/" + BrandConfigFile
+
+// TruststorePath is the truststore file path. Use GetTruststorePath() instead.
+//
+//nolint:gochecknoglobals // Backward compatibility — use GetTruststorePath() in new code.
+var TruststorePath = BrandDir + "/trust/truststore"
 
 // VERSION is DBT's version. Set to "dev" by default, injected at build time via ldflags.
 // Build with: go build -ldflags "-X github.com/nikogura/dbt/pkg/dbt.VERSION=X.Y.Z".
@@ -134,8 +151,10 @@ type MultiServerConfig struct {
 	ConnectorID      string `json:"connectorId,omitempty"`
 }
 
-// DbtServerEnv is the environment variable for selecting a server.
-const DbtServerEnv = "DBT_SERVER"
+// DbtServerEnv is the environment variable for selecting a server. Use GetServerEnvVar() instead.
+//
+//nolint:gochecknoglobals // Backward compatibility — use GetServerEnvVar() in new code.
+var DbtServerEnv = BrandEnvPrefix + "_SERVER"
 
 // SelectServer returns the ServerConfig for the specified server name.
 // Priority: cliFlag > envVar > configDefault > first server > legacy config.
@@ -627,7 +646,7 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 
 	dbt.VerboseOutput("Latest version: %s\n", latest)
 
-	latestDbtVersionURL := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, runtime.GOOS, runtime.GOARCH)
+	latestDbtVersionURL := fmt.Sprintf("%s/%s/%s/%s/%s", dbt.Config.Dbt.Repo, latest, runtime.GOOS, runtime.GOARCH, BrandBinary)
 
 	dbt.VerboseOutput("Latest version url: %s\n", latestDbtVersionURL)
 
@@ -640,7 +659,7 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 
 	if !ok {
 		dbt.VerboseOutput("File at %s does not match latest", binaryPath)
-		_, _ = fmt.Fprintf(os.Stderr, "Newer version of dbt available: %s\n\n", latest)
+		_, _ = fmt.Fprintf(os.Stderr, "Newer version of %s available: %s\n\n", BrandName, latest)
 	}
 
 	return ok, err
@@ -649,7 +668,7 @@ func (dbt *DBT) IsCurrent(binaryPath string) (ok bool, err error) {
 // UpgradeInPlace upgrades dbt in place.
 func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 	dbt.VerboseOutput("Attempting upgrade in place")
-	tmpDir, mkdirErr := os.MkdirTemp("", "dbt")
+	tmpDir, mkdirErr := os.MkdirTemp("", BrandBinary)
 	if mkdirErr != nil {
 		err = errors.Wrap(mkdirErr, "failed to create temp dir")
 		return err
@@ -659,19 +678,19 @@ func (dbt *DBT) UpgradeInPlace(binaryPath string) (err error) {
 
 	defer os.RemoveAll(tmpDir)
 
-	newBinaryFile := fmt.Sprintf("%s/dbt", tmpDir)
+	newBinaryFile := fmt.Sprintf("%s/%s", tmpDir, BrandBinary)
 
 	dbt.VerboseOutput("  New binary file: %s", newBinaryFile)
 
 	latest, latestErr := dbt.FindLatestVersion("")
 	if latestErr != nil {
-		err = errors.Wrap(latestErr, "failed to find latest dbt version")
+		err = errors.Wrap(latestErr, fmt.Sprintf("failed to find latest %s version", BrandName))
 		return err
 	}
 
 	dbt.VerboseOutput("  Latest: %s", latest)
 
-	latestDbtVersionURL := fmt.Sprintf("%s/%s/%s/%s/dbt", dbt.Config.Dbt.Repo, latest, runtime.GOOS, runtime.GOARCH)
+	latestDbtVersionURL := fmt.Sprintf("%s/%s/%s/%s/%s", dbt.Config.Dbt.Repo, latest, runtime.GOOS, runtime.GOARCH, BrandBinary)
 
 	dbt.VerboseOutput("  Fetching from: %s", latestDbtVersionURL)
 
@@ -915,18 +934,18 @@ func (dbt *DBT) runExec(homedir string, args []string) (err error) {
 
 	env := os.Environ()
 
-	// Inject repository URLs so tools can use them without re-parsing config
+	// Inject repository URLs so tools can use them without re-parsing config.
 	if dbt.Config.Dbt.Repo != "" {
-		env = append(env, fmt.Sprintf("DBT_REPO=%s", dbt.Config.Dbt.Repo))
+		env = append(env, fmt.Sprintf("%s=%s", GetRepoEnvVar(), dbt.Config.Dbt.Repo))
 	}
 	if dbt.Config.Tools.Repo != "" {
-		env = append(env, fmt.Sprintf("DBT_TOOLS_REPO=%s", dbt.Config.Tools.Repo))
+		env = append(env, fmt.Sprintf("%s=%s", GetToolsRepoEnvVar(), dbt.Config.Tools.Repo))
 	}
 	if dbt.Config.Dbt.TrustStore != "" {
-		env = append(env, fmt.Sprintf("DBT_TRUSTSTORE=%s", dbt.Config.Dbt.TrustStore))
+		env = append(env, fmt.Sprintf("%s=%s", GetTruststoreEnvVar(), dbt.Config.Dbt.TrustStore))
 	}
 	if dbt.ServerName != "" {
-		env = append(env, fmt.Sprintf("DBT_SERVER=%s", dbt.ServerName))
+		env = append(env, fmt.Sprintf("%s=%s", GetServerEnvVar(), dbt.ServerName))
 	}
 
 	if testExec {

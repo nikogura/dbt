@@ -46,20 +46,19 @@ var authCheck bool
 
 //nolint:gochecknoglobals // Cobra boilerplate
 var rootCmd = &cobra.Command{
-	Use:   "dbt",
-	Short: "Dynamic Binary Toolkit",
-	Long: `
-Dynamic Binary Toolkit
+	Use:   dbt.BrandBinary,
+	Short: dbt.BrandName + " - Dynamic Binary Toolkit",
+	Long: dbt.BrandName + ` - Dynamic Binary Toolkit
 
 A framework for running self-updating signed binaries from a trusted repository.
 
-Run 'dbt -- catalog list' to see a list of what tools are available in your repository.
+Run '` + dbt.BrandBinary + ` -- catalog list' to see a list of what tools are available in your repository.
 
 Use -s/--server to select a specific server when multiple servers are configured.
-Server selection priority: CLI flag (-s) > environment variable (DBT_SERVER) > config default > first server.
+Server selection priority: CLI flag (-s) > environment variable (` + dbt.GetServerEnvVar() + `) > config default > first server.
 
 `,
-	Example: "dbt -s prod -- catalog list",
+	Example: dbt.BrandBinary + " -s prod -- catalog list",
 	Version: dbt.VERSION,
 	Run:     Run,
 }
@@ -114,9 +113,9 @@ func Run(cmd *cobra.Command, args []string) {
 		log.Fatalf("Failed to discover user homedir: %s\n", err)
 	}
 
-	dbtBinary, err := exec.LookPath("dbt")
+	dbtBinary, err := exec.LookPath(dbt.BrandBinary)
 	if err != nil {
-		log.Fatalf("Couldn't find `dbt` in $PATH: %s", err)
+		log.Fatalf("Couldn't find `%s` in $PATH: %s", dbt.BrandBinary, err)
 	}
 
 	// if we're not explicitly offline, try to upgrade in place

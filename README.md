@@ -435,6 +435,8 @@ The two top-level directories serve different trust levels:
 
 This separation enables **delegated publishing**: administrators gate dbt and the truststore, while developers publish their own tools independently.  The two paths can be served from different backends entirely — different servers, different S3 buckets, or different auth policies.  The client `toolsRepository` config field controls where tools are fetched from, independent of the dbt repository URL.
 
+**Note:** For rebranded distributions (see [Rebranding](#rebranding)), these paths change to `/{BrandBinary}/` and `/{BrandToolsPath}/` respectively.  For example, a distribution branded as `myorg` would use `/myorg/` and `/myorg-tools/`.
+
 #### Option A: Downstream Publishing Script (Recommended)
 
 The `scripts/publish-downstream.sh` script downloads the latest release from GitHub, signs each artifact with your GPG key, and uploads everything to your repository:
@@ -504,17 +506,6 @@ curl -X PUT -H "Authorization: Bearer $TOKEN" --data-binary @dbt.sha256 \
 
 Repeat for each platform (`linux/amd64`, `darwin/amd64`, `darwin/arm64`) and for the catalog tool under `/dbt-tools/catalog/`.
 
-#### Option C: Gomason
-
-[Gomason](https://github.com/nikogura/gomason) can build, sign, and publish DBT from source in a single command.  This is useful if you are maintaining a fork of DBT:
-
-```bash
-go install github.com/nikogura/gomason@latest
-gomason publish
-```
-
-Gomason uses a `metadata.json` file (kept out of Git via `.gitignore`) to configure your repository URL and version.  See the Gomason documentation for details.
-
 ### Step 5: Build Your Organization's Installer
 
 The installer is a standalone binary with your organization's repository URL and authentication settings baked in.  Users download it, run it, and they're configured — no manual setup.
@@ -575,6 +566,8 @@ dist/installer/
 | `CONNECTOR_ID` | No | OIDC connector ID (`ssh` for SSH-OIDC with Dex) |
 | `S3_REGION` | No | AWS region for S3 (auto-detected if not set) |
 | `INSTALLER_VERSION` | No | Version string embedded in the installer |
+
+For rebranded distributions, the installer also accepts brand variables via ldflags.  See [Rebranding](#rebranding) for the full list of installer brand variables (`BrandName`, `BrandDir`, `BrandBinary`, etc.).
 
 #### Distribute the Installer
 
@@ -1033,31 +1026,100 @@ dbt -v 1.2.3 -- tool args
 dbt catalog purge
 ```
 
-### Fork Configuration
+### Rebranding
 
-If forking DBT for your organization:
+DBT supports full rebranding via build-time `-ldflags` injection. No source code changes required — fork the repo, set ldflags, and build.
 
-1. Fork the repository
-2. Create a `metadata.json` (kept out of Git via `.gitignore` so you can pull upstream changes)
+#### Brand Variables
 
-Example `metadata.json`:
-```json
-{
-  "name": "dbt",
-  "version": "1.0.0",
-  "package": "github.com/your-org/dbt",
-  "repository": "https://your-dbt-repo.com/dbt",
-  "tool-repository": "https://your-dbt-repo.com/dbt-tools"
-}
+All brand-sensitive values are centralized in `pkg/dbt/brand.go` (core binary) and `cmd/dbt-installer/installer/brand.go` (installer). Override them at build time:
+
+| Variable | Default | Controls |
+|----------|---------|----------|
+| `BrandName` | `dbt` | Human-readable name (help text, log messages) |
+| `BrandDir` | `.dbt` | Dot-directory under `$HOME` (`~/.dbt/`) |
+| `BrandBinary` | `dbt` | Binary filename, `LookPath`, self-update URL path |
+| `BrandConfigFile` | `dbt.json` | Config filename (`~/.dbt/conf/dbt.json`) |
+| `BrandToolsPath` | `dbt-tools` | Repo path for tools (`{server}/dbt-tools/`) |
+| `BrandEnvPrefix` | `DBT` | Environment variable prefix (`DBT_SERVER`, `DBT_REPO`, etc.) |
+
+Installer-specific (in `cmd/dbt-installer/installer`):
+
+| Variable | Default | Controls |
+|----------|---------|----------|
+| `BrandOIDCClientID` | `dbt` | Default OIDC client ID |
+| `BrandOIDCSSHClientID` | `dbt-ssh` | OIDC client ID for SSH connector |
+
+#### Building a Rebranded Distribution
+
+```bash
+# Core binary
+go build -ldflags "\
+  -X github.com/nikogura/dbt/pkg/dbt.BrandName=myorg \
+  -X github.com/nikogura/dbt/pkg/dbt.BrandDir=.myorg \
+  -X github.com/nikogura/dbt/pkg/dbt.BrandBinary=myorg \
+  -X github.com/nikogura/dbt/pkg/dbt.BrandConfigFile=myorg.json \
+  -X github.com/nikogura/dbt/pkg/dbt.BrandToolsPath=myorg-tools \
+  -X github.com/nikogura/dbt/pkg/dbt.BrandEnvPrefix=MYORG \
+  -X github.com/nikogura/dbt/pkg/dbt.VERSION=1.0.0" \
+  -o myorg ./cmd/dbt/
+
+# Installer
+go build -ldflags "\
+  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandName=myorg \
+  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandDir=.myorg \
+  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandBinary=myorg \
+  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandConfigFile=myorg.json \
+  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandToolsPath=myorg-tools \
+  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandOIDCClientID=myorg \
+  -X github.com/nikogura/dbt/cmd/dbt-installer/installer.BrandOIDCSSHClientID=myorg-ssh" \
+  -o myorg-installer ./cmd/dbt-installer/
 ```
 
-**Note:** S3 URLs must use virtual host format: `https://bucket.s3.region.amazonaws.com`
+#### What Changes
+
+A rebranded build with the example above will:
+
+- Name itself `myorg` in help text and `--version` output
+- Store config in `~/.myorg/conf/myorg.json`
+- Store tools in `~/.myorg/tools/`
+- Store trust data in `~/.myorg/trust/`
+- Self-update from `{repo}/{version}/{os}/{arch}/myorg`
+- Look for `myorg` in `$PATH` for self-upgrade
+- Use `MYORG_SERVER`, `MYORG_REPO`, `MYORG_TOOLS_REPO`, `MYORG_TRUSTSTORE` environment variables
+- Look for tools at `{server}/myorg-tools/`
+
+#### Makefile Target (Recommended)
+
+Add a target to your fork's Makefile:
+
+```makefile
+BRAND_NAME     ?= myorg
+BRAND_DIR      ?= .myorg
+BRAND_BINARY   ?= myorg
+BRAND_CONFIG   ?= myorg.json
+BRAND_TOOLS    ?= myorg-tools
+BRAND_ENV      ?= MYORG
+VERSION        ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+
+LDFLAGS = -X github.com/nikogura/dbt/pkg/dbt.BrandName=$(BRAND_NAME) \
+          -X github.com/nikogura/dbt/pkg/dbt.BrandDir=$(BRAND_DIR) \
+          -X github.com/nikogura/dbt/pkg/dbt.BrandBinary=$(BRAND_BINARY) \
+          -X github.com/nikogura/dbt/pkg/dbt.BrandConfigFile=$(BRAND_CONFIG) \
+          -X github.com/nikogura/dbt/pkg/dbt.BrandToolsPath=$(BRAND_TOOLS) \
+          -X github.com/nikogura/dbt/pkg/dbt.BrandEnvPrefix=$(BRAND_ENV) \
+          -X github.com/nikogura/dbt/pkg/dbt.VERSION=$(VERSION)
+
+build:
+	go build -ldflags "$(LDFLAGS)" -o $(BRAND_BINARY) ./cmd/dbt/
+```
+
 
 ## Building and Development
 
 ### Requirements
 
-- Go 1.19+ (for building from source)
+- Go 1.24+ (for building from source)
 - Linux, macOS, or Windows
 - GPG for signing (publishing only)
 

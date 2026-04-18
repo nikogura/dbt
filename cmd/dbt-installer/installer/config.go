@@ -80,7 +80,7 @@ func (c *Config) DeriveDefaults() {
 
 	// Derive tools URL if not provided
 	if c.ToolsURL == "" {
-		c.ToolsURL = c.ServerURL + "/dbt-tools"
+		c.ToolsURL = c.ServerURL + "/" + BrandToolsPath
 	}
 
 	// Default audience to server URL
@@ -91,9 +91,9 @@ func (c *Config) DeriveDefaults() {
 	// Default client ID based on auth type
 	if c.OIDCClientID == "" && c.IssuerURL != "" {
 		if c.ConnectorID == connectorSSH {
-			c.OIDCClientID = "dbt-ssh"
+			c.OIDCClientID = BrandOIDCSSHClientID
 		} else {
-			c.OIDCClientID = "dbt"
+			c.OIDCClientID = BrandOIDCClientID
 		}
 	}
 }
@@ -115,7 +115,7 @@ func deriveServerName(serverURL string) (name string) {
 	}
 
 	first := parts[0]
-	if first == "dbt" && len(parts) > 1 {
+	if first == BrandBinary && len(parts) > 1 {
 		second := parts[1]
 		if second != "example" && second != "com" && second != "org" {
 			name = second
@@ -133,8 +133,8 @@ func deriveServerName(serverURL string) (name string) {
 // BuildServerConfig creates a ServerConfig from the installer Config.
 func (c *Config) BuildServerConfig(username string) (server ServerConfig) {
 	server = ServerConfig{
-		Repository:      c.ServerURL + "/dbt",
-		Truststore:      c.ServerURL + "/dbt/truststore",
+		Repository:      c.ServerURL + "/" + BrandBinary,
+		Truststore:      c.ServerURL + "/" + BrandBinary + "/truststore",
 		ToolsRepository: c.ToolsURL,
 	}
 
@@ -165,7 +165,7 @@ func GetConfigPath() (configPath string, err error) {
 		return configPath, err
 	}
 
-	configPath = filepath.Join(homeDir, ".dbt", "conf", "dbt.json")
+	configPath = filepath.Join(homeDir, BrandDir, "conf", BrandConfigFile)
 	return configPath, err
 }
 

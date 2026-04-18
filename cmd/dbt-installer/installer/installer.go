@@ -78,7 +78,7 @@ type Installer struct {
 // Install performs the full installation process.
 func (i *Installer) Install() (err error) {
 	fmt.Println()
-	fmt.Println("dbt installer")
+	fmt.Printf("%s installer\n", BrandName)
 	fmt.Println("=============")
 	fmt.Printf("Server: %s\n", i.config.ServerURL)
 	fmt.Printf("Name:   %s\n", i.config.ServerName)
@@ -123,10 +123,10 @@ func (i *Installer) Install() (err error) {
 	fmt.Printf("  Latest version: %s\n", version)
 
 	// Download dbt binary
-	fmt.Println("Downloading dbt...")
+	fmt.Printf("Downloading %s...\n", BrandName)
 	binaryPath, downloadErr := i.downloadDbt(version)
 	if downloadErr != nil {
-		err = fmt.Errorf("failed to download dbt: %w", downloadErr)
+		err = fmt.Errorf(fmt.Sprintf("failed to download %s: %%w", BrandName), downloadErr)
 		return err
 	}
 
@@ -134,7 +134,7 @@ func (i *Installer) Install() (err error) {
 	fmt.Println("Installing...")
 	installPath, installErr := i.installBinary(binaryPath)
 	if installErr != nil {
-		err = fmt.Errorf("failed to install dbt: %w", installErr)
+		err = fmt.Errorf(fmt.Sprintf("failed to install %s: %%w", BrandName), installErr)
 		return err
 	}
 	fmt.Printf("  Installed to: %s\n", installPath)
@@ -143,7 +143,7 @@ func (i *Installer) Install() (err error) {
 	fmt.Println("Configuring...")
 	configErr := i.configure(username)
 	if configErr != nil {
-		err = fmt.Errorf("failed to configure dbt: %w", configErr)
+		err = fmt.Errorf(fmt.Sprintf("failed to configure %s: %%w", BrandName), configErr)
 		return err
 	}
 
@@ -163,7 +163,7 @@ func (i *Installer) printCompletionMessage(installPath string) {
 
 	installDir := filepath.Dir(installPath)
 	if !isInPath(installDir) {
-		fmt.Println("To start using dbt, either:")
+		fmt.Printf("To start using %s, either:\n", BrandName)
 		fmt.Println()
 		fmt.Println("  1. Open a new terminal, or")
 		fmt.Printf("  2. Run: export PATH=\"%s:$PATH\"\n", installDir)
@@ -175,7 +175,7 @@ func (i *Installer) printCompletionMessage(installPath string) {
 
 	fmt.Println("Then run:")
 	fmt.Println()
-	fmt.Println("  dbt -- catalog list")
+	fmt.Printf("  %s -- catalog list\n", BrandBinary)
 	fmt.Println()
 }
 
@@ -306,7 +306,7 @@ func (i *Installer) fetchLatestVersion() (version string, err error) {
 	}
 
 	// HTTP repos: fetch directory listing and parse for versions
-	versions, listErr := i.listVersionsFromHTTP(i.config.ServerURL + "/dbt/")
+	versions, listErr := i.listVersionsFromHTTP(i.config.ServerURL + "/" + BrandBinary + "/")
 	if listErr != nil {
 		err = fmt.Errorf("failed to list versions: %w", listErr)
 		return version, err
@@ -496,24 +496,24 @@ func (i *Installer) downloadDbt(version string) (binaryPath string, err error) {
 	}
 
 	// Build download path
-	binaryKey := fmt.Sprintf("%s/%s/%s/dbt", version, runtime.GOOS, arch)
+	binaryKey := fmt.Sprintf("%s/%s/%s/"+BrandBinary, version, runtime.GOOS, arch)
 	checksumKey := binaryKey + ".sha256"
 
 	// Create temp file
-	tmpDir, tmpErr := os.MkdirTemp("", "dbt-installer-*")
+	tmpDir, tmpErr := os.MkdirTemp("", BrandBinary+"-installer-*")
 	if tmpErr != nil {
 		err = fmt.Errorf("failed to create temp dir: %w", tmpErr)
 		return binaryPath, err
 	}
 
-	binaryPath = filepath.Join(tmpDir, "dbt")
+	binaryPath = filepath.Join(tmpDir, BrandBinary)
 
 	// Download binary
 	if i.isS3 {
 		err = i.downloadFileFromS3(binaryKey, binaryPath)
 	} else {
 		// HTTP repos have the structure: <base>/dbt/<version>/<os>/<arch>/dbt
-		downloadURL := i.config.ServerURL + "/dbt/" + binaryKey
+		downloadURL := i.config.ServerURL + "/" + BrandBinary + "/" + binaryKey
 		err = i.downloadFileFromHTTP(downloadURL, binaryPath)
 	}
 	if err != nil {
@@ -609,7 +609,7 @@ func (i *Installer) verifyChecksum(filePath, checksumKey string) (err error) {
 		expectedChecksum, err = i.fetchFromS3(checksumKey)
 	} else {
 		// HTTP repos have the structure: <base>/dbt/<checksumKey>
-		expectedChecksum, err = i.fetchFromHTTP(i.config.ServerURL + "/dbt/" + checksumKey)
+		expectedChecksum, err = i.fetchFromHTTP(i.config.ServerURL + "/" + BrandBinary + "/" + checksumKey)
 	}
 	if err != nil {
 		return err
@@ -658,7 +658,7 @@ func (i *Installer) installBinary(sourcePath string) (installPath string, err er
 		return installPath, err
 	}
 
-	installPath = filepath.Join(installDir, "dbt")
+	installPath = filepath.Join(installDir, BrandBinary)
 
 	// Make executable
 	chmodErr := os.Chmod(sourcePath, 0755)
@@ -698,7 +698,7 @@ func (i *Installer) installBinary(sourcePath string) (installPath string, err er
 func (i *Installer) configure(username string) (err error) {
 	dirsErr := ensureDirectories()
 	if dirsErr != nil {
-		err = fmt.Errorf("failed to create dbt directories: %w", dirsErr)
+		err = fmt.Errorf(fmt.Sprintf("failed to create %s directories: %%w", BrandName), dirsErr)
 		return err
 	}
 
@@ -751,7 +751,7 @@ func (i *Installer) configure(username string) (err error) {
 	return err
 }
 
-// ensureDirectories creates all required dbt directories (~/.dbt/trust, ~/.dbt/tools, ~/.dbt/conf).
+// ensureDirectories creates all required directories.
 func ensureDirectories() (err error) {
 	homeDir, homeErr := os.UserHomeDir()
 	if homeErr != nil {
@@ -760,10 +760,10 @@ func ensureDirectories() (err error) {
 	}
 
 	dirs := []string{
-		filepath.Join(homeDir, ".dbt"),
-		filepath.Join(homeDir, ".dbt", "trust"),
-		filepath.Join(homeDir, ".dbt", "tools"),
-		filepath.Join(homeDir, ".dbt", "conf"),
+		filepath.Join(homeDir, BrandDir),
+		filepath.Join(homeDir, BrandDir, "trust"),
+		filepath.Join(homeDir, BrandDir, "tools"),
+		filepath.Join(homeDir, BrandDir, "conf"),
 	}
 
 	for _, dir := range dirs {
@@ -810,7 +810,7 @@ func (i *Installer) updateShellProfile(installPath string) (updated bool) {
 	// Check if already configured
 	content, readErr := os.ReadFile(profilePath)
 	if readErr == nil {
-		if strings.Contains(string(content), "# dbt PATH") ||
+		if strings.Contains(string(content), "# "+BrandName+" PATH") ||
 			strings.Contains(string(content), installDir) {
 			return updated // Already configured
 		}
@@ -823,7 +823,7 @@ func (i *Installer) updateShellProfile(installPath string) (updated bool) {
 	}
 	defer file.Close()
 
-	pathLine := fmt.Sprintf("\n# dbt PATH\nexport PATH=\"%s:$PATH\"\n", installDir)
+	pathLine := fmt.Sprintf("\n# %s PATH\nexport PATH=\"%s:$PATH\"\n", BrandName, installDir)
 	_, writeErr := file.WriteString(pathLine)
 	if writeErr != nil {
 		return updated
