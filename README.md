@@ -1,4 +1,4 @@
-# DBT (Dynamic Binary Toolkit)
+# Dynamic Binary Toolkit (DBT) 
 
 **A secure, self-updating binary distribution system for organizations.**
 
