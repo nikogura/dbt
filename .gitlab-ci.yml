@@ -1,0 +1,159 @@
+stages:
+  - lint
+  - test
+  - build
+  # - publish  # Uncomment when reposerver + GPG key + publish token are configured
+
+variables:
+  GO_VERSION: "1.24"
+  GOPATH: "${CI_PROJECT_DIR}/.go"
+  GOFLAGS: "-mod=readonly"
+
+.go-cache: &go-cache
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-go"
+    paths:
+      - .go/pkg/mod/
+      - .go/cache/
+
+# ---------------------------------------------------------------------------
+# Lint
+# ---------------------------------------------------------------------------
+lint:
+  stage: lint
+  image: golang:${GO_VERSION}
+  <<: *go-cache
+  before_script:
+    - go install github.com/nikogura/namedreturns@latest
+    - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+  script:
+    - make lint
+
+# ---------------------------------------------------------------------------
+# Unit tests
+# ---------------------------------------------------------------------------
+test:
+  stage: test
+  image: golang:${GO_VERSION}
+  <<: *go-cache
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq gpg > /dev/null
+    - gpg-agent --daemon --allow-preset-passphrase || true
+  script:
+    - go test -v -race -coverprofile=coverage.txt -covermode=atomic -timeout=10m ./...
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.txt
+    expire_in: 7 days
+
+# ---------------------------------------------------------------------------
+# Integration tests
+# ---------------------------------------------------------------------------
+integration:
+  stage: test
+  image: golang:${GO_VERSION}
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  <<: *go-cache
+  script:
+    - go test -tags=integration -v -timeout=10m ./test/integration/...
+  allow_failure: true
+
+# ---------------------------------------------------------------------------
+# Build NX-branded binaries (all platforms)
+# ---------------------------------------------------------------------------
+build:
+  stage: build
+  image: golang:${GO_VERSION}
+  <<: *go-cache
+  script:
+    - make build-nx-all
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 30 days
+
+# ---------------------------------------------------------------------------
+# Publish — sign and push to the reposerver
+#
+# Commented out until reposerver is deployed and CI variables are set.
+#
+# Requires CI/CD variables:
+#   NX_DBT_REPOSERVER_URL  — e.g. https://nx-dbt.sre.nxvms.dev
+#   NX_DBT_PUBLISH_TOKEN   — static bearer token for PUT auth
+#   GPG_PRIVATE_KEY        — ASCII-armored GPG signing key
+#   GPG_PASSPHRASE         — passphrase for the GPG key (optional)
+# ---------------------------------------------------------------------------
+.publish:  # Dot-prefixed = hidden job (not executed)
+  stage: publish
+  image: golang:${GO_VERSION}
+  dependencies:
+    - build
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq gpg curl > /dev/null
+    - echo "${GPG_PRIVATE_KEY}" | gpg --batch --import
+    - |
+      if [ -n "${GPG_PASSPHRASE}" ]; then
+        GPG_KEY_ID=$(gpg --list-secret-keys --with-colons 2>/dev/null | grep '^sec' | head -1 | cut -d: -f5)
+        echo "${GPG_PASSPHRASE}" | /usr/lib/gnupg/gpg-preset-passphrase --preset "${GPG_KEY_ID}" 2>/dev/null || true
+      fi
+  script:
+    - |
+      VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "0.0.1")
+      REPO="${NX_DBT_REPOSERVER_URL}"
+      TOKEN="${NX_DBT_PUBLISH_TOKEN}"
+
+      if [ -z "${REPO}" ] || [ -z "${TOKEN}" ]; then
+        echo "ERROR: NX_DBT_REPOSERVER_URL and NX_DBT_PUBLISH_TOKEN must be set"
+        exit 1
+      fi
+
+      sign_and_upload() {
+        LOCAL=$1
+        REMOTE_PATH=$2
+        FILENAME=$3
+
+        sha256sum "${LOCAL}" | awk '{print $1}' > "${LOCAL}.sha256"
+        gpg --batch --yes --detach-sign --armor --output "${LOCAL}.asc" "${LOCAL}"
+
+        for EXT in "" ".sha256" ".asc"; do
+          curl -sf -X PUT \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -T "${LOCAL}${EXT}" \
+            "${REPO}/${REMOTE_PATH}/${FILENAME}${EXT}"
+        done
+      }
+
+      echo "Publishing nx ${VERSION}..."
+
+      # The self-update path expects the binary stored as the brand name
+      # in the dbt/ directory (not nx-tools/).
+      for pair in darwin/amd64 darwin/arm64 linux/amd64; do
+        OS=$(echo $pair | cut -d/ -f1)
+        ARCH=$(echo $pair | cut -d/ -f2)
+        LOCAL="dist/nx/${OS}/${ARCH}/nx"
+        [ -f "${LOCAL}" ] || continue
+
+        echo "  nx ${OS}/${ARCH}..."
+        sign_and_upload "${LOCAL}" "dbt/${VERSION}/${OS}/${ARCH}" "nx"
+      done
+
+      # Publish catalog as a tool under nx-tools/.
+      for pair in darwin/amd64 darwin/arm64 linux/amd64; do
+        OS=$(echo $pair | cut -d/ -f1)
+        ARCH=$(echo $pair | cut -d/ -f2)
+        LOCAL="dist/catalog/${OS}/${ARCH}/catalog"
+        [ -f "${LOCAL}" ] || continue
+
+        echo "  catalog ${OS}/${ARCH}..."
+        sign_and_upload "${LOCAL}" "nx-tools/catalog/${VERSION}/${OS}/${ARCH}" "catalog"
+      done
+
+      echo "Publish complete: version ${VERSION}"

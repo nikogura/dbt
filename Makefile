@@ -1,65 +1,54 @@
-.PHONY: lint test test-integration docker-build docker-run clean build-installer
+.PHONY: lint test test-integration test-all docker-build docker-run clean \
+       build-installer build-nx build-nx-installer build-nx-all
 
-# Lint runs custom namedreturns linter followed by golangci-lint
-lint:
-	@echo "Running namedreturns linter..."
-	namedreturns ./...
-	@echo "Running golangci-lint..."
-	golangci-lint run
-
-# Test runs all unit tests
-test:
-	go test -v -race -cover -count=1 ./...
-
-# Test-integration runs the integration tests (requires Docker)
-test-integration:
-	@echo "Running integration tests..."
-	go test -tags=integration -v -timeout=10m -count=1 ./test/integration/...
-
-# Test-all runs unit tests, lint, and integration tests
-test-all: test lint test-integration
-
-# Docker-build builds the reposerver Docker image
-docker-build:
-	@echo "Building reposerver Docker image..."
-	docker build -f dockerfiles/reposerver/Dockerfile -t dbt-reposerver:latest .
-
-# Docker-run runs the reposerver container (mount your repo at /var/dbt)
-docker-run:
-	@echo "Starting reposerver container..."
-	@echo "Mount your repository: docker run -p 9999:9999 -v /path/to/repo:/var/dbt dbt-reposerver:latest"
-	docker run -p 9999:9999 dbt-reposerver:latest
-
-# Build-installer builds the dbt-installer binary for all platforms.
-# This target requires configuration via environment variables or LDFLAGS override.
+# ============================================================================
+# NX Brand Configuration
 #
-# Required variables (set via environment or INSTALLER_LDFLAGS):
-#   SERVER_URL      - Base URL of dbt repository (e.g., https://dbt.example.com or s3://bucket)
-#
-# Optional variables:
-#   SERVER_NAME     - Alias for server in config (defaults to derived from URL)
-#   TOOLS_URL       - Tools repository URL (defaults to SERVER_URL/dbt-tools)
-#   S3_REGION       - AWS region for S3 (auto-detected if not set)
-#   ISSUER_URL      - OIDC issuer URL (required for OIDC auth)
-#   OIDC_AUDIENCE   - OIDC audience (defaults to SERVER_URL)
-#   OIDC_CLIENT_ID  - OAuth2 client ID (defaults to dbt-ssh or dbt)
-#   OIDC_CLIENT_SECRET - OAuth2 client secret (optional)
-#   CONNECTOR_ID    - OIDC connector ID (use "ssh" for SSH-OIDC)
-#   INSTALLER_VERSION - Version string (defaults to "dev")
-#
-# Example:
-#   SERVER_URL=https://dbt.example.com ISSUER_URL=https://dex.example.com \
-#   CONNECTOR_ID=ssh make build-installer
-#
-build-installer:
+# All NX-specific naming is handled via ldflags — no source modifications.
+# Upstream code (github.com/nikogura/dynamic-binary-toolkit) is used unmodified.
+# ============================================================================
+
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+
+NX_PKG   = github.com/nikogura/dynamic-binary-toolkit/pkg/dbt
+NX_INST  = github.com/nikogura/dynamic-binary-toolkit/cmd/dbt-installer/installer
+
+NX_BRAND_LDFLAGS = \
+  -X $(NX_PKG).BrandName=nx \
+  -X $(NX_PKG).BrandDir=.nx \
+  -X $(NX_PKG).BrandBinary=nx \
+  -X $(NX_PKG).BrandConfigFile=nx.json \
+  -X $(NX_PKG).BrandToolsPath=nx-tools \
+  -X $(NX_PKG).BrandEnvPrefix=NX \
+  -X $(NX_PKG).VERSION=$(VERSION)
+
+NX_INSTALLER_BRAND_LDFLAGS = \
+  -X $(NX_INST).BrandName=nx \
+  -X $(NX_INST).BrandDir=.nx \
+  -X $(NX_INST).BrandBinary=nx \
+  -X $(NX_INST).BrandConfigFile=nx.json \
+  -X $(NX_INST).BrandToolsPath=nx-tools \
+  -X $(NX_INST).BrandOIDCClientID=nx \
+  -X $(NX_INST).BrandOIDCSSHClientID=nx-ssh
+
+PLATFORMS = darwin/amd64 darwin/arm64 linux/amd64
+
+# ============================================================================
+# NX Build Targets
+# ============================================================================
+
+build-nx:
+	@echo "Building nx ($(VERSION))..."
+	go build -ldflags "$(NX_BRAND_LDFLAGS)" -o bin/nx ./cmd/dbt
+
+build-nx-installer:
 	@if [ -z "$(SERVER_URL)" ]; then \
 		echo "ERROR: SERVER_URL is required"; \
-		echo "Example: SERVER_URL=https://dbt.example.com make build-installer"; \
+		echo "Example: SERVER_URL=https://nx-dbt.sre.nxvms.dev make build-nx-installer"; \
 		exit 1; \
 	fi
-	@echo "Building dbt-installer for all platforms..."
-	@mkdir -p dist/installer/darwin/amd64 dist/installer/darwin/arm64 dist/installer/linux/amd64
-	@LDFLAGS="-X main.serverURL=$(SERVER_URL)"; \
+	@echo "Building nx-installer for all platforms..."
+	@LDFLAGS="$(NX_INSTALLER_BRAND_LDFLAGS) -X main.serverURL=$(SERVER_URL)"; \
 	[ -n "$(SERVER_NAME)" ] && LDFLAGS="$$LDFLAGS -X main.serverName=$(SERVER_NAME)"; \
 	[ -n "$(TOOLS_URL)" ] && LDFLAGS="$$LDFLAGS -X main.toolsURL=$(TOOLS_URL)"; \
 	[ -n "$(S3_REGION)" ] && LDFLAGS="$$LDFLAGS -X main.s3Region=$(S3_REGION)"; \
@@ -69,14 +58,56 @@ build-installer:
 	[ -n "$(OIDC_CLIENT_SECRET)" ] && LDFLAGS="$$LDFLAGS -X main.oidcClientSecret=$(OIDC_CLIENT_SECRET)"; \
 	[ -n "$(CONNECTOR_ID)" ] && LDFLAGS="$$LDFLAGS -X main.connectorID=$(CONNECTOR_ID)"; \
 	[ -n "$(INSTALLER_VERSION)" ] && LDFLAGS="$$LDFLAGS -X main.version=$(INSTALLER_VERSION)"; \
-	echo "LDFLAGS: $$LDFLAGS"; \
-	GOOS=darwin GOARCH=amd64 go build -ldflags "$$LDFLAGS" -o dist/installer/darwin/amd64/dbt-installer ./cmd/dbt-installer && \
-	GOOS=darwin GOARCH=arm64 go build -ldflags "$$LDFLAGS" -o dist/installer/darwin/arm64/dbt-installer ./cmd/dbt-installer && \
-	GOOS=linux GOARCH=amd64 go build -ldflags "$$LDFLAGS" -o dist/installer/linux/amd64/dbt-installer ./cmd/dbt-installer
-	@echo "Installers built in dist/installer/"
+	for pair in $(PLATFORMS); do \
+		OS=$$(echo $$pair | cut -d/ -f1); \
+		ARCH=$$(echo $$pair | cut -d/ -f2); \
+		echo "  $$OS/$$ARCH..."; \
+		mkdir -p dist/nx-installer/$$OS/$$ARCH; \
+		CGO_ENABLED=0 GOOS=$$OS GOARCH=$$ARCH \
+			go build -ldflags "$$LDFLAGS" -o dist/nx-installer/$$OS/$$ARCH/nx-installer ./cmd/dbt-installer; \
+	done
+	@echo "Installers built in dist/nx-installer/"
 
-# Clean removes build artifacts
+build-nx-all:
+	@echo "Building nx binaries for all platforms ($(VERSION))..."
+	@for pair in $(PLATFORMS); do \
+		OS=$$(echo $$pair | cut -d/ -f1); \
+		ARCH=$$(echo $$pair | cut -d/ -f2); \
+		echo "  $$OS/$$ARCH..."; \
+		mkdir -p dist/nx/$$OS/$$ARCH dist/catalog/$$OS/$$ARCH; \
+		CGO_ENABLED=0 GOOS=$$OS GOARCH=$$ARCH \
+			go build -ldflags "$(NX_BRAND_LDFLAGS)" -o dist/nx/$$OS/$$ARCH/nx ./cmd/dbt; \
+		CGO_ENABLED=0 GOOS=$$OS GOARCH=$$ARCH \
+			go build -ldflags "$(NX_BRAND_LDFLAGS)" -o dist/catalog/$$OS/$$ARCH/catalog ./cmd/catalog; \
+	done
+	@echo "Binaries built in dist/"
+
+# ============================================================================
+# Upstream / Generic Targets
+# ============================================================================
+
+lint:
+	@echo "Running namedreturns linter..."
+	namedreturns ./...
+	@echo "Running golangci-lint..."
+	golangci-lint run
+
+test:
+	go test -v -race -cover -count=1 ./...
+
+test-integration:
+	@echo "Running integration tests..."
+	go test -tags=integration -v -timeout=10m -count=1 ./test/integration/...
+
+test-all: test lint test-integration
+
+docker-build:
+	@echo "Building reposerver Docker image..."
+	docker build -f dockerfiles/reposerver/Dockerfile -t dbt-reposerver:latest .
+
+docker-run:
+	docker run -p 9999:9999 dbt-reposerver:latest
+
 clean:
-	@echo "Cleaning build artifacts..."
-	rm -rf dist/
+	rm -rf dist/ bin/
 	docker rm -f dbt-integration-test 2>/dev/null || true
