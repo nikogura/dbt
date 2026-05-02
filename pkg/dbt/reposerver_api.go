@@ -27,7 +27,7 @@ type VersionInfo struct {
 
 // APIToolsHandler returns a JSON list of available tools.
 func (d *DBTRepoServer) APIToolsHandler(w http.ResponseWriter, r *http.Request) {
-	toolsDir := fmt.Sprintf("%s/dbt-tools", d.ServerRoot)
+	toolsDir := fmt.Sprintf("%s/%s", d.ServerRoot, BrandToolsPath)
 
 	entries, readErr := os.ReadDir(toolsDir)
 	if readErr != nil {
@@ -71,7 +71,7 @@ func (d *DBTRepoServer) APIToolVersionsHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	versionsDir := fmt.Sprintf("%s/dbt-tools/%s", d.ServerRoot, toolName)
+	versionsDir := fmt.Sprintf("%s/%s/%s", d.ServerRoot, BrandToolsPath, toolName)
 
 	entries, readErr := os.ReadDir(versionsDir)
 	if readErr != nil {

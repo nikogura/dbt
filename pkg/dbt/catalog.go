@@ -83,7 +83,7 @@ func (dbt *DBT) FetchCatalog(showVersions bool) (err error) {
 	}
 
 	fmt.Printf("\n\n")
-	fmt.Printf("Further information on any tool can be shown by running 'dbt <command> help'.\n")
+	fmt.Printf("Further information on any tool can be shown by running '%s <command> help'.\n", BrandBinary)
 	fmt.Printf("\n\n")
 
 	return err

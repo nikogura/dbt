@@ -324,7 +324,7 @@ func (d *DBTRepoServer) HealthHandler(w http.ResponseWriter, r *http.Request) {
 
 // RunRepoServer Run runs the test repository server.
 func (d *DBTRepoServer) RunRepoServer() (err error) {
-	log.Printf("Running dbt artifact server on %s port %d.  Serving tree at: %s", d.Address, d.Port, d.ServerRoot)
+	log.Printf("Running %s artifact server on %s port %d.  Serving tree at: %s", BrandName, d.Address, d.Port, d.ServerRoot)
 
 	fullAddress := fmt.Sprintf("%s:%s", d.Address, strconv.Itoa(d.Port))
 	r := mux.NewRouter()
@@ -639,7 +639,7 @@ func (d *DBTRepoServer) PutHandlerPubkeyFile(w http.ResponseWriter, r *http.Requ
 	// Extract the domain from the repo server
 	domain, domainErr := ExtractDomain(d.Address)
 	if domainErr != nil {
-		log.Errorf("failed extracting domain from configured dbt repo url %s: %v", d.Address, domainErr)
+		log.Errorf("failed extracting domain from configured %s repo url %s: %v", BrandName, d.Address, domainErr)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -690,7 +690,7 @@ func (d *DBTRepoServer) PutHandlerPubkeyFunc(w http.ResponseWriter, r *http.Requ
 	// Extract the domain from the repo server.
 	domain, domainErr := ExtractDomain(d.Address)
 	if domainErr != nil {
-		log.Errorf("failed extracting domain from configured dbt repo url %s: %v", d.Address, domainErr)
+		log.Errorf("failed extracting domain from configured %s repo url %s: %v", BrandName, d.Address, domainErr)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

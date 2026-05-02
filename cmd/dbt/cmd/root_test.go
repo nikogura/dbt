@@ -85,12 +85,34 @@ func TestRootCmdVersion(t *testing.T) {
 }
 
 func TestRootCmdExample(t *testing.T) {
-	// Test that example is set
-	assert.Equal(t, "dbt -s prod -- catalog list", rootCmd.Example, "Example should be set correctly")
+	// Test that example uses brand binary, not hardcoded "dbt".
+	assert.Contains(t, rootCmd.Example, dbt.BrandBinary, "Example should use brand binary name")
+	assert.Contains(t, rootCmd.Example, "catalog list", "Example should reference catalog list")
 }
 
 func TestRootCmdLongDescriptionMentionsServer(t *testing.T) {
-	// Test that long description mentions server selection
-	assert.Contains(t, rootCmd.Long, "DBT_SERVER", "Long description should mention DBT_SERVER env var")
+	// Test that long description mentions server selection using brand env var.
+	assert.Contains(t, rootCmd.Long, dbt.GetServerEnvVar(), "Long description should mention server env var")
 	assert.Contains(t, rootCmd.Long, "-s/--server", "Long description should mention server flag")
+}
+
+func TestNoHardcodedBrandStringsInUserFacingText(t *testing.T) {
+	// Verify that user-facing text uses brand vars, not hardcoded "dbt".
+	// This prevents regressions like #28 where hardcoded strings bypass rebranding.
+	t.Parallel()
+
+	// The command's Use field should be the brand binary.
+	assert.Equal(t, dbt.BrandBinary, rootCmd.Use, "Use should be brand binary")
+
+	// Help output should reference the brand binary, not a hardcoded name.
+	buf := new(bytes.Buffer)
+	rootCmd.SetOut(buf)
+	rootCmd.SetArgs([]string{"--help"})
+
+	helpErr := rootCmd.Execute()
+	require.NoError(t, helpErr)
+
+	helpOutput := buf.String()
+	assert.Contains(t, helpOutput, dbt.BrandBinary, "Help output should contain brand binary name")
+	assert.Contains(t, helpOutput, dbt.BrandName, "Help output should contain brand name")
 }

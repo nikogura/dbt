@@ -124,7 +124,7 @@ func Run(cmd *cobra.Command, args []string) {
 		// first fetch the current truststore
 		err = dbtObj.FetchTrustStore(homedir)
 		if err != nil {
-			log.Fatalf("Failed to fetch remote truststore: %s.\n\nIf you want to try in 'offline' mode, retry your command again with: dbt -o ...", err)
+			log.Fatalf("Failed to fetch remote truststore: %s.\n\nIf you want to try in 'offline' mode, retry your command again with: %s -o ...", err, dbt.BrandBinary)
 		}
 
 		ok, currentErr := dbtObj.IsCurrent(dbtBinary)
@@ -133,7 +133,7 @@ func Run(cmd *cobra.Command, args []string) {
 		}
 
 		if !ok {
-			log.Printf("Downloading and verifying new version of dbt.")
+			log.Printf("Downloading and verifying new version of %s.", dbt.BrandName)
 			upgradeErr := dbtObj.UpgradeInPlace(dbtBinary)
 			if upgradeErr != nil {
 				upgradeErr = fmt.Errorf("upgrade in place failed: %w", upgradeErr)

@@ -157,7 +157,7 @@ func (d *DBTRepoServer) verifyPubkeyAndDelete(w http.ResponseWriter, r *http.Req
 
 	domain, domainErr := ExtractDomain(d.Address)
 	if domainErr != nil {
-		log.Errorf("failed extracting domain from configured dbt repo url %s: %v", d.Address, domainErr)
+		log.Errorf("failed extracting domain from configured %s repo url %s: %v", BrandName, d.Address, domainErr)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
