@@ -1,5 +1,9 @@
-# Build stage - use Debian to match distroless runtime (glibc, not musl)
-FROM golang:1.24-bookworm AS builder
+# Build stage - pin to host architecture for native compilation.
+# Go cross-compiles natively via GOOS/GOARCH — no QEMU needed.
+FROM --platform=$BUILDPLATFORM golang:1.24-bookworm AS builder
+
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
@@ -16,8 +20,10 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the reposerver binary - static, no CGO
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+# Build the reposerver binary - static, no CGO.
+# TARGETOS and TARGETARCH are set automatically by buildx --platform,
+# or can be passed explicitly via --build-arg for non-buildx tools (e.g. Kaniko).
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build \
     -ldflags="-w -s -extldflags '-static'" \
     -o /bin/reposerver ./cmd/reposerver
 
