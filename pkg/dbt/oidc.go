@@ -31,6 +31,9 @@ const AUTH_OIDC = "oidc"
 // DefaultUsernameClaim is the default OIDC claim to extract username from.
 const DefaultUsernameClaim = "sub"
 
+// ClaimKeyEmail is the "email" claim key used in OIDC username extraction.
+const ClaimKeyEmail = "email"
+
 // OIDCAuthOpts holds configuration for OIDC authentication.
 type OIDCAuthOpts struct {
 	IssuerURL        string            `json:"issuerUrl"`                  // OIDC issuer URL (e.g., https://dex.example.com)
@@ -154,7 +157,7 @@ func (v *OIDCValidator) ValidateToken(ctx context.Context, tokenString string) (
 // GetUsername returns the username from claims based on configuration.
 func (v *OIDCValidator) GetUsername(claims *OIDCClaims) (username string) {
 	switch v.config.UsernameClaimKey {
-	case "email":
+	case ClaimKeyEmail:
 		username = claims.Email
 	case "preferred_username":
 		username = claims.Username
