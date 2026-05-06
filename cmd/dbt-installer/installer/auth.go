@@ -38,6 +38,8 @@ type AuthClient struct {
 	cachedToken string
 }
 
+const formKeyClientID = "client_id"
+
 // NewAuthClient creates a new authentication client.
 func NewAuthClient(config *Config, username string) (client *AuthClient) {
 	client = &AuthClient{
@@ -130,7 +132,7 @@ func (a *AuthClient) exchangeJWTForOIDC(sshJWT string) (tokenResp *TokenResponse
 		"requested_token_type": {"urn:ietf:params:oauth:token-type:id_token"},
 		"scope":                {"openid email groups profile"},
 		"connector_id":         {a.config.ConnectorID},
-		"client_id":            {a.config.OIDCClientID},
+		formKeyClientID:        {a.config.OIDCClientID},
 	}
 
 	if a.config.OIDCAudience != "" {
@@ -304,8 +306,8 @@ func (a *AuthClient) discoverOIDC() (discovery *OIDCDiscovery, err error) {
 // requestDeviceCode requests a device code from the authorization server.
 func (a *AuthClient) requestDeviceCode(endpoint string) (deviceResp *DeviceCodeResponse, err error) {
 	formData := url.Values{
-		"client_id": {a.config.OIDCClientID},
-		"scope":     {"openid profile email groups offline_access"},
+		formKeyClientID: {a.config.OIDCClientID},
+		"scope":         {"openid profile email groups offline_access"},
 	}
 
 	if a.config.OIDCAudience != "" {
@@ -354,9 +356,9 @@ func (a *AuthClient) requestDeviceCode(endpoint string) (deviceResp *DeviceCodeR
 // pollForToken polls the token endpoint for the authorization result.
 func (a *AuthClient) pollForToken(tokenEndpoint, deviceCode string) (token string, err error) {
 	formData := url.Values{
-		"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
-		"device_code": {deviceCode},
-		"client_id":   {a.config.OIDCClientID},
+		"grant_type":    {"urn:ietf:params:oauth:grant-type:device_code"},
+		"device_code":   {deviceCode},
+		formKeyClientID: {a.config.OIDCClientID},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

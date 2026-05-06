@@ -99,8 +99,10 @@ func (c *Config) DeriveDefaults() {
 }
 
 // deriveServerName extracts a server name from a URL.
+const defaultServerName = "default"
+
 func deriveServerName(serverURL string) (name string) {
-	name = "default"
+	name = defaultServerName
 
 	parsed, parseErr := url.Parse(serverURL)
 	if parseErr != nil {

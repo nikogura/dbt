@@ -73,6 +73,9 @@ var TruststorePath = BrandDir + "/trust/truststore"
 //nolint:gochecknoglobals // Must be a var to allow ldflags injection at build time.
 var VERSION = "dev"
 
+// defaultServerName is the fallback server name when none is configured.
+const defaultServerName = "default"
+
 // DBT is the dbt object itself.
 type DBT struct {
 	Config     Config
@@ -203,7 +206,7 @@ func (c *MultiServerConfig) SelectServer(cliFlag string) (server ServerConfig, n
 
 	// Fall back to legacy config
 	if c.Dbt != nil {
-		name = "default"
+		name = defaultServerName
 		server = c.toLegacyServer()
 		return server, name, err
 	}
@@ -319,7 +322,7 @@ func NewDbt(homedir string) (dbt *DBT, err error) {
 	}
 
 	// Initialize OIDC client if configured
-	if config.AuthType == "oidc" {
+	if config.AuthType == AUTH_OIDC {
 		oidcConfig := &OIDCClientConfig{
 			IssuerURL:        config.IssuerURL,
 			OIDCAudience:     config.OIDCAudience,
@@ -380,7 +383,7 @@ func NewDbtWithServer(homedir string, serverFlag string) (dbt *DBT, serverName s
 	}
 
 	// Initialize OIDC client if configured
-	if config.AuthType == "oidc" {
+	if config.AuthType == AUTH_OIDC {
 		oidcConfig := &OIDCClientConfig{
 			IssuerURL:        config.IssuerURL,
 			OIDCAudience:     config.OIDCAudience,
@@ -409,7 +412,7 @@ func (dbt *DBT) SetVerbose(verbose bool) {
 // For legacy/default configs, returns the standard ToolDir.
 // For multi-server configs, returns ToolDir/{serverName}.
 func ToolDirForServer(serverName string) (toolDir string) {
-	if serverName == "" || serverName == "default" {
+	if serverName == "" || serverName == defaultServerName {
 		toolDir = ToolDir
 		return toolDir
 	}
